@@ -186,7 +186,7 @@ struct VenueSheet: View {
                                 }
                                 Spacer()
                                 Button(venue.isCheckedIn ? "Check out" : "Check in") {
-                                    checkIn(venue)
+                                    toggleCheckIn(venue)
                                 }
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(PourColor.accent)
@@ -236,10 +236,15 @@ struct VenueSheet: View {
         }
     }
 
-    private func checkIn(_ venue: Venue) {
-        for other in venues { other.isCheckedIn = false }
-        venue.isCheckedIn.toggle()
+    private func toggleCheckIn(_ venue: Venue) {
+        if venue.isCheckedIn {
+            venue.isCheckedIn = false
+            Haptics.lightTick()
+        } else {
+            for other in venues { other.isCheckedIn = false }
+            venue.isCheckedIn = true
+            Haptics.success()
+        }
         try? modelContext.save()
-        venue.isCheckedIn ? Haptics.success() : Haptics.lightTick()
     }
 }
