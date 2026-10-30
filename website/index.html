@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pour — The Bartender's Assistant</title>
+<meta name="description" content="Pour is a native iOS bartender's assistant: offline-first recipes, intelligent 'what can I make' inventory matching, scaling, timers, and a shopping list — built for speed during service.">
+<style>
+  :root {
+    --bg-primary: #0A0A0C;
+    --bg-elevated: #121214;
+    --bg-card: #1A1A1D;
+    --surface-secondary: #222226;
+    --accent: #E8A87C;
+    --accent-gold: #D4AF37;
+    --text-primary: #F7F7F8;
+    --text-secondary: #AEAEB2;
+    --text-tertiary: #6C6C70;
+    --can-make: #32D74B;
+    --almost: #FF9F0A;
+    --destructive: #FF453A;
+    --border: rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.16);
+    --radius: 18px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+  img { display: block; max-width: 100%; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,12,0.72);
+    backdrop-filter: saturate(160%) blur(18px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner { display: flex; align-items: center; gap: 28px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
+  .brand svg { color: var(--accent); }
+  .nav-links { display: flex; gap: 26px; margin-left: auto; }
+  .nav-links a { font-size: 14px; color: var(--text-secondary); transition: color .18s ease; }
+  .nav-links a:hover { color: var(--text-primary); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 44px; padding: 0 22px; border-radius: 12px;
+    font-size: 15px; font-weight: 600; border: none; cursor: pointer;
+    transition: transform .16s ease, background .18s ease, border-color .18s ease;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #14100B; }
+  .btn-primary:hover { background: #f0b78d; }
+  .btn-ghost { background: transparent; color: var(--text-primary); border: 1px solid var(--border-strong); }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.32); }
+  .btn-sm { height: 36px; padding: 0 16px; font-size: 14px; border-radius: 10px; }
+  @media (max-width: 720px) { .nav-links { display: none; } .nav-inner .btn { margin-left: auto; } }
+
+  /* ---------- Hero ---------- */
+  .hero { position: relative; padding: 96px 0 110px; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: -20% -30% auto; height: 720px;
+    background:
+      radial-gradient(42% 52% at 72% 30%, rgba(232,168,124,0.16), transparent 62%),
+      radial-gradient(30% 40% at 20% 20%, rgba(212,175,55,0.07), transparent 60%);
+    pointer-events: none;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; position: relative; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 18px;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 1px; }
+  h1 {
+    font-size: clamp(40px, 5.6vw, 62px); font-weight: 800; letter-spacing: -0.035em;
+    line-height: 1.05; margin-bottom: 22px;
+  }
+  h1 em { font-style: normal; color: var(--accent); }
+  .hero-sub { font-size: 19px; color: var(--text-secondary); max-width: 46ch; margin-bottom: 34px; }
+  .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 30px; }
+  .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; font-weight: 500; color: var(--text-secondary);
+    background: var(--bg-card); border: 1px solid var(--border);
+    padding: 7px 12px; border-radius: 999px;
+  }
+  .badge svg { color: var(--accent); flex-shrink: 0; }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--can-make); }
+
+  .hero-visual { position: relative; display: flex; justify-content: center; }
+  .hero-photo {
+    position: absolute; width: 340px; right: -8px; top: -34px;
+    border-radius: 24px; opacity: 0.5;
+    mask-image: linear-gradient(to bottom, black 30%, transparent 96%);
+    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 96%);
+  }
+
+  /* ---------- iPhone mockup ---------- */
+  .phone {
+    position: relative; width: 300px; border-radius: 46px;
+    background: #000;
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 0 0 10px #1c1c1f, 0 0 0 11px rgba(255,255,255,0.10), 0 40px 90px rgba(0,0,0,0.65);
+    padding: 10px; flex-shrink: 0;
+  }
+  .phone-screen {
+    border-radius: 37px; overflow: hidden; background: var(--bg-primary);
+    min-height: 600px; display: flex; flex-direction: column; position: relative;
+  }
+  .notch {
+    position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+    width: 96px; height: 26px; background: #000; border-radius: 16px; z-index: 5;
+  }
+  .ps-status { display: flex; justify-content: space-between; padding: 16px 26px 6px; font-size: 12px; font-weight: 600; color: var(--text-primary); }
+  .ps-title { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; padding: 8px 18px 10px; }
+  .ps-search {
+    margin: 0 16px; height: 38px; border-radius: 11px;
+    background: var(--surface-secondary);
+    display: flex; align-items: center; gap: 8px; padding: 0 12px;
+    color: var(--text-tertiary); font-size: 13.5px;
+  }
+  .ps-search svg { color: var(--text-tertiary); }
+  .ps-search .mic { margin-left: auto; color: var(--accent); }
+  .ps-chips { display: flex; gap: 8px; padding: 12px 16px 4px; overflow: hidden; }
+  .chip {
+    font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 999px;
+    background: var(--surface-secondary); color: var(--text-secondary);
+    border: 1px solid var(--border); white-space: nowrap;
+  }
+  .chip.on { background: var(--accent); color: #14100B; border-color: transparent; }
+  .ps-module {
+    margin: 12px 16px 4px; border-radius: 14px; padding: 12px 14px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ps-module svg { color: var(--can-make); }
+  .ps-module .m-title { font-size: 13.5px; font-weight: 700; }
+  .ps-module .m-sub { font-size: 11.5px; color: var(--text-secondary); }
+  .ps-module .m-count { margin-left: auto; font-size: 20px; font-weight: 800; color: var(--can-make); font-variant-numeric: tabular-nums; }
+  .ps-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 16px; }
+  .drink-card {
+    border-radius: 14px; overflow: hidden; background: var(--bg-card);
+    border: 1px solid var(--border); position: relative;
+  }
+  .drink-card img { width: 100%; height: 96px; object-fit: cover; }
+  .drink-card .dc-body { padding: 8px 10px 10px; }
+  .drink-card .dc-name { font-size: 12.5px; font-weight: 700; }
+  .drink-card .dc-meta { font-size: 10.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+  .dc-badge {
+    position: absolute; top: 8px; left: 8px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
+    padding: 3px 8px; border-radius: 999px;
+    background: rgba(10,10,12,0.82); backdrop-filter: blur(6px);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .dc-badge.ok { color: var(--can-make); }
+  .dc-badge.almost { color: var(--almost); }
+  .ps-tabbar {
+    margin-top: auto; display: flex; justify-content: space-around;
+    border-top: 1px solid var(--border); padding: 12px 8px 18px;
+    background: rgba(18,18,20,0.92);
+  }
+  .ps-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; color: var(--text-tertiary); }
+  .ps-tab.on { color: var(--accent); }
+
+  /* Recipe detail screen */
+  .rd-hero { position: relative; height: 168px; }
+  .rd-hero img { width: 100%; height: 100%; object-fit: cover; }
+  .rd-hero::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(10,10,12,0.25), rgba(10,10,12,0.0) 40%, rgba(10,10,12,0.92));
+  }
+  .rd-hero .rd-name { position: absolute; bottom: 10px; left: 16px; z-index: 2; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+  .rd-pills { display: flex; gap: 6px; padding: 10px 16px 6px; }
+  .pill { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); background: var(--surface-secondary); border: 1px solid var(--border); padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; }
+  .pill svg { color: var(--accent); }
+  .ing-rows { padding: 8px 16px; }
+  .ing-row {
+    display: flex; align-items: center; min-height: 34px;
+    border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12.5px;
+  }
+  .ing-row:last-child { border-bottom: none; }
+  .ing-row .m { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 500; color: var(--text-primary); }
+  .ing-row .miss { color: var(--almost); font-size: 10px; font-weight: 700; margin-left: 8px; padding: 2px 7px; border-radius: 999px; background: rgba(255,159,10,0.14); }
+  .rd-actions {
+    margin-top: auto; display: flex; gap: 10px; padding: 10px 16px 18px;
+    border-top: 1px solid var(--border); background: rgba(18,18,20,0.92);
+  }
+  .rd-act { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; color: var(--text-secondary); }
+  .rd-act svg { color: var(--accent); }
+
+  /* My Bar screen */
+  .mb-cat { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-tertiary); padding: 10px 16px 4px; }
+  .mb-row { display: flex; align-items: center; gap: 10px; min-height: 36px; margin: 0 16px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12.5px; }
+  .mb-row:last-child { border-bottom: none; }
+  .stock-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .stock-dot.in { background: var(--can-make); }
+  .stock-dot.out { background: var(--text-tertiary); }
+  .stock-dot.low { background: var(--almost); }
+  .mb-row .mb-cat-tag { margin-left: auto; font-size: 10px; color: var(--text-tertiary); }
+  .mb-row .low-flag { font-size: 10px; font-weight: 700; color: var(--almost); }
+
+  /* ---------- Sections ---------- */
+  section { padding: 96px 0; }
+  .sec-head { max-width: 640px; margin-bottom: 52px; }
+  .sec-head h2 { font-size: clamp(30px, 4vw, 42px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
+  .sec-head p { font-size: 17px; color: var(--text-secondary); }
+  .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+
+  .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .feat {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 26px 24px;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .feat:hover { border-color: rgba(232,168,124,0.35); transform: translateY(-2px); }
+  .feat .ic {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: rgba(232,168,124,0.12); display: flex; align-items: center; justify-content: center;
+    margin-bottom: 18px; color: var(--accent);
+  }
+  .feat h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .feat p { font-size: 14px; color: var(--text-secondary); }
+
+  /* Screenshots strip */
+  .shots { background: var(--bg-elevated); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .shots-row { display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .shot-cap { text-align: center; margin-top: 18px; font-size: 13px; color: var(--text-tertiary); font-weight: 600; }
+  .phone.sm { width: 264px; }
+  .phone.sm .phone-screen { min-height: 520px; }
+
+  /* Principles strip */
+  .principles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .prin {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; background: var(--bg-card);
+  }
+  .prin svg { color: var(--accent); margin-bottom: 14px; }
+  .prin h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .prin p { font-size: 13px; color: var(--text-secondary); }
+
+  /* Pricing / Free vs Pro */
+  .tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 860px; margin: 0 auto; }
+  .tier {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 22px; padding: 32px 28px; position: relative;
+  }
+  .tier.pro { border-color: rgba(212,175,55,0.4); background: linear-gradient(180deg, rgba(212,175,55,0.06), transparent 40%), var(--bg-card); }
+  .tier .t-name { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+  .tier.pro .t-name { color: var(--accent-gold); }
+  .tier .t-price { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin: 10px 0 4px; }
+  .tier .t-price small { font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+  .tier .t-tag { font-size: 13px; color: var(--text-secondary); margin-bottom: 22px; }
+  .tier ul { list-style: none; }
+  .tier li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; padding: 7px 0; color: var(--text-primary); }
+  .tier li svg { flex-shrink: 0; margin-top: 3px; color: var(--accent); }
+  .tier.pro li svg { color: var(--accent-gold); }
+  .pro-flag {
+    position: absolute; top: 22px; right: 22px;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.05em;
+    color: #14100B; background: var(--accent-gold);
+    padding: 5px 11px; border-radius: 999px;
+  }
+
+  /* CTA */
+  .cta-final { text-align: center; }
+  .cta-final h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 16px; }
+  .cta-final p { color: var(--text-secondary); font-size: 17px; margin-bottom: 30px; }
+  .appstore-btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--surface-secondary); border: 1px solid var(--border-strong);
+    border-radius: 14px; padding: 12px 22px;
+  }
+  .appstore-btn .as-small { font-size: 11px; color: var(--text-secondary); }
+  .appstore-btn .as-big { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .soon-note { margin-top: 14px; font-size: 13px; color: var(--text-tertiary); }
+
+  footer { border-top: 1px solid var(--border); padding: 40px 0 56px; }
+  .foot-inner { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .foot-inner .brand { font-size: 16px; }
+  .foot-links { display: flex; gap: 22px; margin-left: auto; font-size: 13.5px; color: var(--text-secondary); }
+  .foot-links a:hover { color: var(--text-primary); }
+  .foot-note { margin-top: 20px; font-size: 12.5px; color: var(--text-tertiary); }
+
+  @media (max-width: 960px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 60px; }
+    .hero { padding: 72px 0 90px; }
+    .hero-photo { display: none; }
+    .feat-grid { grid-template-columns: 1fr 1fr; }
+    .principles { grid-template-columns: 1fr 1fr; }
+    .tiers { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .feat-grid { grid-template-columns: 1fr; }
+    .principles { grid-template-columns: 1fr; }
+    section { padding: 72px 0; }
+    .shots-row { gap: 28px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="Pour home">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 4h16l-6.5 8v7h-3v-7L4 4z"/><path d="M9 19h6"/>
+      </svg>
+      Pour
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#screens">Screens</a>
+      <a href="#principles">Principles</a>
+      <a href="#pro">Pro</a>
+    </div>
+    <a href="#get" class="btn btn-primary btn-sm">Get the app</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">iOS 17+ · Offline-first · Private by default</span>
+      <h1>The bar tool that keeps up with <em>service</em>.</h1>
+      <p class="hero-sub">Pour is a native bartender's assistant: every classic spec in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
+      <div class="hero-ctas">
+        <a href="#get" class="btn btn-primary">Get Pour for iPhone</a>
+        <a href="#features" class="btn btn-ghost">See what it does</a>
+      </div>
+      <div class="hero-badges">
+        <span class="badge"><span class="dot"></span>Works fully offline</span>
+        <span class="badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>No account needed</span>
+        <span class="badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 109 9"/><path d="M12 7v5l3 3"/></svg>Dark-mode first</span>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <img class="hero-photo" src="assets/hero-old-fashioned.png" alt="" aria-hidden="true">
+      <!-- iPhone mockup: Home screen -->
+      <div class="phone" role="img" aria-label="Pour Home screen showing recipe search, filter chips, a What can I make module, and drink cards">
+        <div class="phone-screen">
+          <div class="notch"></div>
+          <div class="ps-status"><span>9:41</span><span>•••</span></div>
+          <div class="ps-title">Pour</div>
+          <div class="ps-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            Search recipes
+            <svg class="mic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/></svg>
+          </div>
+          <div class="ps-chips">
+            <span class="chip on">All</span><span class="chip">Classics</span><span class="chip">Stirred</span><span class="chip">Can make</span>
+          </div>
+          <div class="ps-module">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>
+            <div><div class="m-title">What can I make</div><div class="m-sub">From bottles in My Bar</div></div>
+            <span class="m-count">14</span>
+          </div>
+          <div class="ps-cards">
+            <div class="drink-card">
+              <img src="assets/negroni.png" alt="Negroni cocktail">
+              <span class="dc-badge ok">● Can make</span>
+              <div class="dc-body"><div class="dc-name">Negroni</div><div class="dc-meta">Rocks · Stirred</div></div>
+            </div>
+            <div class="drink-card">
+              <img src="assets/daiquiri.png" alt="Daiquiri cocktail">
+              <span class="dc-badge ok">● Can make</span>
+              <div class="dc-body"><div class="dc-name">Daiquiri</div><div class="dc-meta">Coupe · Shaken</div></div>
+            </div>
+            <div class="drink-card">
+              <img src="assets/hero-old-fashioned.png" alt="Old Fashioned cocktail">
+              <span class="dc-badge almost">▲ Missing 1</span>
+              <div class="dc-body"><div class="dc-name">Old Fashioned</div><div class="dc-meta">Rocks · Built</div></div>
+            </div>
+            <div class="drink-card">
+              <img src="assets/negroni.png" alt="Boulevardier cocktail">
+              <span class="dc-badge ok">● Can make</span>
+              <div class="dc-body"><div class="dc-name">Boulevardier</div><div class="dc-meta">Coupe · Stirred</div></div>
+            </div>
+          </div>
+          <div class="ps-tabbar">
+            <span class="ps-tab on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4h16l-6.5 8v7h-3v-7L4 4z"/></svg>Home</span>
+            <span class="ps-tab"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h16v12H4z"/><path d="M4 8l3-4h10l3 4"/><path d="M10 12h4"/></svg>My Bar</span>
+            <span class="ps-tab"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h3l3 12h9l2-9H7"/></svg>Shopping</span>
+            <span class="ps-tab"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.4-7 10-7 10z"/></svg>Favorites</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Features</div>
+      <h2>Everything a working bartender reaches for.</h2>
+      <p>Free-tier core that's genuinely useful with zero subscription — recipes, matching, scaling, timers, inventory, and a shopping list.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+        <h3>Instant recipe search</h3>
+        <p>Real-time search across ~30 seeded classics — name, ingredient, or tag — with filter chips and pull-to-refresh. Works offline.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></div>
+        <h3>"What can I make"</h3>
+        <p>Ingredient normalization maps "London Dry Gin" and "Beefeater" to gin — so matching reflects the bottles you actually have.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/><path d="M12 5h8"/></svg></div>
+        <h3>Scale &amp; batch</h3>
+        <p>Serving scaling and batch mode with accurate oz ⇄ ml conversion — dashes, barspoons, and parts handled properly.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div>
+        <h3>A timer you can feel</h3>
+        <p>Large circular progress ring with calibrated haptic ticks at 10s, 5s, and done — no need to look at the screen mid-shake.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v12H4z"/><path d="M4 8l3-4h10l3 4"/><path d="M10 12h4"/></svg></div>
+        <h3>My Bar inventory</h3>
+        <p>Categorized stock with in/out toggles, low-stock flags, and one-tap quick-add of a recipe's missing ingredients.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h3l3 12h9l2-9H7"/></svg></div>
+        <h3>Shopping list</h3>
+        <p>Missing ingredients flow straight into a shopping list with purchased tracking — restocking is a single tap.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+        <h3>Custom recipes</h3>
+        <p>House specs and your own builds, with a glass picker and full measure support — stored locally, yours forever.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15a4 4 0 014-4h10a4 4 0 010 8H7a4 4 0 01-4-4z"/><path d="M9 11V7a3 3 0 016 0v4"/></svg></div>
+        <h3>Favorites &amp; sharing</h3>
+        <p>Spring-animated favorites, recipe sharing, and pour:// deep links wired as seams for Siri and Shortcuts.</p>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1 9l5-5 5 5"/><path d="M11 4v9a5 5 0 005 5h7"/><path d="M18 23l5-5"/></svg></div>
+        <h3>Offline-first</h3>
+        <p>Every free feature works with no network. Cached recipes, local SwiftData storage, zero account required.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="shots" id="screens">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Screens</div>
+      <h2>Calm, readable, one-handed.</h2>
+      <p>Dark-mode-first surfaces with copper accents, monospaced measures, and status that's never color-only.</p>
+    </div>
+    <div class="shots-row">
+
+      <div>
+        <div class="phone sm" role="img" aria-label="Pour recipe detail screen for a Negroni showing metadata pills, ingredient measures, and the action bar">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="rd-hero">
+              <img src="assets/negroni.png" alt="">
+              <div class="rd-name">Negroni</div>
+            </div>
+            <div class="rd-pills">
+              <span class="pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16l-6.5 8v7h-3v-7L4 4z"/></svg>Rocks</span>
+              <span class="pill">Stirred</span>
+              <span class="pill">3 ingredients</span>
+            </div>
+            <div class="ing-rows">
+              <div class="ing-row"><span>Gin</span><span class="m">1.00 oz</span></div>
+              <div class="ing-row"><span>Campari</span><span class="m">1.00 oz</span></div>
+              <div class="ing-row"><span>Sweet vermouth</span><span class="m">1.00 oz</span><span class="miss">Missing</span></div>
+              <div class="ing-row"><span>Orange twist</span><span class="m">1</span></div>
+            </div>
+            <div class="rd-actions">
+              <span class="rd-act"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.4-7 10-7 10z"/></svg>Favorite</span>
+              <span class="rd-act"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/><path d="M12 5h8"/></svg>Scale</span>
+              <span class="rd-act"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Timer</span>
+              <span class="rd-act"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 15v4a2 2 0 002 2h10a2 2 0 002-2v-4"/></svg>Share</span>
+            </div>
+          </div>
+        </div>
+        <div class="shot-cap">Recipe detail</div>
+      </div>
+
+      <div>
+        <div class="phone sm" role="img" aria-label="Pour timer screen showing a large circular progress ring">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="ps-status"><span>9:41</span><span>•••</span></div>
+            <div class="ps-title" style="font-size:22px;">Timer</div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+              <svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true">
+                <circle cx="75" cy="75" r="64" fill="none" stroke="#222226" stroke-width="9"/>
+                <circle cx="75" cy="75" r="64" fill="none" stroke="#E8A87C" stroke-width="9" stroke-linecap="round"
+                  stroke-dasharray="402" stroke-dashoffset="150" transform="rotate(-90 75 75)"/>
+                <text x="75" y="72" text-anchor="middle" fill="#F7F7F8" font-size="30" font-weight="800" font-variant-numeric="tabular-nums">0:22</text>
+                <text x="75" y="94" text-anchor="middle" fill="#AEAEB2" font-size="11">of 0:35 · shake</text>
+              </svg>
+              <div style="display:flex;gap:10px;">
+                <span class="chip">Cancel</span><span class="chip on">+10s</span>
+              </div>
+            </div>
+            <div style="padding:0 16px 20px;font-size:11px;color:var(--text-tertiary);text-align:center;">Haptic ticks at 10s, 5s, and done</div>
+          </div>
+        </div>
+        <div class="shot-cap">Circular timer</div>
+      </div>
+
+      <div>
+        <div class="phone sm" role="img" aria-label="Pour My Bar inventory screen showing categorized stock with in-stock and low-stock indicators">
+          <div class="phone-screen">
+            <div class="notch"></div>
+            <div class="ps-status"><span>9:41</span><span>•••</span></div>
+            <div class="ps-title" style="font-size:22px;">My Bar</div>
+            <div class="ps-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              Search ingredients
+            </div>
+            <div class="mb-cat">Spirits</div>
+            <div class="mb-row"><span class="stock-dot in"></span><span>Gin</span><span class="mb-cat-tag">London Dry</span></div>
+            <div class="mb-row"><span class="stock-dot in"></span><span>Rye whiskey</span><span class="mb-cat-tag">Whiskey</span></div>
+            <div class="mb-row"><span class="stock-dot low"></span><span>Blanco tequila</span><span class="low-flag">Low</span></div>
+            <div class="mb-cat">Liqueurs &amp; modifiers</div>
+            <div class="mb-row"><span class="stock-dot in"></span><span>Campari</span><span class="mb-cat-tag">Bitter</span></div>
+            <div class="mb-row"><span class="stock-dot out"></span><span>Sweet vermouth</span><span class="mb-cat-tag">Vermouth</span></div>
+            <div class="mb-row"><span class="stock-dot in"></span><span>Orange liqueur</span><span class="mb-cat-tag">Triple sec</span></div>
+            <div class="mb-cat">Bitters</div>
+            <div class="mb-row"><span class="stock-dot in"></span><span>Angostura</span><span class="mb-cat-tag">Aromatic</span></div>
+            <div style="margin:auto;padding:14px 16px 18px;">
+              <div class="btn btn-primary" style="width:100%;justify-content:center;height:40px;font-size:13.5px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V4h3"/><path d="M21 7V4h-3"/><path d="M3 17v3h3"/><path d="M21 17v3h-3"/><path d="M8 9v6"/><path d="M12 9v6"/><path d="M16 9v6"/></svg>
+                Scan barcode
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="shot-cap">My Bar</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="principles">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Principles</div>
+      <h2>Built for the well, not the showroom.</h2>
+    </div>
+    <div class="principles">
+      <div class="prin">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12L13 2z"/></svg>
+        <h3>Fast under pressure</h3>
+        <p>52pt rows, 44pt+ targets, sticky actions. Readable at arm's length, usable one-handed mid-rush.</p>
+      </div>
+      <div class="prin">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+        <h3>Private by default</h3>
+        <p>Free tier is fully local — no account, no tracking, no analytics on your recipes or inventory.</p>
+      </div>
+      <div class="prin">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 109 9 9 9 0 01-9-9z"/><path d="M12 3a9 9 0 019 9h-9V3z"/></svg>
+        <h3>Accessible to AA+</h3>
+        <p>VoiceOver labels on every control, full Dynamic Type, status never by color alone, Reduce Motion respected.</p>
+      </div>
+      <div class="prin">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.5A8.5 8.5 0 119.5 3.6a7 7 0 0010.9 10.9z"/></svg>
+        <h3>Dark-mode first</h3>
+        <p>Designed for a dark bar at 1am — warm copper on near-black, with a fully supported light appearance.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pro">
+  <div class="wrap">
+    <div class="sec-head" style="text-align:center;margin-left:auto;margin-right:auto;">
+      <div class="kicker">Free &amp; Pro</div>
+      <h2>Useful free. Powerful with Pro.</h2>
+      <p>The core never requires a subscription. Pro adds the heavy machinery for pros and venues.</p>
+    </div>
+    <div class="tiers">
+      <div class="tier">
+        <div class="t-name">Pour</div>
+        <div class="t-price">Free</div>
+        <div class="t-tag">The full working core, offline.</div>
+        <ul>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>~30 seeded classic recipes, custom recipe editor</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Search, filters, and "What can I make" matching</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Inventory with stock states and low-stock flags</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Scaling, batch mode, oz ⇄ ml conversion</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Haptic timer, shopping list, favorites</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Fully offline, no account, dark/light modes</li>
+        </ul>
+      </div>
+      <div class="tier pro">
+        <span class="pro-flag">POUR PRO</span>
+        <div class="t-name">Pour Pro</div>
+        <div class="t-price">Planned</div>
+        <div class="t-tag">Subscription · for pros, venues, and teams.</div>
+        <ul>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>AI bartender: substitutions, pairings, guest picks</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>AI technique &amp; promo video generation</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Bottle-level costing, margins, usage, export</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Venue check-in, house specs, shift mode, prep lists</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>Shared team inventory &amp; shopping list</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>CloudKit sync across devices, version history</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-final" id="get">
+  <div class="wrap">
+    <h2>Ready when the rush hits.</h2>
+    <p>Pour is in active development for iPhone (iOS 17+). The repo is where it happens.</p>
+    <a class="appstore-btn" href="https://github.com/aturnbough93-hue/pour">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.86-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.98-.2 1.92-.86 3.24-.76 1.6.13 2.8.76 3.6 1.92-3.31 1.99-2.52 6.35.47 7.6-.47 1.24-1.07 2.47-2.39 3.41zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+      <span style="text-align:left"><span class="as-small">Currently in development</span><br><span class="as-big">View on GitHub</span></span>
+    </a>
+    <p class="soon-note">App Store listing coming with the first public build.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-inner">
+      <span class="brand">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M4 4h16l-6.5 8v7h-3v-7L4 4z"/><path d="M9 19h6"/></svg>
+        Pour
+      </span>
+      <div class="foot-links">
+        <a href="#features">Features</a>
+        <a href="#screens">Screens</a>
+        <a href="#pro">Pro</a>
+        <a href="https://github.com/aturnbough93-hue/pour">GitHub</a>
+      </div>
+    </div>
+    <p class="foot-note">© 2026 Pour. Free features work fully offline — no account, no tracking. Drink responsibly.</p>
+  </div>
+</footer>
+
+</body>
+</html>
