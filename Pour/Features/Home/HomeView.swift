@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var showVoiceStub = false
     @State private var showSettings = false
     @State private var showVenueSheet = false
+    @State private var showNewRecipe = false
 
     private var checkedInVenue: Venue? { venues.first { $0.isCheckedIn } }
 
@@ -63,6 +64,16 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        showNewRecipe = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .foregroundStyle(PourColor.accent)
+                    }
+                    .accessibilityLabel("New recipe")
+                    .accessibilityAddTraits(.isButton)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
                         showVoiceStub = true
                     } label: {
                         Image(systemName: "mic")
@@ -99,6 +110,7 @@ struct HomeView: View {
             .sheet(isPresented: $showVoiceStub) { VoiceSearchPlaceholderView() }
             .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: $showVenueSheet) { VenueSheet() }
+            .sheet(isPresented: $showNewRecipe) { RecipeEditorView() }
         }
         .onChange(of: router.pendingRecipeName) { _, name in
             guard let name else { return }
