@@ -120,10 +120,18 @@ struct OnboardingView: View {
     }
 
     private func seedStarterBar() {
-        let existing = Set(inventory.map(\.canonicalName))
-        for (name, category) in starterBar
-        where !existing.contains(IngredientNormalizer.canonicalName(for: name)) {
-            modelContext.insert(InventoryItem(name: name, category: category, isInStock: true))
+        var byCanonical: [String: InventoryItem] = [:]
+        for item in inventory { byCanonical[item.canonicalName] = item }
+        for (name, category) in starterBar {
+            let canonical = IngredientNormalizer.canonicalName(for: name)
+            if let existing = byCanonical[canonical] {
+                // Replay = restock: mark the bottle in stock rather than
+                // leaving it unavailable (or duplicating it).
+                existing.isInStock = true
+                existing.isLowStock = false
+            } else {
+                modelContext.insert(InventoryItem(name: name, category: category, isInStock: true))
+            }
         }
         try? modelContext.save()
         starterBarAdded = true
