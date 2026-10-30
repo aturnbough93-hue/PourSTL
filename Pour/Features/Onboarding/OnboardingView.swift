@@ -5,7 +5,9 @@ import SwiftData
 struct OnboardingView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
+    @Query private var inventory: [InventoryItem]
     @State private var page = 0
+    @State private var starterBarAdded = false
 
     private let starterBar: [(String, InventoryCategory)] = [
         ("London Dry Gin", .spirits),
@@ -78,14 +80,15 @@ struct OnboardingView: View {
                         Button {
                             seedStarterBar()
                         } label: {
-                            Text("Add starter bar")
+                            Text(starterBarAdded ? "Added to My Bar" : "Add starter bar")
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(.black)
                                 .frame(minHeight: 52)
                                 .padding(.horizontal, 28)
                                 .background(PourColor.accentFill, in: RoundedRectangle(cornerRadius: 14))
                         }
-                        .accessibilityLabel("Add starter bar")
+                        .disabled(starterBarAdded)
+                        .accessibilityLabel(starterBarAdded ? "Starter bar added" : "Add starter bar")
                         .accessibilityAddTraits(.isButton)
                     }
                 }
@@ -117,10 +120,13 @@ struct OnboardingView: View {
     }
 
     private func seedStarterBar() {
-        for (name, category) in starterBar {
+        let existing = Set(inventory.map(\.canonicalName))
+        for (name, category) in starterBar
+        where !existing.contains(IngredientNormalizer.canonicalName(for: name)) {
             modelContext.insert(InventoryItem(name: name, category: category, isInStock: true))
         }
         try? modelContext.save()
+        starterBarAdded = true
         Haptics.success()
     }
 
