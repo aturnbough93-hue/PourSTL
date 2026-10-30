@@ -112,15 +112,23 @@ struct HomeView: View {
             .sheet(isPresented: $showVenueSheet) { VenueSheet() }
             .sheet(isPresented: $showNewRecipe) { RecipeEditorView() }
         }
-        .onChange(of: router.pendingRecipeName) { _, name in
-            guard let name else { return }
-            if let recipe = recipes.first(where: {
-                IngredientNormalizer.normalize($0.name) == IngredientNormalizer.normalize(name)
-            }) {
-                path.append(recipe)
-            }
-            router.pendingRecipeName = nil
+        .onChange(of: router.pendingRecipeName) { _, _ in openPendingRecipe() }
+        .onChange(of: recipes.count) { _, _ in openPendingRecipe() }
+        .onAppear { openPendingRecipe() }
+    }
+
+    /// Opens a deep-linked recipe. Keeps the pending name until the library has
+    /// loaded so cold-start links survive first-launch seeding.
+    private func openPendingRecipe() {
+        guard let name = router.pendingRecipeName else { return }
+        let key = IngredientNormalizer.normalize(name)
+        guard let recipe = recipes.first(where: { IngredientNormalizer.normalize($0.name) == key }) else {
+            // Library loaded but no match: the name is genuinely unknown.
+            if !recipes.isEmpty { router.pendingRecipeName = nil }
+            return
         }
+        path.append(recipe)
+        router.pendingRecipeName = nil
     }
 
     // MARK: - Venue indicator
