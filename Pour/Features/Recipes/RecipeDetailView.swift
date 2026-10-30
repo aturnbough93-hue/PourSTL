@@ -6,6 +6,7 @@ struct RecipeDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
     @Query private var inventory: [InventoryItem]
+    @Query private var shoppingItems: [ShoppingListItem]
 
     @State private var servings: Int = 1
     /// Per-screen unit override; nil follows the global preference.
@@ -284,7 +285,10 @@ struct RecipeDetailView: View {
     }
 
     private func addMissingToShoppingList() {
+        // Reuse pending entries: skip ingredients already on the list (by canonical name).
+        var pendingCanonical = Set(shoppingItems.filter { !$0.isPurchased }.map(\.canonicalName))
         for line in match.missing + match.missingOptional {
+            guard pendingCanonical.insert(line.canonicalName).inserted else { continue }
             modelContext.insert(ShoppingListItem(name: line.name, sourceRecipeName: recipe.name))
         }
         try? modelContext.save()
