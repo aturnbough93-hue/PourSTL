@@ -22,6 +22,7 @@ struct RecipeEditorView: View {
         var amount: Double = 1
         var unit: BarUnit = .ounce
         var isOptional = false
+        var note = ""
     }
 
     private let methods = ["Shaken", "Stirred", "Built", "Muddled", "Blended", "Layered", "Hot"]
@@ -36,7 +37,7 @@ struct RecipeEditorView: View {
             _garnish = State(initialValue: recipe.garnish ?? "")
             _tagsText = State(initialValue: recipe.tags.joined(separator: ", "))
             _lines = State(initialValue: recipe.sortedIngredients.map {
-                EditableLine(name: $0.name, amount: $0.amount, unit: BarUnit.parse($0.unit), isOptional: $0.isOptional)
+                EditableLine(name: $0.name, amount: $0.amount, unit: BarUnit.parse($0.unit), isOptional: $0.isOptional, note: $0.note ?? "")
             })
         }
     }
@@ -65,31 +66,52 @@ struct RecipeEditorView: View {
 
                 Section {
                     ForEach($lines) { $line in
-                        HStack(spacing: 8) {
-                            TextField("Ingredient", text: $line.name)
-                                .frame(maxWidth: .infinity)
-                                .accessibilityLabel("Ingredient name")
-                            TextField("1.5", value: $line.amount, format: .number)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 60)
-                                .accessibilityLabel("Measure for \(line.name.isEmpty ? "ingredient" : line.name)")
-                            Picker("Unit", selection: $line.unit) {
-                                ForEach(BarUnit.allCases, id: \.self) { unit in
-                                    Text(unit.displayName.isEmpty ? "each" : unit.displayName).tag(unit)
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 8) {
+                                TextField("Ingredient", text: $line.name)
+                                    .frame(maxWidth: .infinity)
+                                    .accessibilityLabel("Ingredient name")
+                                TextField("1.5", value: $line.amount, format: .number)
+                                    .keyboardType(.decimalPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(width: 60)
+                                    .accessibilityLabel("Measure for \(line.name.isEmpty ? "ingredient" : line.name)")
+                                Picker("Unit", selection: $line.unit) {
+                                    ForEach(BarUnit.allCases, id: \.self) { unit in
+                                        Text(unit.displayName.isEmpty ? "each" : unit.displayName).tag(unit)
+                                    }
                                 }
+                                .labelsHidden()
+                                .accessibilityLabel("Unit for \(line.name.isEmpty ? "ingredient" : line.name)")
+                                Button {
+                                    lines.removeAll { $0.id == line.id }
+                                    Haptics.lightTick()
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                        .foregroundStyle(PourColor.destructive)
+                                }
+                                .accessibilityLabel("Remove \(line.name.isEmpty ? "ingredient" : line.name)")
+                                .accessibilityAddTraits(.isButton)
                             }
-                            .labelsHidden()
-                            .accessibilityLabel("Unit for \(line.name.isEmpty ? "ingredient" : line.name)")
-                            Button {
-                                lines.removeAll { $0.id == line.id }
-                                Haptics.lightTick()
-                            } label: {
-                                Image(systemName: "minus.circle")
-                                    .foregroundStyle(PourColor.destructive)
+                            HStack(spacing: 8) {
+                                TextField("Note (e.g. \"to top\")", text: $line.note)
+                                    .font(.caption)
+                                    .accessibilityLabel("Note for \(line.name.isEmpty ? "ingredient" : line.name)")
+                                Spacer()
+                                Button {
+                                    line.isOptional.toggle()
+                                    Haptics.selection()
+                                } label: {
+                                    Text("optional")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(line.isOptional ? .black : PourColor.textTertiary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(line.isOptional ? PourColor.accentFill : PourColor.surface, in: Capsule())
+                                }
+                                .accessibilityLabel("\(line.name.isEmpty ? "Ingredient" : line.name) optional, \(line.isOptional ? "on" : "off")")
+                                .accessibilityAddTraits(.isButton)
                             }
-                            .accessibilityLabel("Remove \(line.name.isEmpty ? "ingredient" : line.name)")
-                            .accessibilityAddTraits(.isButton)
                         }
                         .frame(minHeight: 44)
                     }
@@ -180,6 +202,7 @@ struct RecipeEditorView: View {
                     name: line.name.trimmingCharacters(in: .whitespaces),
                     amount: line.amount,
                     unit: line.unit.rawValue,
+                    note: line.note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : line.note.trimmingCharacters(in: .whitespaces),
                     isOptional: line.isOptional,
                     position: index
                 ))
@@ -199,6 +222,7 @@ struct RecipeEditorView: View {
                     name: line.name.trimmingCharacters(in: .whitespaces),
                     amount: line.amount,
                     unit: line.unit.rawValue,
+                    note: line.note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : line.note.trimmingCharacters(in: .whitespaces),
                     isOptional: line.isOptional,
                     position: index
                 ))
