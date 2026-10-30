@@ -14,4 +14,4 @@ Or just open `index.html` in a browser — everything is local (images in `asset
 
 ## Deploy
 
-The folder is a static site as-is. On Netlify, set the base directory to `website/` and publish directory to `website/` (or just drag the folder into Netlify Drop). No env vars or secrets needed.
+The folder is a static site as-is. On Netlify, set the base directory to `website/` and leave the publish directory as `.` (it resolves relative to the base directory), or just drag the folder into Netlify Drop. No env vars or secrets needed.
