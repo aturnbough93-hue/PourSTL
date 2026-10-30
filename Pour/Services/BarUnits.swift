@@ -168,7 +168,11 @@ struct Measure: Equatable {
     /// Round for display: ounces snap to quarter steps, ml to integers ≥ 10 or half-steps below.
     static func displayAmount(_ amount: Double, for unit: BarUnit) -> Double {
         switch unit {
-        case .ounce: return (amount * 4).rounded() / 4
+        case .ounce:
+            let snapped = (amount * 4).rounded() / 4
+            // Quarter-ounce jigger steps are the display convention, but a real
+            // measure must never render as "0 oz" — keep the raw value under 1/8.
+            return snapped == 0 && amount > 0 ? (amount * 100).rounded() / 100 : snapped
         case .milliliter: return amount >= 10 ? amount.rounded() : (amount * 2).rounded() / 2
         default: return amount
         }
