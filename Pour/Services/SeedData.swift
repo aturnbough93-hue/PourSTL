@@ -6,8 +6,10 @@ import SwiftData
 enum SeedData {
 
     static func seedIfNeeded(in context: ModelContext) {
-        let existing = (try? context.fetchCount(FetchDescriptor<Recipe>())) ?? 0
-        guard existing == 0 else { return }
+        // A failed count must not look like an empty library, or a transient
+        // store error would insert a duplicate copy of every seeded recipe.
+        guard let existing = try? context.fetchCount(FetchDescriptor<Recipe>()),
+              existing == 0 else { return }
 
         for spec in recipes {
             let recipe = Recipe(
