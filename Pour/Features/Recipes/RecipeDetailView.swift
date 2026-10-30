@@ -328,7 +328,7 @@ struct RecipeDetailView: View {
 
     private var shareText: String {
         let lines = recipe.sortedIngredients.map {
-            "• \($0.measure.formatted(for: effectiveUnit)) \($0.name)"
+            "• \($0.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)) \($0.name)"
         }
         return """
         \(recipe.name) — serves \(servings)
