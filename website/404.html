@@ -17,10 +17,20 @@
   p { color: var(--muted); margin-bottom: 28px; font-size: 17px; }
   a { color: var(--accent); text-decoration: none; font-weight: 600; }
   a:hover { text-decoration: underline; }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .skip {
+    position: absolute; left: -9999px; top: 8px; z-index: 200;
+    background: var(--accent); color: #14100B; padding: 8px 14px; border-radius: 8px; font-weight: 600;
+  }
+  .skip:focus { left: 12px; }
 </style>
 </head>
 <body>
-  <div>
+  <a class="skip" href="#content">Skip to content</a>
+  <div id="content">
     <h1>404</h1>
     <p>That page isn't on the bar.</p>
     <a href="/">Back to Pour</a>
