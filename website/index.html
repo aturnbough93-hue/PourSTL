@@ -66,6 +66,7 @@
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
   .brand svg { color: var(--accent); }
   .nav-links { display: flex; gap: 26px; margin-left: auto; }
+  @media (max-width: 720px) { .nav-inner .btn { margin-left: auto; } }
   .nav-links a { font-size: 14px; color: var(--text-secondary); transition: color .18s ease; }
   .nav-links a:hover { color: var(--text-primary); }
   .nav-toggle {
@@ -85,7 +86,7 @@
   .nav-menu.open { display: block; }
   @media (max-width: 720px) {
     .nav-links { display: none; }
-    .nav-toggle { display: flex; align-items: center; justify-content: center; margin-left: auto; }
+    .nav-toggle { display: flex; align-items: center; justify-content: center; }
   }
   .btn-sm { height: 36px; padding: 0 16px; font-size: 14px; border-radius: 10px; }
   @media (max-width: 720px) { .btn-sm { min-height: 44px; height: 44px; } }
@@ -365,12 +366,12 @@
       <a href="#principles">Principles</a>
       <a href="#pro">Pro</a>
     </div>
+    <a href="#get" class="btn btn-primary btn-sm">Get the app</a>
     <button class="nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M4 7h16M4 12h16M4 17h16"/>
       </svg>
     </button>
-    <a href="#get" class="btn btn-primary btn-sm">Get the app</a>
   </div>
   <div class="nav-menu" id="nav-menu">
     <a href="#features">Features</a>
