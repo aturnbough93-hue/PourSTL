@@ -355,6 +355,7 @@
 </style>
 </head>
 <body>
+  <a class="skip" href="#top">Skip to content</a>
 
 <nav>
   <div class="wrap nav-inner">
@@ -528,7 +529,7 @@
           <div class="phone-screen">
             <div class="notch"></div>
             <div class="rd-hero">
-              <img src="assets/negroni.webp" alt="" loading="lazy" width="264" height="168">
+              <img src="assets/negroni.webp" alt="Negroni cocktail" loading="lazy" width="264" height="168">
               <div class="rd-name">Negroni</div>
             </div>
             <div class="rd-pills">
@@ -715,19 +716,35 @@
 <script>
   const toggle = document.querySelector('.nav-toggle');
   const menu = document.getElementById('nav-menu');
+  const menuLinks = menu.querySelectorAll('a');
+
+  function closeMenu() {
+    menu.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.focus();
+  }
+
   toggle.addEventListener('click', () => {
     const open = menu.classList.toggle('open');
     toggle.setAttribute('aria-expanded', open);
+    if (open && menuLinks.length) menuLinks[0].focus();
   });
-  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
-    menu.classList.remove('open');
-    toggle.setAttribute('aria-expanded', 'false');
-  }));
+
+  menuLinks.forEach(a => a.addEventListener('click', closeMenu));
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && menu.classList.contains('open')) {
-      menu.classList.remove('open');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.focus();
+    if (!menu.classList.contains('open')) return;
+    if (e.key === 'Escape') { closeMenu(); return; }
+    if (e.key !== 'Tab') return;
+
+    const first = menuLinks[0];
+    const last = menuLinks[menuLinks.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
   });
 </script>
