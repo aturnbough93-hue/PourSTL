@@ -66,8 +66,11 @@
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
   .brand svg { color: var(--accent); }
   .nav-links { display: flex; gap: 26px; margin-left: auto; }
-  @media (max-width: 720px) { .nav-inner .btn { margin-left: auto; } }
-  @media (max-width: 720px) { .nav-toggle { margin-left: 8px; } }
+  @media (max-width: 720px) {
+    .nav-inner { gap: 16px; }
+    .nav-inner .btn { margin-left: auto; }
+  }
+  @media (max-width: 720px) { .nav-toggle { margin-left: 0; } }
   .nav-links a { font-size: 14px; color: var(--text-secondary); transition: color .18s ease; }
   .nav-links a:hover { color: var(--text-primary); }
   .nav-toggle {
