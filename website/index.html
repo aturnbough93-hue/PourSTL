@@ -88,8 +88,6 @@
     .nav-links { display: none; }
     .nav-toggle { display: flex; align-items: center; justify-content: center; }
   }
-  .btn-sm { height: 36px; padding: 0 16px; font-size: 14px; border-radius: 10px; }
-  @media (max-width: 720px) { .btn-sm { min-height: 44px; height: 44px; } }
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
     height: 44px; padding: 0 22px; border-radius: 12px;
@@ -101,6 +99,8 @@
   .btn-primary:hover { background: #f0b78d; }
   .btn-ghost { background: transparent; color: var(--text-primary); border: 1px solid var(--border-strong); }
   .btn-ghost:hover { border-color: rgba(255,255,255,0.32); }
+  .btn-sm { height: 36px; padding: 0 16px; font-size: 14px; border-radius: 10px; }
+  @media (max-width: 720px) { .btn-sm { min-height: 44px; height: 44px; } }
 
   /* ---------- Hero ---------- */
   .hero { position: relative; padding: 96px 0 110px; overflow: hidden; }
