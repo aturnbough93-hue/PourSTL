@@ -88,13 +88,13 @@ enum BarUnit: String, CaseIterable, Codable {
     /// Parse a freeform unit string (as found in recipe text) into a BarUnit.
     static func parse(_ raw: String) -> BarUnit {
         switch IngredientNormalizer.normalize(raw) {
-        case "oz", "ounce", "ounces", "fl oz", "fluid ounce", "fluid ounces": return .ounce
-        case "ml", "milliliter", "milliliters", "millilitre", "millilitres": return .milliliter
+        case "oz", "ozs", "ounce", "ounces", "fl oz", "fl ozs", "fluid ounce", "fluid ounces": return .ounce
+        case "ml", "mls", "milliliter", "milliliters", "millilitre", "millilitres": return .milliliter
         case "part", "parts": return .part
         case "dash", "dashes": return .dash
-        case "barspoon", "barspoons", "bar spoon", "bar spoons", "bsp": return .barspoon
-        case "tsp", "teaspoon", "teaspoons": return .teaspoon
-        case "tbsp", "tablespoon", "tablespoons": return .tablespoon
+        case "barspoon", "barspoons", "bar spoon", "bar spoons", "bsp", "bsps": return .barspoon
+        case "tsp", "tsps", "teaspoon", "teaspoons": return .teaspoon
+        case "tbsp", "tbsps", "tablespoon", "tablespoons": return .tablespoon
         case "splash", "splashes": return .splash
         case "drop", "drops": return .drop
         case "rinse", "rinses", "rinse of": return .rinse
@@ -182,6 +182,7 @@ struct Measure: Equatable {
         let name = unit.displayName
         guard !name.isEmpty else { return "" }
         switch unit {
+        case .barspoon: return amount == 1 ? "barspoon" : "barspoons"
         case .dash: return amount == 1 ? "dash" : "dashes"
         case .splash: return amount == 1 ? "splash" : "splashes"
         case .drop: return amount == 1 ? "drop" : "drops"
@@ -198,6 +199,10 @@ struct Measure: Equatable {
         case .scoop: return amount == 1 ? "scoop" : "scoops"
         case .pony: return amount == 1 ? "pony" : "ponies"
         case .jigger: return amount == 1 ? "jigger" : "jiggers"
+        case .shot: return amount == 1 ? "shot" : "shots"
+        case .cup: return amount == 1 ? "cup" : "cups"
+        case .teaspoon: return amount == 1 ? "tsp" : "tsp"
+        case .tablespoon: return amount == 1 ? "tbsp" : "tbsp"
         default: return name
         }
     }

@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pour — Bartender’s assistant</title>
+    <meta
+      name="description"
+      content="Pour is the offline-first bartender’s assistant for cocktails, inventory, shopping, timers, and service flow — built for working bars and home bartenders alike."
+    />
+    <meta name="theme-color" content="#0a0a0c" />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://barpour.netlify.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Pour" />
+    <meta property="og:title" content="Pour — Bartender’s assistant" />
+    <meta
+      property="og:description"
+      content="Offline-first cocktail planning, inventory matching, shopping lists, scaling, and bar service tools for bartenders."
+    />
+    <meta property="og:url" content="https://barpour.netlify.app/" />
+    <meta property="og:image" content="https://barpour.netlify.app/assets/og-image.png" />
+    <meta property="og:image:alt" content="Pour app preview with copper accents and cocktail cards" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Pour — Bartender’s assistant" />
+    <meta
+      name="twitter:description"
+      content="A fast, offline-first cocktail planner and bar workflow app for working bartenders."
+    />
+    <meta name="twitter:image" content="https://barpour.netlify.app/assets/og-image.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./script.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header" id="top">
+      <div class="container nav-wrap">
+        <a class="brand" href="#top" aria-label="Pour home">
+          <span class="brand-mark">P</span>
+          <span>Pour</span>
+        </a>
+
+        <button
+          class="nav-toggle"
+          aria-controls="primary-nav"
+          aria-expanded="false"
+          aria-label="Open navigation menu"
+          type="button"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav class="site-nav" id="primary-nav" aria-label="Main navigation">
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#screens">Screens</a></li>
+            <li><a href="#bar">Bar</a></li>
+            <li><a href="#principles">Principles</a></li>
+            <li><a href="#pro">Pro</a></li>
+            <li><a href="#get-the-app">Get the app</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Built for busy bars, quiet kitchens, and home pours</p>
+            <h1>Make better drinks with less friction.</h1>
+            <p class="lede">
+              Pour is the offline-first bartender’s assistant for recipe lookup, inventory matching,
+              scaling, shopping, timers, and service flow — without a cloud dependency or a learning curve.
+            </p>
+            <div class="cta-row">
+              <a class="button primary" href="#get-the-app">Get the app</a>
+              <a class="button secondary" href="#features">Explore the workflow</a>
+            </div>
+            <ul class="mini-meta" aria-label="Key product points">
+              <li>Offline-first</li>
+              <li>Fast search</li>
+              <li>Inventory-aware</li>
+            </ul>
+          </div>
+
+          <div class="hero-visual" aria-label="Product preview">
+            <div class="phone-frame">
+              <div class="phone-topbar">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="phone-screen">
+                <div class="screen-card card-large">
+                  <div class="screen-header">
+                    <span>What can I make?</span>
+                    <span class="pill success">3 ready</span>
+                  </div>
+                  <div class="drink-row">
+                    <div class="drink-swatch amber"></div>
+                    <div>
+                      <strong>Negroni</strong>
+                      <small>Gin · Campari · Sweet vermouth</small>
+                    </div>
+                  </div>
+                  <div class="drink-row">
+                    <div class="drink-swatch copper"></div>
+                    <div>
+                      <strong>Margarita</strong>
+                      <small>Tequila · Lime · Triple sec</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="screen-card card-small">
+                  <p>Timer</p>
+                  <div class="timer-ring">
+                    <span>01:45</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-showcase" id="features">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Features</p>
+            <h2>Everything a bartender needs, without the clutter.</h2>
+          </div>
+
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="icon">⌕</div>
+              <h3>Fast recipe lookup</h3>
+              <p>Search by name, ingredient, tag, or brand alias and find the right cocktail in seconds.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="icon">◌</div>
+              <h3>What can I make?</h3>
+              <p>Compare your inventory to the bar’s recipe set and surface what’s ready to pour right now.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="icon">⏲</div>
+              <h3>Service-ready timers</h3>
+              <p>Run a quick cocktail timer with haptics, large progress rings, and no friction.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="icon">☰</div>
+              <h3>Shopping & batching</h3>
+              <p>Scale recipes, batch drinks, and add missing items to a shopping list with a tap.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="icon">◎</div>
+              <h3>Normalized ingredients</h3>
+              <p>Brand names, styles, and common spellings map to the same canonical ingredients.</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="icon">⚡</div>
+              <h3>Offline-first</h3>
+              <p>Everything works locally with local persistence and no sign-in required for core use.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="screens" id="screens">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Screens</p>
+            <h2>Purpose-built for the actual bar flow.</h2>
+          </div>
+
+          <div class="screen-grid">
+            <div class="screen-panel">
+              <h3>Home</h3>
+              <p>Search, filter, and get instant “can I make this?” feedback from the inventory in your hands.</p>
+            </div>
+            <div class="screen-panel">
+              <h3>Recipe detail</h3>
+              <p>Scale drinks, convert units, favorite recipes, and add missing ingredients to the list.</p>
+            </div>
+            <div class="screen-panel">
+              <h3>My Bar</h3>
+              <p>Track stock, low-stock state, quick-add bottling, and out-of-stock toggles in one place.</p>
+            </div>
+            <div class="screen-panel">
+              <h3>Shopping</h3>
+              <p>Keep a clean list of what to restock without losing the relationship to the recipe that asked for it.</p>
+            </div>
+            <div class="screen-panel">
+              <h3>Editor</h3>
+              <p>Create custom cocktails with glass type, method, ingredients, notes, and optional ingredients.</p>
+            </div>
+            <div class="screen-panel">
+              <h3>Settings</h3>
+              <p>Choose dark mode, system mode, or light mode; switch preferred measurements globally.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bar-section" id="bar">
+        <div class="container">
+          <div class="section-heading split-heading">
+            <div>
+              <p class="eyebrow">Bar</p>
+              <h2>Common tools that matter on the clock.</h2>
+            </div>
+            <p class="section-copy">
+              The app keeps the bar tools close at hand: quick measurement conversion, recipe flow, and small actions that reduce back-and-forth during service.
+            </p>
+          </div>
+
+          <div class="bar-grid">
+            <article class="bar-card">
+              <span class="kicker">Conversions</span>
+              <h3>oz ↔ ml</h3>
+              <p>Switch between units instantly while preserving bartender-friendly dashes, barspoons, and countables.</p>
+            </article>
+
+            <article class="bar-card">
+              <span class="kicker">Scaling</span>
+              <h3>Batch and serve</h3>
+              <p>Scale cocktails for service, preserve ingredient ratios, and keep the recipe readable.</p>
+            </article>
+
+            <article class="bar-card">
+              <span class="kicker">Matching</span>
+              <h3>What can I make?</h3>
+              <p>Use your actual inventory to surface ready drinks, almost-there recipes, and missing ingredients.</p>
+            </article>
+
+            <article class="bar-card">
+              <span class="kicker">Timing</span>
+              <h3>One-tap timer</h3>
+              <p>Start the clock and keep cadence with big visual progress and haptic cues.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="principles" id="principles">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Principles</p>
+            <h2>Designed to feel like the bar, not a dashboard.</h2>
+          </div>
+
+          <div class="principles-grid">
+            <article>
+              <h3>Offline-first</h3>
+              <p>Service should never depend on connectivity or sign-in. The bar keeps working.</p>
+            </article>
+            <article>
+              <h3>Fast and readable</h3>
+              <p>Monospaced measures, dense information, and large touch targets keep execution quick.</p>
+            </article>
+            <article>
+              <h3>Respect the recipe</h3>
+              <p>Keep common bartender units intact, from dashes to barspoons to parts.</p>
+            </article>
+            <article>
+              <h3>Engineered for a real bar</h3>
+              <p>The experience favors practical service flow over features that look impressive but slow the job down.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="history" id="history">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">History</p>
+            <h2>Lineage, context, and how the app evolved.</h2>
+          </div>
+
+          <div class="history-layout">
+            <div class="history-card">
+              <h3>Lineage</h3>
+              <p>
+                Pour emerged from a practical need: a compact cocktail workflow that stays useful on the floor,
+                in the back bar, and at home. The product is intentionally simple, fast, and inventory-aware,
+                rather than trying to be a full hospitality platform from day one.
+              </p>
+            </div>
+            <div class="history-card">
+              <h3>What it’s built around</h3>
+              <ul>
+                <li>Classic cocktails and bartender-friendly measures</li>
+                <li>Inventory-first matching and restocking</li>
+                <li>Real service tempo and workflow clarity</li>
+                <li>Offline reliability for in-the-moment use</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="pro" id="pro">
+        <div class="container pro-wrap">
+          <div>
+            <p class="eyebrow">Pro</p>
+            <h2>Lean, intentional premium features.</h2>
+          </div>
+          <div class="pro-list">
+            <span>AI bartender assistant</span>
+            <span>Venue check-in</span>
+            <span>Barcode scanning</span>
+            <span>Team workflows</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="get-app" id="get-the-app">
+        <div class="container get-app-wrap">
+          <div>
+            <p class="eyebrow">Get the app</p>
+            <h2>Built for the free tier first. Ready to scale with Pro later.</h2>
+          </div>
+          <a class="button primary" href="https://github.com/aturnbough93-hue/pour" target="_blank" rel="noreferrer">View the repo</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-wrap">
+        <p>Pour</p>
+        <a href="#top">Back to top</a>
+      </div>
+    </footer>
+  </body>
+</html>

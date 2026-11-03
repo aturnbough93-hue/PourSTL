@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://barpour.netlify.app/sitemap.xml

@@ -125,4 +125,12 @@ final class UnitConversionTests: XCTestCase {
         XCTAssertEqual(BarUnit.parse("rinse"), .rinse)
         XCTAssertEqual(BarUnit.parse("leaves"), .leaf)
     }
+
+    func testParsePluralVariantsAndBarspoonLabels() {
+        XCTAssertEqual(BarUnit.parse("ozs"), .ounce)
+        XCTAssertEqual(BarUnit.parse("mls"), .milliliter)
+        XCTAssertEqual(BarUnit.parse("barspoons"), .barspoon)
+        XCTAssertEqual(Measure(amount: 2, unit: .barspoon).formattedNative(), "2 barspoons")
+        XCTAssertEqual(Measure(amount: 1, unit: .barspoon).formattedNative(), "1 barspoon")
+    }
 }
