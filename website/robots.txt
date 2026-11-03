@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://pour-landing.netlify.app/sitemap.xml
+Sitemap: https://barpour.netlify.app/sitemap.xml
