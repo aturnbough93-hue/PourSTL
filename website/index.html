@@ -291,6 +291,16 @@
   .prin h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
   .prin p { font-size: 13px; color: var(--text-secondary); }
 
+  .lineage { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 28px; }
+  .line {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+  }
+  .line h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .line p { font-size: 14px; color: var(--text-secondary); }
+  .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+  .chain span { color: var(--accent); }
+
   /* Pricing / Free vs Pro */
   .tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 860px; margin: 0 auto; }
   .tier {
@@ -352,6 +362,15 @@
     html { scroll-behavior: auto; }
     * { transition: none !important; }
   }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .skip {
+    position: absolute; left: -9999px; top: 8px; z-index: 200;
+    background: var(--accent); color: #14100B; padding: 8px 14px; border-radius: 8px; font-weight: 600;
+  }
+  .skip:focus { left: 12px; }
 </style>
 </head>
 <body>
@@ -369,6 +388,7 @@
       <a href="#features">Features</a>
       <a href="#screens">Screens</a>
       <a href="#bar">Bar</a>
+      <a href="#history">History</a>
       <a href="#principles">Principles</a>
       <a href="#pro">Pro</a>
     </div>
@@ -383,6 +403,7 @@
     <a href="#features">Features</a>
     <a href="#screens">Screens</a>
     <a href="#bar">Bar</a>
+    <a href="#history">History</a>
     <a href="#principles">Principles</a>
     <a href="#pro">Pro</a>
   </div>
@@ -687,6 +708,51 @@
   </div>
 </section>
 
+<section id="history">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">History</div>
+      <h2>Where the classics come from.</h2>
+      <p>Short origins for the drinks on the rail. Lineage sits under each one — what it came from, and what it led to.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <h3>Old Fashioned</h3>
+        <p>Late 1800s. Whiskey, sugar, bitters, and a twist — the drink that kept the name “cocktail” after the category got crowded.</p>
+      </div>
+      <div class="feat">
+        <h3>Negroni</h3>
+        <p>Florence, 1919. Count Camillo Negroni asked for gin in an Americano. Equal parts gin, Campari, and sweet vermouth.</p>
+      </div>
+      <div class="feat">
+        <h3>Boulevardier</h3>
+        <p>Paris, 1920s. Harry MacElhone’s whiskey take on the Negroni, named for Erskine Gwynne’s magazine.</p>
+      </div>
+      <div class="feat">
+        <h3>Daiquiri</h3>
+        <p>Cuba, around 1898. Rum, lime, and sugar. Named for the town near Santiago, not a person.</p>
+      </div>
+    </div>
+    <div class="lineage" id="lineage">
+      <div class="line">
+        <h3>Lineage</h3>
+        <p class="chain">Whiskey cocktail <span>→</span> Old Fashioned <span>→</span> Manhattan</p>
+        <p>Stirred whiskey and bitters is the trunk. The Old Fashioned keeps sugar in the glass. Swap in sweet vermouth and you get a Manhattan.</p>
+      </div>
+      <div class="line">
+        <h3>Lineage</h3>
+        <p class="chain">Americano <span>→</span> Negroni <span>→</span> Boulevardier</p>
+        <p>The Americano is Campari, sweet vermouth, and soda. Drop the soda, add gin, and it’s a Negroni. Replace the gin with whiskey and it’s a Boulevardier.</p>
+      </div>
+      <div class="line">
+        <h3>Lineage</h3>
+        <p class="chain">Rum punch <span>→</span> Daiquiri <span>→</span> Mojito</p>
+        <p>The Daiquiri is punch stripped to rum, lime, and sugar. Add mint and soda and you have a Mojito. A drier, grapefruit version is the Hemingway Daiquiri.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="principles">
   <div class="wrap">
     <div class="sec-head">
@@ -780,6 +846,7 @@
         <a href="#features">Features</a>
         <a href="#screens">Screens</a>
         <a href="#bar">Bar</a>
+        <a href="#history">History</a>
         <a href="#pro">Pro</a>
         <a href="https://github.com/aturnbough93-hue/pour">GitHub</a>
       </div>
