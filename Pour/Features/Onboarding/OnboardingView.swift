@@ -133,7 +133,7 @@ struct OnboardingView: View {
                 modelContext.insert(InventoryItem(name: name, category: category, isInStock: true))
             }
         }
-        try? modelContext.save()
+        guard modelContext.saveIfNeeded(operation: "seeding starter bar") else { return }
         starterBarAdded = true
         Haptics.success()
     }

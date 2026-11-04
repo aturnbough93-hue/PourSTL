@@ -14,6 +14,7 @@ struct RecipeDetailView: View {
     @State private var showTimer = false
     @State private var showEdit = false
     @State private var addedToList = false
+    @State private var addedToListResetTask: Task<Void, Never>? = nil
 
     private var effectiveUnit: UnitPreference { unitOverride ?? settings.unit }
     private var match: RecipeMatch { RecipeEngine.match(recipe, inventory: inventory) }
@@ -52,6 +53,10 @@ struct RecipeDetailView: View {
         .sheet(isPresented: $showTimer) { TimerSheet(recipeName: recipe.name) }
         .sheet(isPresented: $showEdit) {
             RecipeEditorView(recipe: recipe)
+        }
+        .onDisappear {
+            addedToListResetTask?.cancel()
+            addedToListResetTask = nil
         }
     }
 
@@ -291,10 +296,15 @@ struct RecipeDetailView: View {
             guard pendingCanonical.insert(line.canonicalName).inserted else { continue }
             modelContext.insert(ShoppingListItem(name: line.name, sourceRecipeName: recipe.name))
         }
-        try? modelContext.save()
+        guard modelContext.saveIfNeeded(operation: "adding shopping list items") else { return }
         Haptics.success()
         withAnimation { addedToList = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { addedToList = false }
+        addedToListResetTask?.cancel()
+        addedToListResetTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation { addedToList = false }
+        }
     }
 
     // MARK: - Sticky action bar
@@ -307,6 +317,10 @@ struct RecipeDetailView: View {
                 selected: recipe.isFavorite
             ) {
                 recipe.isFavorite.toggle()
+                guard modelContext.saveIfNeeded(operation: "toggling favorite") else {
+                    recipe.isFavorite.toggle()
+                    return
+                }
                 recipe.isFavorite ? Haptics.mediumTap() : Haptics.lightTick()
             }
             actionButton("square.resize", label: "Scale") {

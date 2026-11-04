@@ -18,6 +18,7 @@ enum AppAppearance: String, CaseIterable {
 
 /// User preferences persisted to UserDefaults (appearance, measurement unit,
 /// onboarding). Injected as an @Observable environment object.
+@MainActor
 @Observable
 final class AppSettings {
     private let defaults: UserDefaults

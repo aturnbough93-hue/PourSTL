@@ -198,7 +198,7 @@ struct VenueSheet: View {
                         }
                         .onDelete { offsets in
                             for index in offsets { modelContext.delete(venues[index]) }
-                            try? modelContext.save()
+                            _ = modelContext.saveIfNeeded(operation: "deleting venue")
                         }
                     }
                 }
@@ -210,7 +210,7 @@ struct VenueSheet: View {
                             let trimmed = newVenueName.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !trimmed.isEmpty else { return }
                             modelContext.insert(Venue(name: trimmed))
-                            try? modelContext.save()
+                            _ = modelContext.saveIfNeeded(operation: "adding venue")
                             newVenueName = ""
                             Haptics.success()
                         }
@@ -245,6 +245,6 @@ struct VenueSheet: View {
             venue.isCheckedIn = true
             Haptics.success()
         }
-        try? modelContext.save()
+        _ = modelContext.saveIfNeeded(operation: "toggling venue check-in")
     }
 }

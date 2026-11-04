@@ -229,7 +229,7 @@ struct RecipeEditorView: View {
             }
             modelContext.insert(new)
         }
-        try? modelContext.save()
+        guard modelContext.saveIfNeeded(operation: "saving recipe") else { return }
         Haptics.success()
         dismiss()
     }

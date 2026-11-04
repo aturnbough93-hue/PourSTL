@@ -52,7 +52,7 @@ struct ShoppingListView: View {
                     else {
                         Button("Clear purchased") {
                             for item in purchased { modelContext.delete(item) }
-                            try? modelContext.save()
+                            _ = modelContext.saveIfNeeded(operation: "clearing purchased shopping items")
                         }
                         .accessibilityLabel("Clear purchased items")
                         .accessibilityAddTraits(.isButton)
@@ -75,7 +75,7 @@ struct ShoppingListView: View {
                     let trimmed = newItemName.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty {
                         modelContext.insert(ShoppingListItem(name: trimmed))
-                        try? modelContext.save()
+                        _ = modelContext.saveIfNeeded(operation: "adding shopping list item")
                     }
                     newItemName = ""
                 }

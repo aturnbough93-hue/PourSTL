@@ -318,7 +318,7 @@ struct InventoryEditSheet: View {
             new.canonicalOverride = override.isEmpty ? nil : override
             modelContext.insert(new)
         }
-        try? modelContext.save()
+        guard modelContext.saveIfNeeded(operation: "saving inventory item") else { return }
         Haptics.success()
         dismiss()
     }
