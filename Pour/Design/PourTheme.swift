@@ -47,11 +47,11 @@ enum PourColor {
 // MARK: - Typography
 
 extension Font {
-    static let pourLargeTitle = Font.system(size: 34, weight: .bold)
-    static let pourTitle = Font.system(size: 28, weight: .semibold)
-    static let pourTitle2 = Font.system(size: 22, weight: .semibold)
+    static let pourLargeTitle = Font.largeTitle.weight(.bold)
+    static let pourTitle = Font.title.weight(.semibold)
+    static let pourTitle2 = Font.title2.weight(.semibold)
     /// Ingredient measures: medium weight, tabular figures, right-aligned by callers.
-    static let pourMeasure = Font.system(size: 17, weight: .medium).monospacedDigit()
+    static let pourMeasure = Font.body.weight(.medium).monospacedDigit()
 }
 
 // MARK: - Glass → SF Symbol mapping (per spec)

@@ -8,6 +8,7 @@ struct RecipeEditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    @State private var showSaveError = false
     @State private var name = ""
     @State private var glassType = "Coupe"
     @State private var method = "Shaken"
@@ -23,6 +24,13 @@ struct RecipeEditorView: View {
         var unit: BarUnit = .ounce
         var isOptional = false
         var note = ""
+    }
+
+    private var canSave: Bool {
+        let namedLines = lines.filter { !IngredientNormalizer.normalize($0.name).isEmpty }
+        return !IngredientNormalizer.normalize(name).isEmpty
+            && !namedLines.isEmpty
+            && namedLines.allSatisfy { Measure(amount: $0.amount, unit: $0.unit).isValidRecipeAmount }
     }
 
     private let methods = ["Shaken", "Stirred", "Built", "Muddled", "Blended", "Layered", "Hot"]
@@ -89,6 +97,7 @@ struct RecipeEditorView: View {
                                 } label: {
                                     Image(systemName: "minus.circle")
                                         .foregroundStyle(PourColor.destructive)
+                                        .frame(minWidth: 44, minHeight: 44)
                                 }
                                 .accessibilityLabel("Remove \(line.name.isEmpty ? "ingredient" : line.name)")
                                 .accessibilityAddTraits(.isButton)
@@ -125,6 +134,8 @@ struct RecipeEditorView: View {
                     .accessibilityAddTraits(.isButton)
                 } header: {
                     Text("Ingredients")
+                } footer: {
+                    Text("Use positive amounts. Rinses and top-ups can be left at zero.")
                 }
 
                 Section("Method") {
@@ -145,11 +156,15 @@ struct RecipeEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .disabled(IngredientNormalizer.normalize(name).isEmpty
-                                  || lines.allSatisfy { IngredientNormalizer.normalize($0.name).isEmpty })
+                        .disabled(!canSave)
                         .accessibilityLabel("Save recipe")
                         .accessibilityAddTraits(.isButton)
                 }
+            }
+            .alert("Recipe wasn’t saved", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your edits are still here. Check available device storage and try again.")
             }
         }
     }
@@ -184,6 +199,7 @@ struct RecipeEditorView: View {
     }
 
     private func save() {
+        guard canSave else { return }
         let tags = tagsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty }
         let validLines = lines.filter { !IngredientNormalizer.normalize($0.name).isEmpty }
 
@@ -229,8 +245,13 @@ struct RecipeEditorView: View {
             }
             modelContext.insert(new)
         }
-        try? modelContext.save()
-        Haptics.success()
-        dismiss()
+        do {
+            try modelContext.save()
+            Haptics.success()
+            dismiss()
+        } catch {
+            modelContext.rollback()
+            showSaveError = true
+        }
     }
 }

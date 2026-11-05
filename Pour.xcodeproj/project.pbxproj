@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A0E8A3C29F674F41A6395A01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A0E8A3C29F674F41A6395A02 /* PrivacyInfo.xcprivacy */; };
 		026B20F0A9904D234BD1B162 /* RecipeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 459C0A911778E79D3A0281AA /* RecipeDetailView.swift */; };
 		16035B5B3DD7D312392BF6FE /* BarUnits.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4463C986813CFB230D0C59AB /* BarUnits.swift */; };
 		1996EDC5C405EE951EE9DC56 /* ShoppingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE0821C4D342493CDB8A3C2 /* ShoppingListView.swift */; };
@@ -42,6 +43,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A0E8A3C29F674F41A6395A02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		068F64BC31785A70C7CF0F9B /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		11C6FC535BF978F2166A45DF /* IngredientNormalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientNormalizationTests.swift; sourceTree = "<group>"; };
 		1ADC90E98244097B4FC8EF61 /* TimerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerSheet.swift; sourceTree = "<group>"; };
@@ -105,6 +107,7 @@
 		2D43B43B187F87018C8FC7AD /* Pour */ = {
 			isa = PBXGroup;
 			children = (
+				A0E8A3C29F674F41A6395A02 /* PrivacyInfo.xcprivacy */,
 				06027C6624C639BC64F79222 /* App */,
 				F82DB98F3187E0B514D37F68 /* Design */,
 				C120242DAB9ECA1BFEECD95A /* Features */,
@@ -229,12 +232,24 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXResourcesBuildPhase section */
+		A0E8A3C29F674F41A6395A03 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0E8A3C29F674F41A6395A01 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXNativeTarget section */
 		86B02DABC6E877E2A3412BAF /* Pour */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CB6D0EE25001A0246F528A90 /* Build configuration list for PBXNativeTarget "Pour" */;
 			buildPhases = (
 				715F540C4248B78151CCDD2E /* Sources */,
+				A0E8A3C29F674F41A6395A03 /* Resources */,
 			);
 			buildRules = (
 			);

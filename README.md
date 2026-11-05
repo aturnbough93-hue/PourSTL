@@ -22,6 +22,28 @@ xcodebuild -scheme Pour -destination 'platform=iOS Simulator,name=iPhone 17' tes
 
 Then choose a simulator/device in Xcode and press ⌘R.
 
+The dependency-free marketing site runs on Linux or macOS with
+`python3 -m http.server 8080 --directory website`. It is separate from the native
+app. VS Code includes a local website-server launch configuration.
+
+See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,
+and prioritized release/product roadmap. Native changes must pass simulator and
+device validation before distributing a build.
+
+## Quality checks
+
+```bash
+python3 scripts/check_website.py
+node --check website/site.js
+# macOS with Xcode and an installed iOS 17+ iPhone simulator:
+bash scripts/test_ios.sh
+```
+
+GitHub Actions runs the website checks and unsigned simulator build/tests on
+pushes to `main` and `codex/**`, and on pull requests. The native runner chooses
+an available iPhone instead of depending on one simulator name. This does not
+archive, sign, or distribute the app.
+
 ## Feature status
 
 ### Implemented (free-tier core)

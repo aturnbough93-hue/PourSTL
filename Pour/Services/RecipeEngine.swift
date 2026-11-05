@@ -66,3 +66,12 @@ enum RecipeEngine {
         }
     }
 }
+
+/// Plan shopping additions by canonical ingredient, preserving the displayed name.
+/// Purchased entries stay as history; only pending entries suppress another purchase.
+enum ShoppingListPlanner {
+    static func ingredientsToAdd(_ lines: [IngredientLine], existing: [ShoppingListItem]) -> [IngredientLine] {
+        var pending = Set(existing.filter { !$0.isPurchased }.map { $0.canonicalName })
+        return lines.filter { pending.insert($0.canonicalName).inserted }
+    }
+}

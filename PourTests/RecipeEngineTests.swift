@@ -1,4 +1,5 @@
 import XCTest
+import SwiftData
 @testable import Pour
 
 final class RecipeEngineTests: XCTestCase {
@@ -100,5 +101,54 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertEqual(RecipeEngine.search(recipes: recipes, query: "casamigos").count, 1)
         XCTAssertEqual(RecipeEngine.search(recipes: recipes, query: "").count, 2)
         XCTAssertEqual(RecipeEngine.search(recipes: recipes, query: "", tag: "stirred").count, 1)
+    }
+    func testShoppingPlannerDeduplicatesAliasesAndPendingPurchases() {
+        let r = recipe(name: "Test", lines: [
+            ("Gin", 1, "oz", false), ("Beefeater", 1, "oz", false),
+            ("Campari", 1, "oz", false), ("Sweet Vermouth", 1, "oz", false),
+        ])
+        let existing = ShoppingListItem(name: "Tanqueray")
+        let purchased = ShoppingListItem(name: "Campari")
+        purchased.isPurchased = true
+        XCTAssertEqual(ShoppingListPlanner.ingredientsToAdd(r.sortedIngredients, existing: [existing, purchased]).map(\.canonicalName), ["campari", "sweet vermouth"])
+        XCTAssertEqual(ShoppingListPlanner.ingredientsToAdd(r.sortedIngredients, existing: []).map(\.canonicalName), ["gin", "campari", "sweet vermouth"])
+    }
+
+}
+
+final class DeepLinkRouterTests: XCTestCase {
+    func testRecipeLinkSwitchesToHomeAndDecodesName() {
+        let router = DeepLinkRouter()
+        router.pendingTab = .shopping
+        router.handle(URL(string: "pour://recipe?name=Old%20Fashioned")!)
+        XCTAssertEqual(router.pendingTab, .home)
+        XCTAssertEqual(router.pendingRecipeName, "Old Fashioned")
+    }
+
+    func testUnsupportedLinksDoNotNavigate() {
+        let router = DeepLinkRouter()
+        router.handle(URL(string: "https://recipe?name=Negroni")!)
+        router.handle(URL(string: "pour://tab/unknown")!)
+        XCTAssertNil(router.pendingTab)
+        XCTAssertNil(router.pendingRecipeName)
+    }
+}
+
+final class SeedDataTests: XCTestCase {
+    @MainActor
+    func testSeedingTwicePreservesExistingLibraryWithoutDuplicates() throws {
+        let schema = Schema([Recipe.self, IngredientLine.self, InventoryItem.self, ShoppingListItem.self, Venue.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let context = ModelContext(container)
+        try SeedData.seedIfNeeded(in: context)
+        let firstCount = try context.fetchCount(FetchDescriptor<Recipe>())
+        XCTAssertGreaterThan(firstCount, 0)
+        let custom = Recipe(name: "My House Drink", isCustom: true)
+        context.insert(custom)
+        try context.save()
+        try SeedData.seedIfNeeded(in: context)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Recipe>()), firstCount + 1)
+        XCTAssertEqual(custom.name, "My House Drink")
     }
 }

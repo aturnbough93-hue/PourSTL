@@ -5,6 +5,7 @@ struct MyBarView: View {
     @Query(sort: \InventoryItem.name) private var items: [InventoryItem]
     @Environment(\.modelContext) private var modelContext
 
+    @State private var showSaveError = false
     @State private var searchText = ""
     @State private var filter: StockFilter = .all
     @State private var showAdd = false
@@ -53,6 +54,11 @@ struct MyBarView: View {
                     ) {
                         showAdd = true
                     }
+                } else if filtered.isEmpty {
+                    EmptyStateView(symbol: "magnifyingglass", title: "No ingredients found", message: "Try another name or stock filter.", actionTitle: "Clear filters") {
+                        searchText = ""
+                        filter = .all
+                    }
                 } else {
                     List {
                         ForEach(grouped, id: \.0) { category, categoryItems in
@@ -62,6 +68,7 @@ struct MyBarView: View {
                                         .swipeActions(edge: .trailing) {
                                             Button(role: .destructive) {
                                                 modelContext.delete(item)
+                                                saveChanges()
                                             } label: {
                                                 Label("Delete", systemImage: "trash")
                                             }
@@ -109,6 +116,11 @@ struct MyBarView: View {
             .sheet(isPresented: $showAdd) { InventoryEditSheet(item: nil) }
             .sheet(item: $editingItem) { item in InventoryEditSheet(item: item) }
             .sheet(isPresented: $showScanner) { BarcodeScannerPlaceholderView() }
+            .alert("Bar wasn’t updated", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Check available device storage and try again.")
+            }
         }
     }
 
@@ -142,11 +154,13 @@ struct MyBarView: View {
         HStack(spacing: 12) {
             Button {
                 item.isInStock.toggle()
+                saveChanges()
                 item.isInStock ? Haptics.mediumTap() : Haptics.lightTick()
             } label: {
                 Image(systemName: item.isInStock ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
                     .foregroundStyle(item.isInStock ? PourColor.canMake : PourColor.textTertiary)
+                    .frame(minWidth: 44, minHeight: 44)
             }
             .accessibilityLabel("\(item.name), \(item.isInStock ? "in stock" : "not in stock")")
             .accessibilityAddTraits(item.isInStock ? [.isButton, .isSelected] : .isButton)
@@ -178,6 +192,7 @@ struct MyBarView: View {
             if item.isLowStock {
                 Button {
                     item.isLowStock = false
+                    saveChanges()
                 } label: {
                     StatusPill(kind: .lowStock)
                 }
@@ -186,7 +201,16 @@ struct MyBarView: View {
             }
         }
         .frame(minHeight: 52)
+        .buttonStyle(.borderless)
         .listRowBackground(PourColor.card)
+    }
+
+    private func saveChanges() {
+        do { try modelContext.save() }
+        catch {
+            modelContext.rollback()
+            showSaveError = true
+        }
     }
 }
 
@@ -199,6 +223,7 @@ struct InventoryEditSheet: View {
     @Query private var recipes: [Recipe]
     @Query private var inventory: [InventoryItem]
 
+    @State private var showSaveError = false
     @State private var name = ""
     @State private var category: InventoryCategory = .other
     @State private var isInStock = true
@@ -284,6 +309,11 @@ struct InventoryEditSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(PourColor.background)
+            .alert("Item wasn’t saved", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your edits are still here. Check available device storage and try again.")
+            }
             .navigationTitle(item == nil ? "Add item" : "Edit item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -318,8 +348,13 @@ struct InventoryEditSheet: View {
             new.canonicalOverride = override.isEmpty ? nil : override
             modelContext.insert(new)
         }
-        try? modelContext.save()
-        Haptics.success()
-        dismiss()
+        do {
+            try modelContext.save()
+            Haptics.success()
+            dismiss()
+        } catch {
+            modelContext.rollback()
+            showSaveError = true
+        }
     }
 }

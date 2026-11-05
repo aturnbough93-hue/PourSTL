@@ -1,7 +1,9 @@
 {
-    "python.testing.pytestArgs": [
-        "PourTests"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "files.associations": {
+        "*.xcprivacy": "xml"
+    },
+    "files.watcherExclude": {
+        "**/DerivedData/**": true,
+        "**/.build/**": true
+    }
 }

@@ -125,4 +125,14 @@ final class UnitConversionTests: XCTestCase {
         XCTAssertEqual(BarUnit.parse("rinse"), .rinse)
         XCTAssertEqual(BarUnit.parse("leaves"), .leaf)
     }
+    func testRecipeAmountsRejectNegativeAndNonfiniteValues() {
+        for value in [-1.0, Double.nan, Double.infinity, -Double.infinity] {
+            XCTAssertFalse(Measure(amount: value, unit: .ounce).isValidRecipeAmount)
+        }
+        XCTAssertFalse(Measure(amount: 0, unit: .ounce).isValidRecipeAmount)
+        XCTAssertTrue(Measure(amount: 0.25, unit: .ounce).isValidRecipeAmount)
+        XCTAssertTrue(Measure(amount: 0, unit: .topUp).isValidRecipeAmount)
+        XCTAssertTrue(Measure(amount: 0, unit: .rinse).isValidRecipeAmount)
+    }
+
 }

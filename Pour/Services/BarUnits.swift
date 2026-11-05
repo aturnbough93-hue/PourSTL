@@ -135,6 +135,13 @@ struct Measure: Equatable {
         ounces.map { $0 * Measure.millilitersPerOunce }
     }
 
+    /// Freeform quantities must be finite and positive. Unmeasured rinses and
+    /// top-ups may use zero because their amount is expressed by the unit itself.
+    var isValidRecipeAmount: Bool {
+        amount.isFinite && amount >= 0
+            && (amount > 0 || unit == .topUp || unit == .rinse)
+    }
+
     var isConvertible: Bool { unit.isConvertible }
 
     func scaled(by factor: Double) -> Measure {

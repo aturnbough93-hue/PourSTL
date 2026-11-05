@@ -13,6 +13,8 @@ struct RecipeDetailView: View {
     @State private var showTimer = false
     @State private var showEdit = false
     @State private var addedToList = false
+    @State private var showSaveError = false
+    @State private var saveErrorTitle = "Changes weren’t saved"
 
     private var effectiveUnit: UnitPreference { unitOverride ?? settings.unit }
     private var match: RecipeMatch { RecipeEngine.match(recipe, inventory: inventory) }
@@ -51,6 +53,11 @@ struct RecipeDetailView: View {
         .sheet(isPresented: $showTimer) { TimerSheet(recipeName: recipe.name) }
         .sheet(isPresented: $showEdit) {
             RecipeEditorView(recipe: recipe)
+        }
+        .alert(saveErrorTitle, isPresented: $showSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Check available device storage and try again.")
         }
     }
 
@@ -284,13 +291,20 @@ struct RecipeDetailView: View {
     }
 
     private func addMissingToShoppingList() {
-        for line in match.missing + match.missingOptional {
-            modelContext.insert(ShoppingListItem(name: line.name, sourceRecipeName: recipe.name))
+        do {
+            let existing = try modelContext.fetch(FetchDescriptor<ShoppingListItem>())
+            for line in ShoppingListPlanner.ingredientsToAdd(match.missing + match.missingOptional, existing: existing) {
+                modelContext.insert(ShoppingListItem(name: line.name, sourceRecipeName: recipe.name))
+            }
+            try modelContext.save()
+            Haptics.success()
+            withAnimation { addedToList = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { addedToList = false }
+        } catch {
+            modelContext.rollback()
+            saveErrorTitle = "Shopping list wasn’t updated"
+            showSaveError = true
         }
-        try? modelContext.save()
-        Haptics.success()
-        withAnimation { addedToList = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { addedToList = false }
     }
 
     // MARK: - Sticky action bar
@@ -302,8 +316,7 @@ struct RecipeDetailView: View {
                 label: recipe.isFavorite ? "Unfavorite" : "Favorite",
                 selected: recipe.isFavorite
             ) {
-                recipe.isFavorite.toggle()
-                recipe.isFavorite ? Haptics.mediumTap() : Haptics.lightTick()
+                toggleFavorite()
             }
             actionButton("square.resize", label: "Scale") {
                 withAnimation { proxy.scrollTo("scaling", anchor: .top) }
@@ -324,6 +337,18 @@ struct RecipeDetailView: View {
         .padding(.vertical, 10)
         .background(.ultraThinMaterial)
         .overlay(Rectangle().fill(PourColor.border).frame(height: 0.5), alignment: .top)
+    }
+
+    private func toggleFavorite() {
+        recipe.isFavorite.toggle()
+        do {
+            try modelContext.save()
+            recipe.isFavorite ? Haptics.mediumTap() : Haptics.lightTick()
+        } catch {
+            modelContext.rollback()
+            saveErrorTitle = "Favorite wasn’t saved"
+            showSaveError = true
+        }
     }
 
     private var shareText: String {

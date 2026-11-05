@@ -10,6 +10,12 @@ struct HomeView: View {
 
     @State private var searchText = ""
     @State private var selectedTag: String? = nil
+    @State private var availability: AvailabilityFilter = .all
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private enum AvailabilityFilter: String, CaseIterable {
+        case all = "All drinks", ready = "Can make", almost = "Almost there"
+    }
     @State private var path = NavigationPath()
     @State private var showAssistant = false
     @State private var showVoiceStub = false
@@ -20,7 +26,12 @@ struct HomeView: View {
     private var checkedInVenue: Venue? { venues.first { $0.isCheckedIn } }
 
     private var filteredRecipes: [Recipe] {
-        RecipeEngine.search(recipes: recipes, query: searchText, tag: selectedTag)
+        let searched = RecipeEngine.search(recipes: recipes, query: searchText, tag: selectedTag)
+        guard availability != .all else { return searched }
+        let eligible = Set(ranked.filter {
+            availability == .ready ? $0.canMake : $0.isAlmost
+        }.map { $0.recipe.persistentModelID })
+        return searched.filter { eligible.contains($0.persistentModelID) }
     }
 
     private var ranked: [RecipeMatch] {
@@ -36,7 +47,7 @@ struct HomeView: View {
         for recipe in recipes {
             for tag in recipe.tags { counts[tag, default: 0] += 1 }
         }
-        return counts.sorted { $0.value > $1.value }.map(\.key).prefix(12).map { $0 }
+        return counts.sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }.map(\.key).prefix(12).map { $0 }
     }
 
     var body: some View {
@@ -47,6 +58,7 @@ struct HomeView: View {
                         venueIndicator(venue)
                     }
                     whatCanIMakeSection
+                    availabilityPicker
                     filterChips
                     drinkGrid
                 }
@@ -79,7 +91,7 @@ struct HomeView: View {
                         Image(systemName: "mic")
                             .foregroundStyle(PourColor.accent)
                     }
-                    .accessibilityLabel("Voice search")
+                    .accessibilityLabel("Voice search, coming soon")
                     .accessibilityAddTraits(.isButton)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -89,7 +101,7 @@ struct HomeView: View {
                         Image(systemName: "sparkles")
                             .foregroundStyle(PourColor.accent)
                     }
-                    .accessibilityLabel("AI Bartender Assistant")
+                    .accessibilityLabel("AI Bartender Assistant, coming soon")
                     .accessibilityAddTraits(.isButton)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -112,15 +124,32 @@ struct HomeView: View {
             .sheet(isPresented: $showVenueSheet) { VenueSheet() }
             .sheet(isPresented: $showNewRecipe) { RecipeEditorView() }
         }
-        .onChange(of: router.pendingRecipeName) { _, name in
-            guard let name else { return }
-            if let recipe = recipes.first(where: {
-                IngredientNormalizer.normalize($0.name) == IngredientNormalizer.normalize(name)
-            }) {
-                path.append(recipe)
-            }
-            router.pendingRecipeName = nil
+        .onChange(of: router.pendingRecipeName, initial: true) { _, _ in
+            openPendingRecipe()
         }
+        .onChange(of: recipes.count) { _, _ in
+            openPendingRecipe()
+        }
+    }
+
+    private func openPendingRecipe() {
+        guard let name = router.pendingRecipeName, !recipes.isEmpty else { return }
+        if let recipe = recipes.first(where: {
+            IngredientNormalizer.normalize($0.name) == IngredientNormalizer.normalize(name)
+        }) {
+            path.append(recipe)
+        }
+        router.pendingRecipeName = nil
+    }
+
+    private var availabilityPicker: some View {
+        Picker("Availability", selection: $availability) {
+            ForEach(AvailabilityFilter.allCases, id: \.self) { option in
+                Text(option.rawValue).tag(option)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("Filter drinks by availability")
     }
 
     // MARK: - Venue indicator
@@ -252,7 +281,7 @@ struct HomeView: View {
                 ForEach(filterTags, id: \.self) { tag in
                     let selected = selectedTag == tag
                     Button {
-                        withAnimation(.spring(response: 0.3)) {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.3)) {
                             selectedTag = selected ? nil : tag
                         }
                         Haptics.selection()
@@ -281,8 +310,12 @@ struct HomeView: View {
                 symbol: "wineglass",
                 title: searchText.isEmpty ? "No drinks found" : "No results for “\(searchText)”",
                 message: searchText.isEmpty ? "Try a different filter." : "Check the spelling or search an ingredient like “gin” or “Campari”.",
-                actionTitle: searchText.isEmpty || selectedTag == nil ? nil : "Clear search",
-                action: searchText.isEmpty || selectedTag == nil ? nil : { searchText = ""; selectedTag = nil }
+                actionTitle: searchText.isEmpty && selectedTag == nil && availability == .all ? nil : "Clear filters",
+                action: searchText.isEmpty && selectedTag == nil && availability == .all ? nil : {
+                    searchText = ""
+                    selectedTag = nil
+                    availability = .all
+                }
             )
         } else {
             DrinkCardGrid(
@@ -304,10 +337,11 @@ struct DrinkCardGrid: View {
     var matches: [PersistentIdentifier: RecipeMatch]? = nil
     var onSelect: ((Recipe) -> Void)? = nil
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-    ]
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 12), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2)
+    }
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {

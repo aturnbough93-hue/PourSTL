@@ -25,8 +25,10 @@ final class DeepLinkRouter {
             if let name = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                 .queryItems?.first(where: { $0.name == "name" })?.value,
                !name.isEmpty {
+                pendingTab = .home
                 pendingRecipeName = name
             } else if let raw = url.pathComponents.dropFirst().first {
+                pendingTab = .home
                 pendingRecipeName = raw.removingPercentEncoding
             }
         default:

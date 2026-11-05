@@ -45,6 +45,7 @@ struct TimerSheet: View {
                     let selected = selectedSeconds == seconds && !isRunning
                     Button {
                         selectedSeconds = seconds
+                        didComplete = false
                         Haptics.selection()
                     } label: {
                         Text(formatPreset(seconds))
@@ -52,6 +53,7 @@ struct TimerSheet: View {
                             .foregroundStyle(selected ? .black : PourColor.textSecondary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
+                            .frame(minHeight: 44)
                             .background(selected ? PourColor.accentFill : PourColor.surface, in: Capsule())
                     }
                     .disabled(isRunning)
@@ -66,7 +68,7 @@ struct TimerSheet: View {
     private var ring: some View {
         TimelineView(.periodic(from: .now, by: 0.05)) { context in
             let remaining = remaining(at: context.date)
-            let progress = isRunning ? remaining / selectedSeconds : 1
+            let progress = didComplete ? 0 : (isRunning ? remaining / selectedSeconds : 1)
             ZStack {
                 Circle()
                     .stroke(PourColor.surface, lineWidth: 14)
@@ -83,7 +85,7 @@ struct TimerSheet: View {
                         .font(.system(size: 52, weight: .semibold).monospacedDigit())
                         .foregroundStyle(PourColor.textPrimary)
                         .accessibilityAddTraits(.updatesFrequently)
-                    Text(isRunning ? "remaining" : "ready")
+                    Text(didComplete ? "Complete" : (isRunning ? "remaining" : "ready"))
                         .font(.subheadline)
                         .foregroundStyle(PourColor.textTertiary)
                 }
@@ -92,7 +94,7 @@ struct TimerSheet: View {
                 fireHaptics(at: whole)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Timer, \(formatRemaining(remaining)) remaining")
+            .accessibilityLabel(didComplete ? "Timer complete" : "Timer, \(formatRemaining(remaining)) remaining")
         }
         .frame(width: 260, height: 260)
         .padding(.top, 8)
@@ -134,7 +136,7 @@ struct TimerSheet: View {
     }
 
     private func remaining(at date: Date) -> TimeInterval {
-        guard let endsAt else { return selectedSeconds }
+        guard let endsAt else { return didComplete ? 0 : selectedSeconds }
         return max(0, endsAt.timeIntervalSince(date))
     }
 
@@ -158,7 +160,10 @@ struct TimerSheet: View {
     }
 
     private func formatPreset(_ seconds: TimeInterval) -> String {
-        seconds >= 60 ? "\(Int(seconds / 60))m" : "\(Int(seconds))s"
+        let total = Int(seconds)
+        if total < 60 { return "\(total)s" }
+        let remainder = total % 60
+        return remainder == 0 ? "\(total / 60)m" : "\(total / 60)m \(remainder)s"
     }
 
     private func formatRemaining(_ seconds: TimeInterval) -> String {

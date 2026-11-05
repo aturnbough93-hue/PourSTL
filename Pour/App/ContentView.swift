@@ -6,6 +6,7 @@ struct ContentView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(DeepLinkRouter.self) private var router
     @State private var tab: AppTab = .home
+    @State private var showSeedError = false
 
     var body: some View {
         TabView(selection: $tab) {
@@ -24,7 +25,7 @@ struct ContentView: View {
         }
         .tint(PourColor.accent)
         .task {
-            SeedData.seedIfNeeded(in: modelContext)
+            seedLibrary()
             #if DEBUG
             // Screenshot/demo seam: `simctl launch … -deepLink pour://…` routes
             // through the same handler as a real URL open.
@@ -37,16 +38,27 @@ struct ContentView: View {
         .onOpenURL { url in
             router.handle(url)
         }
-        .onChange(of: router.pendingTab) { _, pending in
+        .onChange(of: router.pendingTab, initial: true) { _, pending in
             if let pending {
                 tab = pending
                 router.pendingTab = nil
             }
         }
+        .alert("Recipe library couldn’t load", isPresented: $showSeedError) {
+            Button("Retry") { seedLibrary() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your existing data has not been replaced. Check available device storage and try again.")
+        }
         .sheet(isPresented: onboardingVisible) {
             OnboardingView()
                 .interactiveDismissDisabled(false)
         }
+    }
+
+    private func seedLibrary() {
+        do { try SeedData.seedIfNeeded(in: modelContext) }
+        catch { showSeedError = true }
     }
 
     private var onboardingVisible: Binding<Bool> {

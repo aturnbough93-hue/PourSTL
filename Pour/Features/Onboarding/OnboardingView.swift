@@ -8,6 +8,7 @@ struct OnboardingView: View {
     @Query private var inventory: [InventoryItem]
     @State private var page = 0
     @State private var starterBarAdded = false
+    @State private var showSaveError = false
 
     private let starterBar: [(String, InventoryCategory)] = [
         ("London Dry Gin", .spirits),
@@ -116,6 +117,11 @@ struct OnboardingView: View {
             }
             .padding(24)
             .background(PourColor.background)
+            .alert("Starter bar wasn’t saved", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Check available device storage and try again, or skip to add items later.")
+            }
         }
     }
 
@@ -133,9 +139,14 @@ struct OnboardingView: View {
                 modelContext.insert(InventoryItem(name: name, category: category, isInStock: true))
             }
         }
-        try? modelContext.save()
-        starterBarAdded = true
-        Haptics.success()
+        do {
+            try modelContext.save()
+            starterBarAdded = true
+            Haptics.success()
+        } catch {
+            modelContext.rollback()
+            showSaveError = true
+        }
     }
 
     private func finish() {
