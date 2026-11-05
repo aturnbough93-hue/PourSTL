@@ -32,7 +32,7 @@
     --accent-gold: #D4AF37;
     --text-primary: #F7F7F8;
     --text-secondary: #AEAEB2;
-    --text-tertiary: #6C6C70;
+    --text-tertiary: #96969E;
     --can-make: #32D74B;
     --almost: #FF9F0A;
     --destructive: #FF453A;
@@ -41,7 +41,8 @@
     --radius: 18px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+  [id] { scroll-margin-top: 24px; }
   body {
     background: var(--bg-primary);
     color: var(--text-primary);
@@ -66,11 +67,11 @@
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
   .brand svg { color: var(--accent); }
   .nav-links { display: flex; gap: 26px; margin-left: auto; }
-  @media (max-width: 720px) {
+  @media (max-width: 860px) {
     .nav-inner { gap: 16px; }
     .nav-inner .btn { margin-left: auto; }
   }
-  @media (max-width: 720px) { .nav-toggle { margin-left: 0; } }
+  @media (max-width: 860px) { .nav-toggle { margin-left: 0; } }
   .nav-links a { font-size: 14px; color: var(--text-secondary); transition: color .18s ease; }
   .nav-links a:hover { color: var(--text-primary); }
   .nav-toggle {
@@ -88,7 +89,8 @@
   }
   .nav-menu a:hover { color: var(--text-primary); }
   .nav-menu.open { display: block; }
-  @media (max-width: 720px) {
+  @media (min-width: 861px) { .nav-menu.open { display: none; } }
+  @media (max-width: 860px) {
     .nav-links { display: none; }
     .nav-toggle { display: flex; align-items: center; justify-content: center; }
   }
@@ -104,7 +106,7 @@
   .btn-ghost { background: transparent; color: var(--text-primary); border: 1px solid var(--border-strong); }
   .btn-ghost:hover { border-color: rgba(255,255,255,0.32); }
   .btn-sm { height: 36px; padding: 0 16px; font-size: 14px; border-radius: 10px; }
-  @media (max-width: 720px) { .btn-sm { min-height: 44px; height: 44px; } }
+  @media (max-width: 860px) { .btn-sm { min-height: 44px; height: 44px; } }
 
   /* ---------- Hero ---------- */
   .hero { position: relative; padding: 96px 0 110px; overflow: hidden; }
@@ -139,7 +141,8 @@
   .badge svg { color: var(--accent); flex-shrink: 0; }
   .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--can-make); }
 
-  .hero-visual { position: relative; display: flex; justify-content: center; }
+  .hero-visual { position: relative; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .preview-note { font-size: 12px; color: var(--text-secondary); text-align: center; }
   .hero-photo {
     position: absolute; width: 340px; right: -8px; top: -34px;
     border-radius: 24px; opacity: 0.5;
@@ -340,7 +343,7 @@
   footer { border-top: 1px solid var(--border); padding: 40px 0 56px; }
   .foot-inner { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
   .foot-inner .brand { font-size: 16px; }
-  .foot-links { display: flex; gap: 22px; margin-left: auto; font-size: 13.5px; color: var(--text-secondary); }
+  .foot-links { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-left: auto; font-size: 13.5px; color: var(--text-secondary); }
   .foot-links a:hover { color: var(--text-primary); }
   .foot-note { margin-top: 20px; font-size: 12.5px; color: var(--text-tertiary); }
 
@@ -360,7 +363,8 @@
   }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    * { transition: none !important; }
+    * { transition: none !important; animation: none !important; }
+    .feat:hover, .btn:active { transform: none; }
   }
   :focus-visible {
     outline: 2px solid var(--accent);
@@ -371,12 +375,29 @@
     background: var(--accent); color: #14100B; padding: 8px 14px; border-radius: 8px; font-weight: 600;
   }
   .skip:focus { left: 12px; }
+  .faq { max-width: 800px; }
+  .faq details { padding: 20px 0; border-bottom: 1px solid var(--border); }
+  .faq summary { cursor: pointer; font-weight: 650; font-size: 17px; padding: 6px 0; }
+  .faq details p { color: var(--text-secondary); margin-top: 12px; }
+  .faq a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 380px) {
+    .wrap { padding: 0 18px; }
+    .phone { width: 268px; }
+    .nav-inner { gap: 8px; }
+    .btn-sm { padding: 0 12px; }
+  }
 </style>
+<noscript><style>
+  @media (max-width: 860px) {
+    .nav-toggle { display: none; }
+    .nav-menu { display: block; position: static; }
+  }
+</style></noscript>
 </head>
 <body>
-  <a class="skip" href="#top">Skip to content</a>
+  <a class="skip" href="#content">Skip to content</a>
 
-<nav>
+<nav aria-label="Main navigation">
   <div class="wrap nav-inner">
     <a class="brand" href="#top" aria-label="Pour home">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -392,8 +413,8 @@
       <a href="#principles">Principles</a>
       <a href="#pro">Pro</a>
     </div>
-    <a href="#get" class="btn btn-primary btn-sm">Get the app</a>
-    <button class="nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu">
+    <a href="#get" class="btn btn-primary btn-sm">App status</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-menu">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M4 7h16M4 12h16M4 17h16"/>
       </svg>
@@ -409,14 +430,15 @@
   </div>
 </nav>
 
+<main id="content" tabindex="-1">
 <header class="hero" id="top">
   <div class="wrap hero-grid">
     <div>
       <span class="eyebrow">iOS 17+ · Offline-first · Private by default</span>
       <h1>The bar tool that keeps up with <em>service</em>.</h1>
-      <p class="hero-sub">Pour is a native bartender's assistant: every classic spec in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
+      <p class="hero-sub">Pour is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
       <div class="hero-ctas">
-        <a href="#get" class="btn btn-primary">Get Pour for iPhone</a>
+        <a href="#get" class="btn btn-primary">See iPhone app status</a>
         <a href="#features" class="btn btn-ghost">See what it does</a>
       </div>
       <div class="hero-badges">
@@ -437,7 +459,6 @@
           <div class="ps-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             Search recipes
-            <svg class="mic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/></svg>
           </div>
           <div class="ps-chips">
             <span class="chip on">All</span><span class="chip">Classics</span><span class="chip">Stirred</span><span class="chip">Can make</span>
@@ -477,6 +498,7 @@
           </div>
         </div>
       </div>
+      <p class="preview-note">Illustrative app preview · iPhone app in development</p>
     </div>
   </div>
 </header>
@@ -486,7 +508,7 @@
     <div class="sec-head">
       <div class="kicker">Features</div>
       <h2>Everything a working bartender reaches for.</h2>
-      <p>Free-tier core that's genuinely useful with zero subscription — recipes, matching, scaling, timers, inventory, and a shopping list.</p>
+      <p>An offline core for day-to-day service — recipes, matching, scaling, timers, inventory, and a shopping list.</p>
     </div>
     <div class="feat-grid">
       <div class="feat">
@@ -527,7 +549,7 @@
       <div class="feat">
         <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15a4 4 0 014-4h10a4 4 0 010 8H7a4 4 0 01-4-4z"/><path d="M9 11V7a3 3 0 016 0v4"/></svg></div>
         <h3>Favorites &amp; sharing</h3>
-        <p>Spring-animated favorites, recipe sharing, and pour:// deep links wired as seams for Siri and Shortcuts.</p>
+        <p>Save favorites and share a recipe as text. Open recipe and tab links directly in Pour.</p>
       </div>
       <div class="feat">
         <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1 9l5-5 5 5"/><path d="M11 4v9a5 5 0 005 5h7"/><path d="M18 23l5-5"/></svg></div>
@@ -543,7 +565,7 @@
     <div class="sec-head">
       <div class="kicker">Screens</div>
       <h2>Calm, readable, one-handed.</h2>
-      <p>Dark-mode-first surfaces with copper accents, monospaced measures, and status that's never color-only.</p>
+      <p>Dark surfaces, warm copper accents, and monospaced measures. These are illustrative previews, not live app screens; details may change before release.</p>
     </div>
     <div class="shots-row">
 
@@ -623,8 +645,8 @@
             <div class="mb-row"><span class="stock-dot in"></span><span>Angostura</span><span class="mb-cat-tag">Aromatic</span></div>
             <div style="margin:auto;padding:14px 16px 18px;">
               <div class="btn btn-primary" style="width:100%;justify-content:center;height:40px;font-size:13.5px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V4h3"/><path d="M21 7V4h-3"/><path d="M3 17v3h3"/><path d="M21 17v3h-3"/><path d="M8 9v6"/><path d="M12 9v6"/><path d="M16 9v6"/></svg>
-                Scan barcode
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Add ingredient
               </div>
             </div>
           </div>
@@ -713,7 +735,7 @@
     <div class="sec-head">
       <div class="kicker">History</div>
       <h2>Where the classics come from.</h2>
-      <p>Short origins for the drinks on the rail. Lineage sits under each one — what it came from, and what it led to.</p>
+      <p>A few stories behind the classics, followed by related builds. Cocktail origins are often disputed; these are common accounts, not definitive histories.</p>
     </div>
     <div class="feat-grid">
       <div class="feat">
@@ -722,32 +744,32 @@
       </div>
       <div class="feat">
         <h3>Negroni</h3>
-        <p>Florence, 1919. Count Camillo Negroni asked for gin in an Americano. Equal parts gin, Campari, and sweet vermouth.</p>
+        <p>Traditionally traced to Florence around 1919, when Count Camillo Negroni reportedly asked for gin in an Americano. Equal parts gin, Campari, and sweet vermouth.</p>
       </div>
       <div class="feat">
         <h3>Boulevardier</h3>
-        <p>Paris, 1920s. Harry MacElhone’s whiskey take on the Negroni, named for Erskine Gwynne’s magazine.</p>
+        <p>Recorded in Harry MacElhone’s 1927 book Barflies and Cocktails and associated with Erskine Gwynne, whose magazine shared the name. Whiskey, Campari, and sweet vermouth.</p>
       </div>
       <div class="feat">
         <h3>Daiquiri</h3>
-        <p>Cuba, around 1898. Rum, lime, and sugar. Named for the town near Santiago, not a person.</p>
+        <p>Commonly associated with Cuba in the late 1890s and the mining town near Santiago. Rum, lime, and sugar form its familiar sour structure.</p>
       </div>
     </div>
     <div class="lineage" id="lineage">
       <div class="line">
-        <h3>Lineage</h3>
-        <p class="chain">Whiskey cocktail <span>→</span> Old Fashioned <span>→</span> Manhattan</p>
-        <p>Stirred whiskey and bitters is the trunk. The Old Fashioned keeps sugar in the glass. Swap in sweet vermouth and you get a Manhattan.</p>
+        <h3>Related builds</h3>
+        <p class="chain">Old Fashioned <span>↔</span> Manhattan</p>
+        <p>Both pair whiskey with bitters. The Old Fashioned uses sugar; the Manhattan brings sweet vermouth. Compare their balance rather than treating one as a direct historical descendant.</p>
       </div>
       <div class="line">
-        <h3>Lineage</h3>
-        <p class="chain">Americano <span>→</span> Negroni <span>→</span> Boulevardier</p>
+        <h3>Related builds</h3>
+        <p class="chain">Americano <span>↔</span> Negroni <span>↔</span> Boulevardier</p>
         <p>The Americano is Campari, sweet vermouth, and soda. Drop the soda, add gin, and it’s a Negroni. Replace the gin with whiskey and it’s a Boulevardier.</p>
       </div>
       <div class="line">
-        <h3>Lineage</h3>
-        <p class="chain">Rum punch <span>→</span> Daiquiri <span>→</span> Mojito</p>
-        <p>The Daiquiri is punch stripped to rum, lime, and sugar. Add mint and soda and you have a Mojito. A drier, grapefruit version is the Hemingway Daiquiri.</p>
+        <h3>Related builds</h3>
+        <p class="chain">Daiquiri <span>↔</span> Mojito <span>↔</span> Hemingway Daiquiri</p>
+        <p>Rum, citrus, and sweetness connect these drinks. A Mojito adds mint and soda; a Hemingway Daiquiri uses grapefruit and maraschino liqueur. These are recipe relationships, not a proven family tree.</p>
       </div>
     </div>
   </div>
@@ -772,8 +794,8 @@
       </div>
       <div class="prin">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 109 9 9 9 0 01-9-9z"/><path d="M12 3a9 9 0 019 9h-9V3z"/></svg>
-        <h3>Accessible to AA+</h3>
-        <p>VoiceOver labels on every control, full Dynamic Type, status never by color alone, Reduce Motion respected.</p>
+        <h3>Designed for accessibility</h3>
+        <p>VoiceOver labels, Dynamic Type, and Reduce Motion support are built in. Device and assistive-technology testing remains part of release preparation.</p>
       </div>
       <div class="prin">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.5A8.5 8.5 0 119.5 3.6a7 7 0 0010.9 10.9z"/></svg>
@@ -788,8 +810,8 @@
   <div class="wrap">
     <div class="sec-head" style="text-align:center;margin-left:auto;margin-right:auto;">
       <div class="kicker">Free &amp; Pro</div>
-      <h2>Useful free. Powerful with Pro.</h2>
-      <p>The core never requires a subscription. Pro adds the heavy machinery for pros and venues.</p>
+      <h2>Useful core. More on the roadmap.</h2>
+      <p>The core never requires a subscription. Pro is a roadmap for pros and venues; the features below are not available yet.</p>
     </div>
     <div class="tiers">
       <div class="tier">
@@ -806,10 +828,10 @@
         </ul>
       </div>
       <div class="tier pro">
-        <span class="pro-flag">POUR PRO</span>
+        <span class="pro-flag">PLANNED</span>
         <div class="t-name">Pour Pro</div>
         <div class="t-price">Planned</div>
-        <div class="t-tag">Subscription · for pros, venues, and teams.</div>
+        <div class="t-tag">Future ideas · availability and pricing to be confirmed.</div>
         <ul>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>AI bartender: substitutions, pairings, guest picks</li>
           <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 7"/></svg>AI technique &amp; promo video generation</li>
@@ -823,17 +845,44 @@
   </div>
 </section>
 
+<section id="faq">
+  <div class="wrap faq">
+    <div class="sec-head">
+      <div class="kicker">Before you pour</div>
+      <h2>A few useful answers.</h2>
+    </div>
+    <details>
+      <summary>Can I download Pour today?</summary>
+      <p>The iPhone app is in development for iOS 17 and later. A public App Store or TestFlight link has not been announced. <a href="https://github.com/aturnbough93-hue/pour">Follow the project on GitHub</a> for release updates.</p>
+    </details>
+    <details>
+      <summary>What works without an account or connection?</summary>
+      <p>The implemented core stores recipes, inventory, favorites, shopping lists, and preferences on your device. Search, matching, scaling, and timers run locally. AI assistance, barcode scanning, venue tools, and cloud sync are planned features.</p>
+    </details>
+    <details>
+      <summary>Does “can make” check amounts or allergies?</summary>
+      <p>Matching checks whether required ingredients are marked in stock. It does not measure how much remains in a bottle or check allergies. Review the full spec, including optional ingredients and garnishes, before serving.</p>
+    </details>
+    <details>
+      <summary>Where does my data go?</summary>
+      <p>The current app has no account or analytics service. Sharing a recipe sends its text to the destination you choose. Device backups depend on your Apple settings. This website has no analytics scripts or forms; its host still handles normal web requests. <a href="privacy.html">Read the privacy details</a>.</p>
+    </details>
+  </div>
+</section>
+
 <section class="cta-final" id="get">
   <div class="wrap">
     <h2>Ready when the rush hits.</h2>
     <p>Pour is in active development for iPhone (iOS 17+). The repo is where it happens.</p>
     <a class="appstore-btn" href="https://github.com/aturnbough93-hue/pour">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.86-3.08.41-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.41C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.98-.2 1.92-.86 3.24-.76 1.6.13 2.8.76 3.6 1.92-3.31 1.99-2.52 6.35.47 7.6-.47 1.24-1.07 2.47-2.39 3.41zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5L2 12l6 7M16 5l6 7-6 7M14 3l-4 18"/></svg>
       <span style="text-align:left"><span class="as-small">Currently in development</span><br><span class="as-big">View on GitHub</span></span>
     </a>
-    <p class="soon-note">App Store listing coming with the first public build.</p>
+    <p class="soon-note">No public App Store or TestFlight download is available yet. Follow development on GitHub.</p>
   </div>
 </section>
+
+</main>
 
 <footer>
   <div class="wrap">
@@ -848,6 +897,8 @@
         <a href="#bar">Bar</a>
         <a href="#history">History</a>
         <a href="#pro">Pro</a>
+        <a href="#faq">FAQ</a>
+        <a href="privacy.html">Privacy</a>
         <a href="https://github.com/aturnbough93-hue/pour">GitHub</a>
       </div>
     </div>
@@ -855,40 +906,6 @@
   </div>
 </footer>
 
-<script>
-  const toggle = document.querySelector('.nav-toggle');
-  const menu = document.getElementById('nav-menu');
-  const menuLinks = menu.querySelectorAll('a');
-
-  function closeMenu() {
-    menu.classList.remove('open');
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.focus();
-  }
-
-  toggle.addEventListener('click', () => {
-    const open = menu.classList.toggle('open');
-    toggle.setAttribute('aria-expanded', open);
-    if (open && menuLinks.length) menuLinks[0].focus();
-  });
-
-  menuLinks.forEach(a => a.addEventListener('click', closeMenu));
-
-  document.addEventListener('keydown', e => {
-    if (!menu.classList.contains('open')) return;
-    if (e.key === 'Escape') { closeMenu(); return; }
-    if (e.key !== 'Tab') return;
-
-    const first = menuLinks[0];
-    const last = menuLinks[menuLinks.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  });
-</script>
+<script src="site.js" defer></script>
 </body>
 </html>

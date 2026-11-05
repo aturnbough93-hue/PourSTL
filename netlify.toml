@@ -1,0 +1,5 @@
+[build]
+  base = "website"
+  publish = "."
+
+# The site is dependency-free static HTML. Headers are in website/_headers.
