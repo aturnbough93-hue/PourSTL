@@ -85,24 +85,20 @@ struct HomeView: View {
                     .accessibilityAddTraits(.isButton)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showVoiceStub = true
+                    Menu {
+                        Section("Coming soon") {
+                            Button { showVoiceStub = true } label: {
+                                Label("Voice search", systemImage: "mic")
+                            }
+                            Button { showAssistant = true } label: {
+                                Label("AI Bartender Assistant", systemImage: "sparkles")
+                            }
+                        }
                     } label: {
-                        Image(systemName: "mic")
-                            .foregroundStyle(PourColor.accent)
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundStyle(PourColor.textSecondary)
                     }
-                    .accessibilityLabel("Voice search, coming soon")
-                    .accessibilityAddTraits(.isButton)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showAssistant = true
-                    } label: {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(PourColor.accent)
-                    }
-                    .accessibilityLabel("AI Bartender Assistant, coming soon")
-                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel("Coming soon features")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

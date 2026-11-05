@@ -37,13 +37,39 @@ final class DeepLinkRouter {
     }
 }
 
-@main
-struct PourApp: App {
-    let container: ModelContainer
-    @State private var settings = AppSettings()
-    @State private var router = DeepLinkRouter()
+/// Opens the same persistent store on every attempt. A failed open never creates
+/// a replacement store, clears data, or mounts views that could seed new data.
+@Observable
+final class PersistentStoreController {
+    private(set) var container: ModelContainer?
+    private(set) var hasAttemptedOpen = false
+    private let openContainer: () throws -> ModelContainer
 
-    init() {
+    init(openContainer: @escaping () throws -> ModelContainer) {
+        self.openContainer = openContainer
+    }
+
+    convenience init() {
+        self.init(openContainer: PersistentStoreController.openDefaultContainer)
+    }
+
+    func openIfNeeded() {
+        guard !hasAttemptedOpen else { return }
+        retry()
+    }
+
+    func retry() {
+        // Keep a successfully loaded store and its active contexts intact.
+        guard container == nil else { return }
+        do {
+            container = try openContainer()
+        } catch {
+            // Leave the original store untouched so a later attempt can recover.
+        }
+        hasAttemptedOpen = true
+    }
+
+    private static func openDefaultContainer() throws -> ModelContainer {
         let schema = Schema([
             Recipe.self,
             IngredientLine.self,
@@ -51,22 +77,70 @@ struct PourApp: App {
             ShoppingListItem.self,
             Venue.self,
         ])
-        // Local-only today; a CloudKit ModelConfiguration can be added for Pro sync.
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        do {
-            container = try ModelContainer(for: schema, configurations: [configuration])
-        } catch {
-            fatalError("Failed to create SwiftData container: \(error)")
-        }
+        return try ModelContainer(for: schema, configurations: [configuration])
     }
+}
+
+@main
+struct PourApp: App {
+    @State private var store = PersistentStoreController()
+    @State private var settings = AppSettings()
+    @State private var router = DeepLinkRouter()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .modelContainer(container)
-                .environment(settings)
-                .environment(router)
-                .preferredColorScheme(settings.appearance.colorScheme)
+            Group {
+                if let container = store.container {
+                    ContentView()
+                        .modelContainer(container)
+                } else if store.hasAttemptedOpen {
+                    StoreRecoveryView { store.retry() }
+                } else {
+                    ProgressView("Opening your bar…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(PourColor.background)
+                }
+            }
+            .environment(settings)
+            .environment(router)
+            .preferredColorScheme(settings.appearance.colorScheme)
+            .tint(PourColor.accent)
+            .task { store.openIfNeeded() }
+            .onOpenURL { router.handle($0) }
         }
+    }
+}
+
+private struct StoreRecoveryView: View {
+    let retry: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                Image(systemName: "externaldrive.badge.exclamationmark")
+                    .font(.system(size: 48))
+                    .foregroundStyle(PourColor.accent)
+                    .accessibilityHidden(true)
+                Text("Your bar needs a moment")
+                    .font(.pourTitle)
+                    .foregroundStyle(PourColor.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
+                Text("Pour couldn’t open your saved recipes and inventory. Your data has not been erased. Try again, or close and reopen Pour.")
+                    .font(.body)
+                    .foregroundStyle(PourColor.textSecondary)
+                Button("Retry", action: retry)
+                    .buttonStyle(PourPrimaryButtonStyle())
+                Link("Get help", destination: URL(string: "https://github.com/aturnbough93-hue/pour/issues")!)
+                    .font(.body.weight(.semibold))
+                    .frame(minHeight: 44)
+            }
+            .multilineTextAlignment(.center)
+            .padding(28)
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 72)
+        }
+        .background(PourColor.background)
     }
 }

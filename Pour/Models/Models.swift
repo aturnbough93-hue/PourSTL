@@ -44,6 +44,26 @@ final class Recipe {
     var sortedIngredients: [IngredientLine] {
         ingredients.sorted { $0.position < $1.position }
     }
+
+    /// A detached personal recipe with independent ingredients. Inserting it is
+    /// an explicit Save action; creating or cancelling a draft never changes the classic.
+    func makeVariation(named variationName: String? = nil) -> Recipe {
+        let variation = Recipe(
+            name: variationName ?? "\(name) variation",
+            glassType: glassType,
+            method: method,
+            instructions: instructions,
+            garnish: garnish,
+            tags: tags,
+            isCustom: true
+        )
+        variation.notes = notes
+        variation.ingredients = sortedIngredients.map { line in
+            IngredientLine(name: line.name, amount: line.amount, unit: line.unit,
+                           note: line.note, isOptional: line.isOptional, position: line.position)
+        }
+        return variation
+    }
 }
 
 @Model
