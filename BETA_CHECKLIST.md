@@ -1,6 +1,8 @@
 # Pour Beta / TestFlight Checklist
 
-Follow before every beta build. Updated 2026-11-03.
+Follow before every beta build. Updated 2026-11-05. See REVIEW.md for the current
+review and release limitations. Unchecked native items have not been verified in
+the Linux cloud environment.
 
 ## Build & Quality
 - [ ] `xcodebuild test` passes 100% on iPhone 17 Simulator
@@ -41,6 +43,10 @@ Follow before every beta build. Updated 2026-11-03.
 - [ ] No API keys or secrets in source
 - [ ] Local-only data (SwiftData)
 - [ ] Privacy nutrition labels prepared (no tracking)
+- [ ] Archive includes PrivacyInfo.xcprivacy and its required-reason API declaration
+- [ ] Privacy report and website policy reflect the distributed app
+- [ ] Save failures preserve editor input and never show false success
+- [ ] Store initialization failures preserve existing data
 
 ## Devin macOS Verification
 - Boot Simulator, full user flow, record session
