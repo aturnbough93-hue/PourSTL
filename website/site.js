@@ -19,7 +19,8 @@ menu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', () => {
     setMenuOpen(false);
     // Move keyboard focus to the destination so the next Tab follows the page.
-    const target = document.querySelector(link.getAttribute('href'));
+    const href = link.getAttribute('href');
+    const target = href.startsWith('#') ? document.getElementById(href.slice(1)) : null;
     if (target) {
       target.setAttribute('tabindex', '-1');
       target.focus({ preventScroll: true });

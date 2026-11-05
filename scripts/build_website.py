@@ -79,8 +79,8 @@ def rewrite_metadata(html, origin):
             if attribute[1].lower() == target and attribute[3].startswith(OLD_ORIGIN + "/"):
                 start, end = attribute.span(3)
                 destination = origin + attribute[3][len(OLD_ORIGIN):]
-                if target == "href" and destination == origin + "/privacy.html":
-                    destination = origin + "/privacy"
+                if target == "href" and destination in (origin + "/privacy.html", origin + "/try.html"):
+                    destination = destination[:-5]
                 return tag[:start] + destination + tag[end:]
         return tag
     return TAG.sub(rewrite_tag, html)
@@ -113,7 +113,8 @@ def build_site(source, output, origin, preview=False):
             page.write_text(rewrite_metadata(page.read_text(), origin))
         sitemap = stage / "sitemap.xml"
         sitemap.write_text(sitemap.read_text().replace(OLD_ORIGIN + "/", origin + "/")
-                           .replace(origin + "/privacy.html", origin + "/privacy"))
+                           .replace(origin + "/privacy.html", origin + "/privacy")
+                           .replace(origin + "/try.html", origin + "/try"))
         robots = stage / "robots.txt"
         robots.write_text("User-agent: *\nDisallow: /\n" if preview else
                           robots.read_text().replace(OLD_ORIGIN + "/", origin + "/"))

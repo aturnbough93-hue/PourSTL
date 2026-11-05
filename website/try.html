@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0A0A0C">
+  <title>Try Pour — Your bar. Your next drink.</title>
+  <meta name="description" content="Try Pour in your browser: stock a starter bar, explore six classic cocktail recipes, scale servings, and build a shopping list. No account needed.">
+  <link rel="canonical" href="https://barpour.netlify.app/try.html">
+  <link rel="icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="try.css">
+  <script src="demo-core.js" defer></script>
+  <script src="try.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="Pour home"><img src="assets/brand-icon.png" alt="" width="44" height="44">Pour</a>
+    <div class="header-actions"><a href="./">Back to Pour</a><button type="button" id="reset" class="primary">Reset demo</button></div>
+  </header>
+  <main id="main" tabindex="-1">
+    <div class="intro">
+      <h1>Your bar. Your next drink.</h1>
+      <p class="lead">Explore six classics, stock your bar, and scale a recipe.</p>
+      <p class="local-note" id="storage-note">Browser demo · saved on this browser</p>
+    </div>
+    <noscript><p class="notice">This browser demo needs JavaScript. You can still <a href="./">explore Pour’s features</a> on the main website.</p></noscript>
+    <div class="workspace" id="workspace" hidden>
+      <section class="panel bar-panel" aria-labelledby="bar-title">
+        <div class="bar-heading"><h2 id="bar-title">My Bar</h2><button type="button" id="inventory-toggle" class="text-button" aria-expanded="false" aria-controls="inventory-controls">Show ingredients</button></div>
+        <div id="inventory-controls">
+          <p class="section-note">Stock the ingredients you have.</p>
+          <div id="inventory" class="inventory-list"></div>
+        </div>
+        <section class="shopping-section" aria-labelledby="shopping-title">
+          <h2 id="shopping-title">Shopping list</h2>
+          <p class="section-note" id="shopping-empty">No ingredients added yet.</p>
+          <ul id="shopping" class="shopping-list"></ul>
+        </section>
+      </section>
+      <section class="panel recipes-panel" aria-labelledby="recipes-title">
+        <h2 id="recipes-title">Recipes</h2>
+        <label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="sr-only">Search recipes or ingredients</span><input id="search" type="search" placeholder="Search recipes" autocomplete="off"></label>
+        <div class="filters" role="group" aria-label="Filter recipes by availability"><button type="button" id="all-filter" aria-pressed="true">All drinks</button><button type="button" id="ready-filter" aria-pressed="false">Can make</button></div>
+        <div id="recipes" class="recipe-list"></div>
+        <div id="no-results" class="empty-results" hidden><p>No matching drinks.</p><button type="button" id="clear-filters" class="text-button">Clear search and filters</button></div>
+      </section>
+      <section class="panel detail-panel" aria-labelledby="recipe-title">
+        <div id="recipe-media" class="recipe-media"></div>
+        <div class="recipe-heading"><h2 id="recipe-title" tabindex="-1">Negroni</h2><p id="recipe-meta" class="section-note"></p><p id="recipe-status" class="recipe-status"></p></div>
+        <div class="measure-controls">
+          <span class="control-label" id="servings-label">Servings</span>
+          <div class="stepper" role="group" aria-labelledby="servings-label"><button type="button" id="less" aria-label="Decrease servings">−</button><output id="servings" aria-label="Number of servings">1</output><button type="button" id="more" aria-label="Increase servings">+</button></div>
+          <div class="unit-toggle" role="group" aria-label="Measurement units"><button type="button" id="unit-oz" aria-pressed="true">oz</button><button type="button" id="unit-ml" aria-pressed="false">ml</button></div>
+        </div>
+        <h3 class="ingredient-heading">Ingredients</h3>
+        <dl id="ingredients" class="ingredients"></dl>
+        <div class="method"><h2>Method</h2><p id="instructions"></p><p id="garnish" class="garnish"></p></div>
+        <div class="recipe-actions"><button type="button" id="copy" class="primary"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="12" height="14" rx="2"/><rect x="3" y="8" width="12" height="14" rx="2"/></svg><span>Copy recipe</span></button><button type="button" id="add-missing" class="secondary">No missing ingredients</button></div>
+        <p class="limits">Ingredient presence only. Amounts and allergens are not checked.</p>
+      </section>
+    </div>
+    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+    <div id="manual-copy" class="manual-copy" hidden><label for="recipe-copy">Copy recipe text</label><textarea id="recipe-copy" readonly rows="8"></textarea><button type="button" id="close-copy" class="secondary">Close</button></div>
+    <p class="demo-footer">Six recipes for browser testing. This demo is separate from the iPhone app and does not sync with it. <a href="privacy.html">Privacy details</a></p>
+  </main>
+  <dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Reset your browser demo?</h2><p>This clears this demo’s bar and shopping list from this browser and restores the starter ingredients. It does not change the iPhone app.</p><div class="dialog-actions"><button type="button" id="cancel-reset" class="secondary">Keep my bar</button><button type="button" id="confirm-reset" class="primary">Reset demo</button></div></dialog>
+</body>
+</html>

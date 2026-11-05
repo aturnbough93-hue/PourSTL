@@ -110,3 +110,16 @@ camera/microphone/geolocation permissions. Inline styles remain allowed because
 the static page uses inline presentation styles; inline scripts are blocked.
 `python3 -m http.server` does not apply these headers. Check the real deployed
 response headers after publishing.
+
+## Interactive testing surface
+
+`try.html` is a working six-recipe browser demo, with local inventory, search,
+matching, serving/unit controls, and a deduplicated shopping/restocking flow.
+Its state lives only in that browser; it does not sync with the native app.
+Reset demo requests confirmation and clears this demo state. Clipboard failures
+show selectable recipe text instead of claiming a successful copy. The current
+CSP still permits no remote API connections.
+
+Run its logic regression suite with `node scripts/test_demo.cjs`. After Cloudflare
+activation, test `/try` on the confirmed Pages address; opening a browser demo
+does not validate native persistence, haptics, iOS sharing, or StoreKit.

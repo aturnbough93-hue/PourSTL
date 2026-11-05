@@ -66,7 +66,8 @@
   .nav-inner { display: flex; align-items: center; gap: 28px; height: 60px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
   .brand svg { color: var(--accent); }
-  .nav-links { display: flex; gap: 26px; margin-left: auto; }
+  .brand img { border-radius: 7px; }
+  .nav-links { display: flex; gap: 22px; margin-left: auto; }
   @media (max-width: 860px) {
     .nav-inner { gap: 16px; }
     .nav-inner .btn { margin-left: auto; }
@@ -400,9 +401,7 @@
 <nav aria-label="Main navigation">
   <div class="wrap nav-inner">
     <a class="brand" href="#top" aria-label="Pour home">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M4 4h16l-6.5 8v7h-3v-7L4 4z"/><path d="M9 19h6"/>
-      </svg>
+      <img src="assets/brand-icon.png" alt="" width="32" height="32">
       Pour
     </a>
     <div class="nav-links">
@@ -410,7 +409,7 @@
       <a href="#screens">Screens</a>
       <a href="#bar">Bar</a>
       <a href="#history">History</a>
-      <a href="#principles">Principles</a>
+      <a href="try.html">Try Pour</a>
       <a href="#pro">Pro</a>
     </div>
     <a href="#get" class="btn btn-primary btn-sm">App status</a>
@@ -421,6 +420,7 @@
     </button>
   </div>
   <div class="nav-menu" id="nav-menu">
+    <a href="try.html">Try Pour in your browser</a>
     <a href="#features">Features</a>
     <a href="#screens">Screens</a>
     <a href="#bar">Bar</a>
@@ -438,8 +438,8 @@
       <h1>The bar tool that keeps up with <em>service</em>.</h1>
       <p class="hero-sub">Pour is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
       <div class="hero-ctas">
-        <a href="#get" class="btn btn-primary">See iPhone app status</a>
-        <a href="#features" class="btn btn-ghost">See what it does</a>
+        <a href="try.html" class="btn btn-primary">Try Pour in your browser</a>
+        <a href="#get" class="btn btn-ghost">iPhone app status</a>
       </div>
       <div class="hero-badges">
         <span class="badge"><span class="dot"></span>Works fully offline</span>
@@ -853,7 +853,7 @@
     </div>
     <details>
       <summary>Can I download Pour today?</summary>
-      <p>The iPhone app is in development for iOS 17 and later. A public App Store or TestFlight link has not been announced. <a href="https://github.com/aturnbough93-hue/pour">Follow the project on GitHub</a> for release updates.</p>
+      <p>You can <a href="try.html">try six recipes in your browser</a> now, with inventory matching, scaling, and a shopping list. This browser demo is separate from the iPhone app, which is in development for iOS 17 and later. A public App Store or TestFlight link has not been announced. <a href="https://github.com/aturnbough93-hue/pour">Follow the project on GitHub</a> for release updates.</p>
     </details>
     <details>
       <summary>What works without an account or connection?</summary>
@@ -888,10 +888,11 @@
   <div class="wrap">
     <div class="foot-inner">
       <span class="brand">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M4 4h16l-6.5 8v7h-3v-7L4 4z"/><path d="M9 19h6"/></svg>
+        <img src="assets/brand-icon.png" alt="" width="26" height="26">
         Pour
       </span>
       <div class="foot-links">
+        <a href="try.html">Try Pour</a>
         <a href="#features">Features</a>
         <a href="#screens">Screens</a>
         <a href="#bar">Bar</a>

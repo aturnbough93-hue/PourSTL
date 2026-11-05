@@ -11,9 +11,10 @@ warm copper, explicit stock states, and readable measures. Reliability and a
 short path from buying ingredients to making drinks matter more to this product
 than adding more placeholder buttons.
 
-The website is a marketing site with illustrative app mockups, not a web version
-of the app. The native app still needs simulator, archive, signing, and release
-validation before an App Store or TestFlight release.
+The website includes a marketing page with labeled mockups and a working six-recipe
+browser demo. The demo is a limited, browser-local testing surface; it does not
+sync with the native app. The native app still needs archive, signing, device,
+and release validation before an App Store or TestFlight release.
 
 ## Fixes included
 
@@ -56,19 +57,19 @@ The privacy page explains sharing, device backups, and these limits.
 | Priority | Work | Acceptance evidence |
 | --- | --- | --- |
 | P0 | Validate native changes on macOS | Successful simulator build and all XCTest results; real-device smoke test |
-| P0 | Add a production AppIcon asset catalog | Icon appears on device and passes archive validation |
+| P0 | Validate the included production AppIcon on device and in an archive | Icon appears correctly and passes archive validation |
 | P0 | Set the owner's final bundle/signing identity and support metadata | Signed archive, privacy report, App Store Connect validation |
-| P1 | Recover safely from persistent-store initialization failures | Informative recovery UI; preserve database; no automatic destructive reset |
+| P1 | Device-test the new non-destructive store recovery screen | Retry preserves existing data under low-storage and interrupted-open scenarios |
 | P1 | Export/restore and versioned data migrations | Round-trip inventory/custom recipe backup and migration fixtures |
 | P1 | Device accessibility QA | VoiceOver, AX5 text, light/dark, Reduce Motion, one-handed use; no clipping |
 | P1 | Clarify foreground-only timer behavior | Test lock/background/return; add permission-based local alerts if needed |
-| P2 | Consolidate coming-soon tools into one roadmap surface | Primary controls all perform useful work; planned tools remain discoverable |
+| P2 | Validate the quieter coming-soon menu with users | Primary toolbar remains focused; planned tools are discoverable |
 
 ## Recommended additions, in delivery order
 
-1. **Service confidence:** undo deletion, recipe duplication as a house variation,
-   backup/export/import, and reliable storage recovery. Add a short success state
-   after stocking a purchase so the new inventory connection is easy to learn.
+1. **Service confidence:** undo deletion and backup/export/import. Recipe
+   variations, explicit restock confirmation, and non-destructive storage retry
+   are now implemented; validate those on device before a public native release.
 2. **Smarter shopping:** show which one missing ingredient unlocks the most drinks;
    allow quantity/pack notes and sharing a shopping list. Ingredient-presence
    matching currently does not verify amounts, substitutions, or allergens.
@@ -97,3 +98,27 @@ project resource references, and 222 Chromium checks across 1440, 820, 390, and
 CSP errors or failed asset requests occurred. Browser plugin was unavailable;
 installed Playwright and Chromium provided rendered QA. Safari and actual iOS
 accessibility behavior remain outside this validation.
+
+## Testing and visual pass
+
+Added a copper coupe-and-drop brand icon, a native AppIcon asset catalog, a
+working six-classic browser demo with local inventory/shopping persistence,
+classic-preserving recipe variations, and safe startup Retry. The browser demo
+can test matching, search, scaling, unit changes, and shopping/restocking, but
+cannot verify native SwiftData behavior, haptics, iOS sharing, or accessibility.
+Cloudflare activation still requires an authorized account/project connection;
+source publication alone does not establish a live deployment.
+
+The native polish revision passed 46 XCTest tests with zero failures in
+[macOS CI](https://github.com/aturnbough93-hue/pour/actions/runs/42034714391).
+The browser pass adds 10 logic tests to the 5 static and 7 migration tests;
+desktop/mobile interactions passed with and without the production CSP applied.
+
+Visual comparison used the generated complete desktop concept against Chromium
+at 1487×1058, plus 820/390/320px widths. Checked the three-column composition,
+charcoal/copper palette, heading/control typography, inventory and selection
+states, quantity alignment, photo framing, and responsive stacking. Intentional
+differences: the production icon replaces the concept outline; real All/Can make
+buttons replace its duplicate dropdowns; native optional ingredients and full
+instructions add height; existing cocktail photography keeps its own crop;
+44px minimum targets improve touch use. Browser UI remains code-native.

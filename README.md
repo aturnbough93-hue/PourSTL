@@ -39,6 +39,7 @@ device validation before distributing a build.
 
 ```bash
 python3 scripts/check_website.py
+node scripts/test_demo.cjs
 node --check website/site.js
 # macOS with Xcode and an installed iOS 17+ iPhone simulator:
 bash scripts/test_ios.sh
@@ -101,3 +102,10 @@ Pour/
 PourTests/        XCTest unit tests
 project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 ```
+
+## Browser testing
+
+Open `try.html` from the local website server to test six classic recipes,
+inventory matching, scaling, and shopping/restocking. The demo saves only in
+that browser and has a Reset demo action. It does not share state with the
+iPhone app or replace native-device testing.

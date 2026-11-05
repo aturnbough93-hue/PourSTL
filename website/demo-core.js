@@ -17,10 +17,10 @@
     { id: 'gin', name: 'Gin', category: 'Spirits' },
     { id: 'campari', name: 'Campari', category: 'Liqueurs & modifiers' },
     { id: 'sweet-vermouth', name: 'Sweet vermouth', category: 'Liqueurs & modifiers' },
-    { id: 'dry-vermouth', name: 'Dry vermouth', category: 'Liqueurs & modifiers' },
     { id: 'white-rum', name: 'White rum', category: 'Spirits' },
     { id: 'bourbon', name: 'Bourbon', category: 'Spirits' },
-    { id: 'tequila', name: 'Tequila', category: 'Spirits' },
+    { id: 'tequila', name: 'Blanco tequila', category: 'Spirits' },
+    { id: 'dry-vermouth', name: 'Dry vermouth', category: 'Liqueurs & modifiers' },
     { id: 'orange-liqueur', name: 'Orange liqueur', category: 'Liqueurs & modifiers' },
     { id: 'lime-juice', name: 'Lime juice', category: 'Citrus & syrups' },
     { id: 'lemon-juice', name: 'Lemon juice', category: 'Citrus & syrups' },
@@ -77,7 +77,7 @@
 
   const inventoryIDs = new Set(inventory.map(item => item.id));
   const recipeIDs = new Set(recipes.map(recipe => recipe.id));
-  const startingInventory = ['gin', 'campari', 'sweet-vermouth', 'lime-juice', 'simple-syrup', 'angostura-bitters'];
+  const startingInventory = ['gin', 'campari', 'sweet-vermouth'];
 
   function defaults() {
     return { version: 1, inventory: startingInventory.slice(), shopping: [], servings: 1, unit: 'oz', selected: 'negroni' };
@@ -95,10 +95,11 @@
   function validateState(raw) {
     const fallback = defaults();
     if (!raw || typeof raw !== 'object' || Array.isArray(raw) || raw.version !== 1) return fallback;
+    const stocked = cleanIDs(raw.inventory, fallback.inventory);
     return {
       version: 1,
-      inventory: cleanIDs(raw.inventory, fallback.inventory),
-      shopping: cleanIDs(raw.shopping, []),
+      inventory: stocked,
+      shopping: cleanIDs(raw.shopping, []).filter(id => !stocked.includes(id)),
       servings: boundedServings(raw.servings),
       unit: raw.unit === 'ml' ? 'ml' : 'oz',
       selected: recipeIDs.has(raw.selected) ? raw.selected : fallback.selected

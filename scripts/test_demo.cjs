@@ -17,6 +17,7 @@ test('catalog has six native specs and all required ingredients exist in invento
 test('defaults are independent and preserve optional garnish matching', () => {
   const first = Demo.defaults();
   const second = Demo.defaults();
+  assert.deepEqual(second.inventory, ['gin', 'campari', 'sweet-vermouth']);
   first.inventory.length = 0;
   assert.ok(second.inventory.length > 0);
   const match = Demo.matchRecipe('negroni', second.inventory);
@@ -48,6 +49,7 @@ test('malformed persisted values reset safely without leaking arbitrary fields',
   const state = Demo.validateState({version: 1, inventory: ['gin', 'gin', '__proto__', {}, null, 'unknown'], shopping: ['dry-vermouth', 'dry-vermouth', 'constructor'], servings: Infinity, selected: '__proto__', unit: 'html', unsafe: '<script>'});
   assert.deepEqual(state, {version: 1, inventory: ['gin'], shopping: ['dry-vermouth'], servings: 1, selected: 'negroni', unit: 'oz'});
   assert.deepEqual(Demo.validateState({version: 1, inventory: [], shopping: []}).inventory, []);
+  assert.deepEqual(Demo.validateState({version: 1, inventory: ['gin'], shopping: ['gin', 'campari']}).shopping, ['campari']);
 });
 
 test('servings are integer-bounded and only known recipe/unit selections survive', () => {

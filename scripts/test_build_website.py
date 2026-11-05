@@ -38,6 +38,9 @@ class CloudflareBuildTests(unittest.TestCase):
         self.assertTrue((self.output / "404.html").is_file())
         self.assertIn(f'href="{origin}/privacy"', (self.output / "privacy.html").read_text())
         self.assertIn(f"<loc>{origin}/privacy</loc>", (self.output / "sitemap.xml").read_text())
+        self.assertIn(f'href="{origin}/try"', (self.output / "try.html").read_text())
+        self.assertIn(f"<loc>{origin}/try</loc>", (self.output / "sitemap.xml").read_text())
+        self.assertEqual((self.output / "demo-core.js").read_bytes(), (self.source / "demo-core.js").read_bytes())
 
     def test_metadata_rewriting_preserves_copy_and_regular_links(self):
         html = f'<p>{OLD_ORIGIN}/privacy.html</p><a href="{OLD_ORIGIN}/privacy.html">Old site</a>'
