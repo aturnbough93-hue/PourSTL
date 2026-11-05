@@ -90,3 +90,10 @@ Five new native regression tests are included; do not count them as passed until
 the macOS workflow completes. Local security-header tests do not establish that
 Netlify has deployed them. Publication and live-domain validation must be
 reported separately from local checks.
+
+Verified locally: 5 static website tests, JavaScript/shell syntax, valid plist and
+project resource references, and 222 Chromium checks across 1440, 820, 390, and
+320px widths, with and without the configured security headers. No JavaScript or
+CSP errors or failed asset requests occurred. Browser plugin was unavailable;
+installed Playwright and Chromium provided rendered QA. Safari and actual iOS
+accessibility behavior remain outside this validation.
