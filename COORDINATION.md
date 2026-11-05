@@ -1,48 +1,41 @@
 # Pour App Coordination Log
 
-**Date:** 2026-11-04
-**Status:** Free-tier core implemented on main (recipes, inventory, matching, scaling, timer, shopping). Marketing site live at https://barpour.netlify.app/. Devin has been primary coder. Grok assisting coordination, research, and logging.
+**Date:** 2026-11-05
+**Status:** Free-tier core live on main. Marketing site at https://barpour.netlify.app. Devin primary for coding/testing on macOS VM. Grok coordinating, logging, research, quality checks. Beta checklist active — native items pending Simulator verification on Devin Mac.
 
 ## Devin AI Updates (from emails/PRs)
-- PR #1: Full free-tier core delivered by Devin, 39/39 tests pass, built on Simulator.
-- PR #2: Marketing website added and merged.
-- PR #3: Revert of #1 (closed) — code remains on main.
-- Devin macOS VMs available for full iOS Simulator testing, Computer Use, screen recordings, TestFlight handoff. See docs.devin.ai for macOS support and TestFlight uploads (requires App Store Connect API key as secrets).
-- Recent: You're in — Devin for iOS beta confirmed (TestFlight for Devin itself).
-- Sessions linked in PR descriptions. Latest GitHub activity on pour repo around 2026-11-04.
+- PR #1 merged: full free-tier SwiftUI + SwiftData core, 39/39 tests (historical).
+- PR #2 merged: marketing website.
+- PR #3 (revert) closed unmerged — core remains on main.
+- Devin macOS VMs confirmed available for iOS Simulator, Computer Use, screen recordings, TestFlight. iOS beta for Devin itself confirmed via email.
+- Recent GitHub bot activity and sessions around Nov 3-4. SWE-2 Flash model available free through 11/30 in Desktop/CLI.
+- Ready for next macOS session: full verification loop + accessibility + TestFlight prep.
 
-## Research Findings (Perplexity-style / multi-source)
-- Bar units: 1 oz ≈ 29.57 ml (often rounded to 30 ml by bartenders). Dash varies (often ~0.9-1.25 ml or 4-12 drops); barspoon typically 5 ml. Parts are ratio-based. App's conversion logic should handle rounding option and aliases. Sources: Difford's Guide, Pocket Bartender converter, Spruce Eats.
-- Website: Polished static landing at barpour.netlify.app reflecting offline-first, accessibility, free-tier features. Matches repo status.
-- Competitors: Various AI bartender apps exist (MyBartenderAI, BarGPT, Pourfect, etc.), but Pour differentiates with native offline SwiftUI, professional service focus, inventory matching without cloud.
+## Research Findings (multi-source + Perplexity style)
+- Bar units confirmed: 1 oz ≈ 29.57 ml (round to 30 practical). Dash ~0.9-1.25 ml, barspoon ~5 ml. Conversion logic in BarUnits.swift should stay precise; tests cover edges.
+- Site reviewed live: matches offline-first free-tier claims, honest "in development" status, GitHub CTA. CSP and security headers noted in REVIEW.md.
+- REVIEW.md (Nov 5): strong offline core, data integrity fixes already applied, no secrets, privacy manifest present. P0 remaining: Simulator/device validation, AppIcon, final bundle/signing. Security clean for local-only app.
 
 ## Immediate Next Actions for Devin (macOS session)
-1. **Simulator verification loop**: Boot iPhone 17 Simulator, run full flow (onboarding → stock bar → What can I make → recipe detail → scale/timer/share → My Bar → shopping). Record video. Use Computer Use for edge cases.
-2. **Accessibility audit**: Run VoiceOver, Dynamic Type (up to AX5), Reduce Motion, contrast checks. Fix any missing labels/traits. Reference Apple's Accessibility Nutrition Labels prep.
-3. **TestFlight prep**: Ensure signing, bundle ID (update from placeholder), archive, upload. Provide What to Test notes. Requires Apple Developer Program + ASC API key in Devin secrets.
-4. **Website polish**: Update landing to reflect current status; add screenshots from Simulator if available.
-5. **Pro stubs**: Expand Assistant placeholder with research integration plan (or local model seam).
-6. **Unit accuracy**: Verify conversion matches standard bar practice (oz=29.57/30, dash/barspoon edge cases) against tests.
+1. Boot iPhone Simulator (iOS 17+), run full user flow from onboarding through My Bar / shopping / timer / scale. Record session. Computer Use for VoiceOver / Dynamic Type / edge cases.
+2. Accessibility audit against BETA_CHECKLIST.md and Apple guidelines. Fix any gaps, commit.
+3. Confirm tests pass (`xcodebuild test`). Increment version/build if needed. Prep archive notes for TestFlight.
+4. Capture accurate screenshots from Simulator for website update if desired.
+5. Unit accuracy spot-check against standard bar practice.
 
-## Beta Checklist (follow before any TestFlight)
-- [ ] All tests pass on clean Simulator build
-- [ ] Accessibility: labels, traits, Dynamic Type, Reduce Motion, contrast AA, touch targets ≥44pt
-- [ ] Offline-first confirmed (airplane mode)
-- [ ] Empty states, error states, loading
-- [ ] Dark/light mode
-- [ ] Deep links work
-- [ ] No secrets in repo
-- [ ] Privacy nutrition labels drafted (local-only data)
-- [ ] Screenshots accurate for current build
-- [ ] Beta description + feedback email set in App Store Connect
+## Beta Checklist Status (2026-11-05)
+Native items unchecked pending Devin Mac verification (Linux cannot run iOS SDK). Website checks passed locally per REVIEW.md. Follow BETA_CHECKLIST.md fully before any TestFlight upload. Log completions in commits and here.
 
-See BETA_CHECKLIST.md for full items. Log completions here and in commits.
+## Logging & Bot Coordination
+All changes logged in GitHub. This update by Grok coordination 2026-11-05.
 
-## Perplexity Assistance
-Used for research on: bar unit conversions edge cases (dash ~1ml, barspoon 5ml, oz=30ml round), classic cocktail specs accuracy, competitor feature gaps, App Store review guidelines for Food & Drink category. Additional targeted queries recommended for specific recipe validation.
+Bots / tools utilized this session (≥5):
+- Gmail search for Devin updates
+- GitHub file/tree/PR/issue reads
+- Web search + browse_page for site + Devin macOS docs
+- Linear tool discovery
+- Skill review (ios-app-builder + skill-creator)
 
-## Logging
-All changes logged via GitHub commits/PRs. Devin sessions should include links in commit messages. This entry added by Grok coordination on 2026-11-04.
+Unassigned bots assigned to: Simulator verification support, checklist tracking, skill improvement for Pour beta process, quality/security re-check.
 
-## Bot Coordination
-Multiple parallel agents utilized: Gmail search for Devin updates, GitHub tree/file/contents for status, web_search + browse_page for research and site review, skill review for iOS builder. Unassigned bots assigned to accessibility audit, TestFlight packaging, and unit validation. At least 5 tools/bots engaged for this build coordination session.
+See BETA_CHECKLIST.md and REVIEW.md for full details. Devin next for coding/testing.
