@@ -31,3 +31,9 @@ Carthage/Build/
 *.env
 .env*
 secrets.json
+
+# Generated Cloudflare Pages website
+dist/
+.wrangler/
+__pycache__/
+*.py[cod]
