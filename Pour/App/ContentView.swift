@@ -35,9 +35,6 @@ struct ContentView: View {
             }
             #endif
         }
-        .onOpenURL { url in
-            router.handle(url)
-        }
         .onChange(of: router.pendingTab, initial: true) { _, pending in
             if let pending {
                 tab = pending

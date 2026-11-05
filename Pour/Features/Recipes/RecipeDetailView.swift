@@ -29,6 +29,7 @@ struct RecipeDetailView: View {
                     scalingControls.id("scaling")
                     ingredientsList
                     instructionsSection
+                    if !recipe.isCustom { variationAction }
                     shoppingAction
                 }
                 .padding(.horizontal)
@@ -40,19 +41,21 @@ struct RecipeDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showEdit = true
-                } label: {
-                    Image(systemName: "pencil")
-                        .foregroundStyle(PourColor.textSecondary)
+                if recipe.isCustom {
+                    Button {
+                        showEdit = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .foregroundStyle(PourColor.textSecondary)
+                    }
+                    .accessibilityLabel("Edit recipe")
+                    .accessibilityAddTraits(.isButton)
                 }
-                .accessibilityLabel("Edit recipe")
-                .accessibilityAddTraits(.isButton)
             }
         }
         .sheet(isPresented: $showTimer) { TimerSheet(recipeName: recipe.name) }
         .sheet(isPresented: $showEdit) {
-            RecipeEditorView(recipe: recipe)
+            RecipeEditorView(recipe: recipe, makingVariation: !recipe.isCustom)
         }
         .alert(saveErrorTitle, isPresented: $showSaveError) {
             Button("OK", role: .cancel) {}
@@ -261,6 +264,23 @@ struct RecipeDetailView: View {
                 .font(.body)
                 .foregroundStyle(PourColor.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PourColor.card, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(PourColor.border))
+    }
+
+    private var variationAction: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("A classic, with room for your signature", systemImage: "square.on.square")
+                .font(.headline)
+                .foregroundStyle(PourColor.textPrimary)
+            Text("Keep this recipe and save your own version alongside it.")
+                .font(.subheadline)
+                .foregroundStyle(PourColor.textSecondary)
+            Button("Make a variation") { showEdit = true }
+                .buttonStyle(PourPrimaryButtonStyle())
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

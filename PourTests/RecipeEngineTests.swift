@@ -152,3 +152,99 @@ final class SeedDataTests: XCTestCase {
         XCTAssertEqual(custom.name, "My House Drink")
     }
 }
+
+final class RecipeVariationTests: XCTestCase {
+    @MainActor
+    func testVariationEditsAndDeletionLeaveOriginalIntact() throws {
+        let schema = Schema([Recipe.self, IngredientLine.self, InventoryItem.self, ShoppingListItem.self, Venue.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let context = ModelContext(container)
+        let classic = Recipe(name: "House Classic", glassType: "Coupe", method: "Stirred", instructions: "Stir with ice.", garnish: "Orange twist", tags: ["classic"])
+        classic.isFavorite = true
+        classic.remoteID = "bundled-classic"
+        classic.notes = "Original notes"
+        classic.createdAt = Date(timeIntervalSince1970: 1)
+        classic.ingredients = [
+            IngredientLine(name: "Orange Bitters", amount: 2, unit: "dash", note: "optional garnish", isOptional: true, position: 1),
+            IngredientLine(name: "Gin", amount: 2, unit: "oz", position: 0),
+        ]
+        context.insert(classic)
+        try context.save()
+        let originalID = classic.persistentModelID
+
+        let variation = classic.makeVariation(named: "My House Classic")
+        XCTAssertNil(variation.modelContext, "A draft must stay unpersisted until Save")
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Recipe>()), 1)
+        XCTAssertTrue(variation.isCustom)
+        XCTAssertFalse(variation.isFavorite)
+        XCTAssertNil(variation.remoteID)
+        XCTAssertNil(variation.venue)
+        XCTAssertNotEqual(variation.createdAt, classic.createdAt)
+        XCTAssertEqual(variation.notes, classic.notes)
+        XCTAssertEqual(variation.garnish, classic.garnish)
+        XCTAssertEqual(variation.instructions, classic.instructions)
+        XCTAssertEqual(variation.sortedIngredients.map(\.position), [0, 1])
+        XCTAssertEqual(variation.sortedIngredients[1].note, "optional garnish")
+        XCTAssertTrue(variation.sortedIngredients[1].isOptional)
+        XCTAssertFalse(variation.sortedIngredients[0] === classic.sortedIngredients[0])
+
+        context.insert(variation)
+        try context.save()
+        variation.sortedIngredients[0].amount = 3
+        variation.tags.append("my variation")
+        try context.save()
+        XCTAssertEqual(classic.sortedIngredients[0].amount, 2)
+        XCTAssertEqual(classic.tags, ["classic"])
+        XCTAssertFalse(classic.isCustom)
+        XCTAssertTrue(classic.sortedIngredients.allSatisfy { $0.recipe === classic })
+
+        context.delete(variation)
+        try context.save()
+        let retained = try XCTUnwrap(context.fetch(FetchDescriptor<Recipe>()).first)
+        XCTAssertEqual(retained.persistentModelID, originalID)
+        XCTAssertEqual(retained.ingredients.count, 2)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<IngredientLine>()), 2)
+        XCTAssertTrue(retained.isFavorite)
+        XCTAssertEqual(retained.remoteID, "bundled-classic")
+    }
+}
+
+final class PersistentStoreControllerTests: XCTestCase {
+    @MainActor
+    func testRetryReopensSameStoreAndRetainsExistingData() throws {
+        enum TemporaryOpenError: Error { case unavailable }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let schema = Schema([Recipe.self, IngredientLine.self, InventoryItem.self, ShoppingListItem.self, Venue.self])
+        let configuration = ModelConfiguration(schema: schema, url: directory.appendingPathComponent("bar.store"))
+        do {
+            let initial = try ModelContainer(for: schema, configurations: [configuration])
+            let context = ModelContext(initial)
+            context.insert(Recipe(name: "Personal recipe", isCustom: true))
+            context.insert(InventoryItem(name: "My saved bottle"))
+            try context.save()
+        }
+        var attempts = 0
+        let store = PersistentStoreController(openContainer: {
+            attempts += 1
+            if attempts == 1 { throw TemporaryOpenError.unavailable }
+            return try ModelContainer(for: schema, configurations: [configuration])
+        })
+        store.openIfNeeded()
+        XCTAssertTrue(store.hasAttemptedOpen)
+        XCTAssertNil(store.container)
+        store.openIfNeeded()
+        XCTAssertEqual(attempts, 1, "A failed open waits for an explicit Retry")
+
+        store.retry()
+        let container = try XCTUnwrap(store.container)
+        let context = ModelContext(container)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Recipe>()).map(\.name), ["Personal recipe"])
+        XCTAssertEqual(try context.fetch(FetchDescriptor<InventoryItem>()).map(\.name), ["My saved bottle"])
+        store.retry()
+        XCTAssertEqual(attempts, 2, "Retry must not replace an already open store")
+        XCTAssertTrue(store.container === container)
+    }
+}

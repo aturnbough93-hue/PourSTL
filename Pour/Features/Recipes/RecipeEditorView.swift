@@ -4,7 +4,9 @@ import SwiftData
 /// Create or edit a custom recipe. Glass selection uses the spec's
 /// corrected SF Symbol mapping.
 struct RecipeEditorView: View {
+    /// Only a custom recipe can be updated in place.
     let recipe: Recipe?
+    private let variationSource: Recipe?
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -35,10 +37,12 @@ struct RecipeEditorView: View {
 
     private let methods = ["Shaken", "Stirred", "Built", "Muddled", "Blended", "Layered", "Hot"]
 
-    init(recipe: Recipe? = nil) {
-        self.recipe = recipe
+    init(recipe: Recipe? = nil, makingVariation: Bool = false) {
+        let isVariation = makingVariation || recipe?.isCustom == false
+        self.recipe = isVariation ? nil : recipe
+        self.variationSource = isVariation ? recipe : nil
         if let recipe {
-            _name = State(initialValue: recipe.name)
+            _name = State(initialValue: isVariation ? "\(recipe.name) variation" : recipe.name)
             _glassType = State(initialValue: recipe.glassType.isEmpty ? "Coupe" : recipe.glassType)
             _method = State(initialValue: recipe.method.isEmpty ? "Shaken" : recipe.method)
             _instructions = State(initialValue: recipe.instructions)
@@ -53,6 +57,15 @@ struct RecipeEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let variationSource {
+                    Section {
+                        Label("Your take on \(variationSource.name)", systemImage: "square.on.square")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(PourColor.accent)
+                    } footer: {
+                        Text("Save a personal variation to your library. The original classic stays as it is.")
+                    }
+                }
                 Section("Recipe") {
                     TextField("Name", text: $name)
                         .accessibilityLabel("Recipe name")
@@ -146,7 +159,7 @@ struct RecipeEditorView: View {
             }
             .scrollContentBackground(.hidden)
             .background(PourColor.background)
-            .navigationTitle(recipe == nil ? "New recipe" : "Edit recipe")
+            .navigationTitle(variationSource == nil ? (recipe == nil ? "New recipe" : "Edit recipe") : "Make a variation")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -155,9 +168,9 @@ struct RecipeEditorView: View {
                         .accessibilityAddTraits(.isButton)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
+                    Button(variationSource == nil ? "Save" : "Save variation") { save() }
                         .disabled(!canSave)
-                        .accessibilityLabel("Save recipe")
+                        .accessibilityLabel(variationSource == nil ? "Save recipe" : "Save variation to your library")
                         .accessibilityAddTraits(.isButton)
                 }
             }
@@ -224,15 +237,15 @@ struct RecipeEditorView: View {
                 ))
             }
         } else {
-            let new = Recipe(
-                name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                glassType: glassType,
-                method: method,
-                instructions: instructions,
-                garnish: garnish.isEmpty ? nil : garnish,
-                tags: tags,
-                isCustom: true
-            )
+            let new = variationSource?.makeVariation(named: name.trimmingCharacters(in: .whitespacesAndNewlines)) ?? Recipe(isCustom: true)
+            new.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            new.glassType = glassType
+            new.method = method
+            new.instructions = instructions
+            new.garnish = garnish.isEmpty ? nil : garnish
+            new.tags = tags
+            // These are detached copies, never the source recipe's relationships.
+            new.ingredients = []
             for (index, line) in validLines.enumerated() {
                 new.ingredients.append(IngredientLine(
                     name: line.name.trimmingCharacters(in: .whitespaces),
