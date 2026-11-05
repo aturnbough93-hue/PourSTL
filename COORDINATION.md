@@ -39,3 +39,13 @@ Bots / tools utilized this session (≥5):
 Unassigned bots assigned to: Simulator verification support, checklist tracking, skill improvement for Pour beta process, quality/security re-check.
 
 See BETA_CHECKLIST.md and REVIEW.md for full details. Devin next for coding/testing.
+
+## Codex testing and visual pass — 2026-11-05
+
+- Added copper coupe/drop AppIcon asset catalog and matching website favicons.
+- Added a working six-classic browser demo at `try.html` (`/try` on Pages): local bar state, matching/search, serving/unit controls, shopping/restocking, reset confirmation, and copy fallback.
+- Classics now support independent custom variations; storage-open failures show non-destructive Retry; Coming soon tools are consolidated.
+- Exact native revision `fba2e4a` passed 46 XCTest tests with zero failures: https://github.com/aturnbough93-hue/pour/actions/runs/42034714391 .
+- Website checks: 5 static + 7 migration + 10 demo-logic tests passed; 27 browser assertions passed both without and with the production security policy. Desktop/native-concept viewport and 820/390/320px layouts inspected.
+- Cloudflare API is reachable, but no authorized Cloudflare account/project connection is present in this session. Requested `barpour.pages.dev` does not resolve here yet. New live deployment remains pending that connection; the old Netlify homepage is reachable but outdated.
+- Signing, archive validation, TestFlight/App Store distribution, and real-device accessibility/haptics remain outstanding.
