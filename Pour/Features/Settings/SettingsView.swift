@@ -68,8 +68,8 @@ struct SettingsView: View {
                 }
 
                 Section("Support") {
-                    Link(destination: URL(string: "mailto:support@example.com")!) {
-                        Label("Send feedback", systemImage: "envelope")
+                    Link(destination: URL(string: "https://github.com/aturnbough93-hue/pour/issues")!) {
+                        Label("Send feedback", systemImage: "bubble.left")
                             .foregroundStyle(PourColor.textPrimary)
                     }
                     .accessibilityLabel("Send feedback")
@@ -90,7 +90,7 @@ struct SettingsView: View {
                         Text(appVersion).foregroundStyle(PourColor.textSecondary)
                     }
                     .accessibilityLabel("Version \(appVersion)")
-                    Text("All data stays on this device. Nothing is sent anywhere — Pour works fully offline.")
+                    Text("Your recipes and bar inventory are stored on this device. Pour works offline. Sharing a recipe or opening feedback sends only what you choose to share.")
                         .font(.caption)
                         .foregroundStyle(PourColor.textTertiary)
                 }

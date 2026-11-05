@@ -5,8 +5,8 @@ import SwiftData
 /// (TheCocktailDB) can be added later without touching user data.
 enum SeedData {
 
-    static func seedIfNeeded(in context: ModelContext) {
-        let existing = (try? context.fetchCount(FetchDescriptor<Recipe>())) ?? 0
+    static func seedIfNeeded(in context: ModelContext) throws {
+        let existing = try context.fetchCount(FetchDescriptor<Recipe>())
         guard existing == 0 else { return }
 
         for spec in recipes {
@@ -39,7 +39,12 @@ enum SeedData {
         }
         #endif
 
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
     #if DEBUG

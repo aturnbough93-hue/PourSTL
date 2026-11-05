@@ -18,7 +18,7 @@ struct AssistantPlaceholderView: View {
                     .font(.pourTitle2)
                     .foregroundStyle(PourColor.textPrimary)
                     .accessibilityAddTraits(.isHeader)
-                Text("Ask what you can make, get ranked substitutions, and refine drinks conversationally. A Pour Pro feature — the conversational surface and hooks live here.")
+                Text("Coming soon: ask what you can make, explore substitutions, and refine drinks together. For now, use Home to find drinks from your bar.")
                     .font(.body)
                     .foregroundStyle(PourColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -51,7 +51,7 @@ struct VoiceSearchPlaceholderView: View {
                     .font(.pourTitle2)
                     .foregroundStyle(PourColor.textPrimary)
                     .accessibilityAddTraits(.isHeader)
-                Text("On-device speech recognition (SFSpeechRecognizer) fills the search field with what you say. Permission prompts and the listening state are staged for a follow-up build.")
+                Text("Voice search is coming soon. For now, type a drink, ingredient, or brand into search on Home.")
                     .font(.body)
                     .foregroundStyle(PourColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -84,7 +84,7 @@ struct BarcodeScannerPlaceholderView: View {
                     .font(.pourTitle2)
                     .foregroundStyle(PourColor.textPrimary)
                     .accessibilityAddTraits(.isHeader)
-                Text("Scan a bottle to add it to My Bar instantly. Camera permission handling and the viewfinder ship in a follow-up build.")
+                Text("Barcode scanning is coming soon. For now, use the + button in My Bar to add a bottle by name.")
                     .font(.body)
                     .foregroundStyle(PourColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -132,7 +132,7 @@ struct ProUpsellView: View {
                             .foregroundStyle(PourColor.textSecondary)
                     }
                 }
-                Text("Subscriptions land with StoreKit 2 in a follow-up build. Everything you can use today is free and fully offline.")
+                Text("These features are planned. Everything available today is free and works offline.")
                     .font(.caption)
                     .foregroundStyle(PourColor.textTertiary)
                     .multilineTextAlignment(.center)
@@ -157,6 +157,7 @@ struct VenueSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @State private var newVenueName = ""
+    @State private var showSaveError = false
 
     private var checkedIn: Venue? { venues.first { $0.isCheckedIn } }
 
@@ -198,7 +199,7 @@ struct VenueSheet: View {
                         }
                         .onDelete { offsets in
                             for index in offsets { modelContext.delete(venues[index]) }
-                            try? modelContext.save()
+                            saveChanges()
                         }
                     }
                 }
@@ -210,9 +211,10 @@ struct VenueSheet: View {
                             let trimmed = newVenueName.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !trimmed.isEmpty else { return }
                             modelContext.insert(Venue(name: trimmed))
-                            try? modelContext.save()
-                            newVenueName = ""
-                            Haptics.success()
+                            if saveChanges() {
+                                newVenueName = ""
+                                Haptics.success()
+                            }
                         }
                         .disabled(IngredientNormalizer.normalize(newVenueName).isEmpty)
                         .foregroundStyle(PourColor.accent)
@@ -224,6 +226,11 @@ struct VenueSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(PourColor.background)
+            .alert("Venue wasn’t saved", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Check available device storage and try again.")
+            }
             .navigationTitle("Venue")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -236,6 +243,18 @@ struct VenueSheet: View {
         }
     }
 
+    @discardableResult
+    private func saveChanges() -> Bool {
+        do {
+            try modelContext.save()
+            return true
+        } catch {
+            modelContext.rollback()
+            showSaveError = true
+            return false
+        }
+    }
+
     private func toggleCheckIn(_ venue: Venue) {
         if venue.isCheckedIn {
             venue.isCheckedIn = false
@@ -245,6 +264,6 @@ struct VenueSheet: View {
             venue.isCheckedIn = true
             Haptics.success()
         }
-        try? modelContext.save()
+        saveChanges()
     }
 }

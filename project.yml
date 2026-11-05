@@ -36,9 +36,6 @@ targets:
           - CFBundleURLName: com.devin.pour.deeplink
             CFBundleURLSchemes:
               - pour
-        NSMicrophoneUsageDescription: Pour uses the microphone for voice search.
-        NSSpeechRecognitionUsageDescription: Pour uses on-device speech recognition for voice search.
-        NSCameraUsageDescription: Pour uses the camera to scan bottle barcodes.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.devin.pour

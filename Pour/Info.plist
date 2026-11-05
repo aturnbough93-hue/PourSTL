@@ -35,12 +35,6 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>Pour uses the camera to scan bottle barcodes.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Pour uses the microphone for voice search.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Pour uses on-device speech recognition for voice search.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
