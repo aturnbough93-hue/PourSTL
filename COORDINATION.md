@@ -1,7 +1,7 @@
 # Pour App Coordination Log
 
 **Date:** 2026-11-06
-**Status:** Free-tier core live on main. Marketing site live (https://pour-landing.netlify.app/ and https://barpour.netlify.app). Devin primary for coding/testing on macOS VM. Grok coordinating, logging, research, quality checks, and bot utilization. Beta checklist active — native items pending Simulator verification on Devin Mac.
+**Status:** Free-tier core live on main. Marketing site live (https://barpour.pages.dev). Devin primary for coding/testing on macOS VM. Grok coordinating, logging, research, quality checks, and bot utilization. Beta checklist active — native items pending Simulator verification on Devin Mac.
 
 ## Devin AI Updates (from emails/PRs as of 2026-11-06)
 - PR #1 merged: full free-tier SwiftUI + SwiftData core.
