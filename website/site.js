@@ -36,20 +36,97 @@ document.addEventListener('keydown', event => {
   }
 });
 
-// Keep the overlay mounted until click so a tap cannot fall through to the page.
+// Mouse clicks keep the overlay mounted until click so the tap cannot fall
+// through to the page. iOS Safari often never emits that click on a
+// non-interactive div, and pointerDown ignores focusout for the whole tap, so
+// a touch or pen release on the empty overlay closes it here instead.
 let pointerDown = false;
+let overlayPress = null;
 
-document.addEventListener('pointerdown', () => {
+function targetElement(event) {
+  const node = event.target;
+  return node instanceof Element ? node : (node && node.parentElement) || null;
+}
+
+function isEmptyOverlayTarget(target) {
+  return !!target && menu.contains(target) && !target.closest('a, button, summary');
+}
+
+function swallowFollowingClick() {
+  let timer = 0;
+  const release = () => {
+    clearTimeout(timer);
+    document.removeEventListener('click', sink, true);
+    document.removeEventListener('pointerdown', release, true);
+  };
+  const sink = event => {
+    // Keyboard activation (detail 0) must still reach the hamburger.
+    if (event.detail === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    release();
+    toggle.focus({ preventScroll: true });
+  };
+  document.addEventListener('click', sink, true);
+  // A new tap starts with pointerdown, before its click. Let that click through.
+  document.addEventListener('pointerdown', release, true);
+  timer = setTimeout(release, 1000);
+}
+
+function clearOverlayPressSoon() {
+  const press = overlayPress;
+  setTimeout(() => {
+    if (overlayPress === press) overlayPress = null;
+  }, 0);
+}
+
+function dismissEmptyOverlay(event, x, y) {
+  const press = overlayPress;
+  if (!press || event.pointerType === 'mouse') return;
+  if (press.handled) {
+    if (event.cancelable) event.preventDefault();
+    return;
+  }
+  if (!menu.classList.contains('open') || menu.scrollTop !== press.scroll) return;
+  // Hit-test the release point. Touch pointerup stays on the pointerdown
+  // target, which would mis-read a drag from the overlay onto a link.
+  // If the hit test returns nothing, the event target is the overlay itself.
+  const released = document.elementFromPoint(x, y) || targetElement(event);
+  if (!isEmptyOverlayTarget(released)) return;
+  if (event.cancelable) event.preventDefault();
+  press.handled = true;
+  swallowFollowingClick();
+  setMenuOpen(false, true);
+}
+
+document.addEventListener('pointerdown', event => {
   pointerDown = true;
+  const target = targetElement(event);
+  overlayPress = menu.classList.contains('open')
+    && event.isPrimary !== false
+    && !(event.button > 0)
+    && isEmptyOverlayTarget(target)
+    ? { scroll: menu.scrollTop, handled: false }
+    : null;
 }, true);
 
-document.addEventListener('pointerup', () => {
+document.addEventListener('pointerup', event => {
   pointerDown = false;
+  dismissEmptyOverlay(event, event.clientX, event.clientY);
+  clearOverlayPressSoon();
 }, true);
 
 document.addEventListener('pointercancel', () => {
   pointerDown = false;
+  overlayPress = null;
 }, true);
+
+menu.addEventListener('touchend', event => {
+  const touch = event.changedTouches[0];
+  if (!touch || event.touches.length !== 0) return;
+  dismissEmptyOverlay(event, touch.clientX, touch.clientY);
+  clearOverlayPressSoon();
+}, { passive: false });
 
 document.addEventListener('click', event => {
   if (!menu.classList.contains('open')) return;
