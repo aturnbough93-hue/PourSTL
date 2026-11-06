@@ -6,8 +6,9 @@ Local: SITE_URL=https://your-confirmed-domain.example python3 scripts/build_webs
 
 SITE_URL is an optional production-origin override, normally a confirmed custom
 domain. Otherwise CF_PAGES_URL identifies the Pages project; deployment hashes
-and branch prefixes are removed from its *.pages.dev hostname. Source files keep
-their existing URLs until the replacement host is verified.
+and branch prefixes are removed from its *.pages.dev hostname. Source metadata
+uses https://barpour.pages.dev; the build rewrites that origin to the production
+origin above.
 """
 
 import argparse
@@ -20,7 +21,7 @@ from urllib.parse import urlsplit
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-OLD_ORIGIN = "https://barpour.netlify.app"
+OLD_ORIGIN = "https://barpour.pages.dev"
 MARKER = ".pour-generated-site"
 MARKER_CONTENT = "Pour static website build v1\n"
 DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
