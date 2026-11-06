@@ -42,8 +42,13 @@
 		<key>UISceneConfigurations</key>
 		<dict/>
 	</dict>
-	<key>UILaunchScreen_Generation</key>
-	<true/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>PourBackground</string>
+		<key>UIImageRespectsSafeAreaInsets</key>
+		<true/>
+	</dict>
 	<key>UIRequiresFullScreen</key>
 	<true/>
 	<key>UISupportedInterfaceOrientations</key>
