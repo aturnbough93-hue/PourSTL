@@ -8,6 +8,7 @@ or that the hosting provider has applied the response-header configuration.
 from html.parser import HTMLParser
 from pathlib import Path
 import re
+import subprocess
 import unittest
 from urllib.parse import unquote, urlsplit
 import xml.etree.ElementTree as ET
@@ -212,21 +213,61 @@ class WebsiteChecks(unittest.TestCase):
         self.assertIn("closest('#nav-menu a')", script)
 
     def test_public_files_do_not_point_at_netlify(self):
+        """Only tracked files count. Ignored trees such as node_modules must not."""
         root = SITE.parent
         self.assertFalse((root / "netlify.toml").exists())
         self.assertTrue((SITE / "_headers").is_file())
-        suffixes = {".html", ".txt", ".xml", ".md", ".py", ".yml", ".yaml", ".toml", ".js", ".cjs", ".json"}
         checked = 0
-        for path in root.rglob("*"):
-            if (not path.is_file() or path.resolve() == Path(__file__).resolve()
-                    or any(part in {".git", "dist", "__pycache__"} for part in path.parts)
-                    or path.suffix.lower() not in suffixes):
-                continue
-            lowered = path.read_text(encoding="utf-8").lower()
+        for path in tracked_text_files(root):
+            lowered = path.read_text(encoding="utf-8", errors="replace").lower()
             checked += 1
             self.assertNotIn("netlify.app", lowered, path)
             self.assertNotIn("pour-landing", lowered, path)
         self.assertGreater(checked, 0)
+
+
+_TEXT_SUFFIXES = {".html", ".txt", ".xml", ".md", ".py", ".yml", ".yaml", ".toml", ".js", ".cjs", ".json"}
+_UNTRACKED_DIRS = {
+    ".git", "dist", "__pycache__", "node_modules", ".wrangler", "build", ".build",
+    "DerivedData", ".venv", "venv",
+}
+
+
+def tracked_text_files(root):
+    """Files this test is allowed to read.
+
+    Prefer `git ls-files` so a local node_modules, virtualenv, or .wrangler
+    tree cannot fail the check or crash it on a non-UTF-8 file. Fall back to a
+    directory walk that skips those trees only when git is unavailable.
+    """
+    self_path = Path(__file__).resolve()
+    try:
+        listed = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        listed = None
+    if listed is not None:
+        paths = []
+        for name in listed.stdout.decode("utf-8", errors="replace").split("\0"):
+            if not name:
+                continue
+            path = (root / name).resolve()
+            if path == self_path or path.suffix.lower() not in _TEXT_SUFFIXES or not path.is_file():
+                continue
+            paths.append(path)
+        return paths
+    paths = []
+    for path in root.rglob("*"):
+        if (not path.is_file() or path.resolve() == self_path
+                or any(part in _UNTRACKED_DIRS for part in path.parts)
+                or path.suffix.lower() not in _TEXT_SUFFIXES):
+            continue
+        paths.append(path.resolve())
+    return paths
 
 
 if __name__ == "__main__":
