@@ -189,6 +189,28 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn(">App status<", homepage)
         self.assertGreaterEqual(homepage.count("iPhone app status"), 2)
 
+    def test_empty_overlay_tap_closes_mobile_menu_without_falling_through(self):
+        """AND-6: iPhone Safari often does not click a non-interactive overlay."""
+        script = (SITE / "site.js").read_text()
+        homepage = self.sources[SITE / "index.html"]
+        menu_rule = re.search(r"\.nav-menu \{([^}]*)\}", homepage)
+        self.assertIsNotNone(menu_rule)
+        self.assertIn("cursor: pointer", menu_rule.group(1))
+        self.assertIn("touch-action: manipulation", menu_rule.group(1))
+        dismiss = re.search(r"function dismissEmptyOverlay\([\s\S]*?\n\}", script)
+        self.assertIsNotNone(dismiss)
+        self.assertIn("pointerType === 'mouse'", dismiss.group(0))
+        self.assertIn("setMenuOpen(false, true)", dismiss.group(0))
+        self.assertRegex(script, r"addEventListener\(\s*'pointerup'")
+        self.assertRegex(script, r"addEventListener\(\s*'touchend'")
+        sink = re.search(r"function swallowFollowingClick\(\) \{[\s\S]*?\n\}", script)
+        self.assertIsNotNone(sink)
+        self.assertIn("preventDefault", sink.group(0))
+        self.assertIn("stopPropagation", sink.group(0))
+        self.assertIn("detail === 0", sink.group(0))
+        # Menu links keep the click path that moves focus to the destination.
+        self.assertIn("closest('#nav-menu a')", script)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
