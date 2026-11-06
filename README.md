@@ -26,10 +26,9 @@ The dependency-free marketing site runs on Linux or macOS with
 `python3 -m http.server 8080 --directory website`. It is separate from the native
 app. VS Code includes a local website-server launch configuration.
 
-Cloudflare Pages is the target host, with the requested project name **barpour**
-and address **https://barpour.pages.dev** (availability must be confirmed by
-Cloudflare). See [website/README.md](website/README.md) for the account connection,
-build settings, and safe cutover from the current Netlify site.
+Cloudflare Pages is the production host. The project name is **barpour** and the
+public address is **https://barpour.pages.dev**. See
+[website/README.md](website/README.md) for the project settings and build.
 
 See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,
 and prioritized release/product roadmap. Native changes must pass simulator and

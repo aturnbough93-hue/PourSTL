@@ -32,7 +32,7 @@ and release validation before an App Store or TestFlight release.
 | Permissions | Unimplemented voice/scanning features declared usage descriptions | Remove unused camera/microphone/speech descriptions from both project sources |
 | Trust | Placeholder support email and ambiguous download/Pro claims | GitHub feedback, honest development status, labeled mockups and planned features |
 | Website | Mobile navigation trapped focus; tiny screens and muted text needed work | Disclosure navigation with Escape/Tab/outside-click/resize handling, responsive sizing, stronger contrast |
-| Website security | No application security header policy | Netlify CSP, no framing, nosniff, restricted device permissions, and referrer policy |
+| Website security | No application security header policy | CSP, no framing, nosniff, restricted device permissions, and referrer policy in `website/_headers` |
 | Developer experience | VS Code and Dependabot targeted nonexistent workflows | Static-server launch configuration, GitHub Actions updates, website checks and macOS CI |
 
 ## Security and privacy review
@@ -89,8 +89,8 @@ Linux can serve and browser-test the website and validate project metadata, but
 cannot run the iOS SDK, SwiftUI, SwiftData, XCTest, VoiceOver, haptics, or signing.
 Five new native regression tests are included; do not count them as passed until
 the macOS workflow completes. Local security-header tests do not establish that
-Netlify has deployed them. Publication and live-domain validation must be
-reported separately from local checks.
+Cloudflare Pages has applied `website/_headers`. Publication and live-domain
+validation must be reported separately from local checks.
 
 Verified locally: 5 static website tests, JavaScript/shell syntax, valid plist and
 project resource references, and 222 Chromium checks across 1440, 820, 390, and

@@ -211,6 +211,23 @@ class WebsiteChecks(unittest.TestCase):
         # Menu links keep the click path that moves focus to the destination.
         self.assertIn("closest('#nav-menu a')", script)
 
+    def test_public_files_do_not_point_at_netlify(self):
+        root = SITE.parent
+        self.assertFalse((root / "netlify.toml").exists())
+        self.assertTrue((SITE / "_headers").is_file())
+        suffixes = {".html", ".txt", ".xml", ".md", ".py", ".yml", ".yaml", ".toml", ".js", ".cjs", ".json"}
+        checked = 0
+        for path in root.rglob("*"):
+            if (not path.is_file() or path.resolve() == Path(__file__).resolve()
+                    or any(part in {".git", "dist", "__pycache__"} for part in path.parts)
+                    or path.suffix.lower() not in suffixes):
+                continue
+            lowered = path.read_text(encoding="utf-8").lower()
+            checked += 1
+            self.assertNotIn("netlify.app", lowered, path)
+            self.assertNotIn("pour-landing", lowered, path)
+        self.assertGreater(checked, 0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

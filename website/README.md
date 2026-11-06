@@ -1,6 +1,7 @@
 # Pour website
 
-Static marketing/landing page for the Pour iOS app. No build step, no dependencies.
+Static marketing/landing page for the Pour iOS app. Local preview needs no install.
+Production is built by `scripts/build_website.py` and hosted on Cloudflare Pages.
 
 ## Run it
 
@@ -14,18 +15,14 @@ Or just open `index.html` in a browser — everything is local (images in `asset
 
 ## Cloudflare Pages
 
-Cloudflare Pages is the target host. It supports the current static files,
-GitHub deployments, preview deployments, HTTPS, and the existing security headers.
-The requested project name is **barpour**, with **https://barpour.pages.dev** as
-the desired production address. Cloudflare must confirm that name is available;
-do not silently choose a suffix or publish another address.
+Cloudflare Pages is the production host. The project name is **barpour** and the
+public address is **https://barpour.pages.dev**. Pages serves the generated
+static files with GitHub deployments, preview deployments, HTTPS, and the
+security headers in `website/_headers`.
 
-### Connect the account once
+### Production project
 
-In the [Cloudflare dashboard](https://dash.cloudflare.com/), open **Workers &
-Pages**, create a **Pages** project, and choose **Import an existing Git
-repository / Connect to Git**. Authorize access to `aturnbough93-hue/pour` and
-use these settings:
+The existing Pages project uses these settings:
 
 | Setting | Value |
 | --- | --- |
@@ -33,54 +30,43 @@ use these settings:
 | Repository | `aturnbough93-hue/pour` |
 | Production branch | `main` |
 | Framework preset | None |
-| Root directory | Leave blank (repository root) |
+| Root directory | Repository root |
 | Build command | `python3 scripts/build_website.py` |
 | Build output directory | `dist` |
 
-The initial GitHub authorization must be done by the account owner. This repo
-does not require Cloudflare credentials in the website, GitHub secrets, or an
-API token for Git-connected deployment. Do not create a Direct Upload project
-first: that project type cannot later be converted to Git integration.
-
-`wrangler.toml` records the requested project name and generated output directory.
-The build is dependency-free Python; it copies public files and sets canonical,
-social-image, sitemap, and robots URLs for the actual Pages project. Cloudflare
-provides `CF_PAGES_URL` and `CF_PAGES_BRANCH` automatically. A deployment hash or
-preview branch address is never used as the production canonical origin.
+This repo does not store Cloudflare credentials, GitHub secrets, or an API
+token for Git-connected deployment. `wrangler.toml` records the project name
+and generated output directory. The build is dependency-free Python; it copies
+public files and sets canonical, social-image, sitemap, and robots URLs.
+Cloudflare provides `CF_PAGES_URL` and `CF_PAGES_BRANCH` automatically. A
+deployment hash or preview branch address is never used as the production
+canonical origin.
 
 Set `SITE_URL` to an HTTPS origin only when using a verified custom domain, or
 when explicitly overriding the canonical production origin. The default
 production branch is `main`; `SITE_PRODUCTION_BRANCH` overrides it if needed.
 Preview builds emit noindex headers and robots rules. Neither variable is secret.
 
-### Verify and cut over
+### Check a deployment
 
-1. Wait for Cloudflare to report the first successful production deployment and
-   confirm the actual address is `https://barpour.pages.dev`.
+1. Confirm production is `https://barpour.pages.dev`.
 2. Check the homepage, privacy page, images, JavaScript, navigation, and an unknown
    path (real 404 response). Confirm the response headers include CSP, nosniff,
    frame restrictions, and the permissions policy.
-3. Check canonical/social URLs, `robots.txt`, and `sitemap.xml` use the new host.
-   Cloudflare redirects `.html` routes to extensionless routes, so the generated
-   privacy canonical and sitemap use `/privacy`.
-4. Only after those checks, add a Netlify-only 301 redirect in `netlify.toml`:
+3. Check canonical/social URLs, `robots.txt`, and `sitemap.xml` use
+   `https://barpour.pages.dev`. Cloudflare serves `.html` files at extensionless
+   paths (for example `/privacy.html` redirects to `/privacy`), so the generated
+   canonical and sitemap use `/privacy`, `/try`, and `/support`.
 
-   ```toml
-   [[redirects]]
-     from = "/*"
-     to = "https://barpour.pages.dev/:splat"
-     status = 301
-     force = true
-   ```
+There is no `website/_redirects` file. Cloudflare's own HTML routing already
+covers those extensionless paths, so the repo does not add a second redirect
+list. Do not add a site-wide redirect to `https://barpour.pages.dev` in a shared
+`_redirects` file: Pages publishes that file, and redirecting every path would
+loop on the production host.
 
-   Deploy that configuration to the old Netlify project. Do not put this rule in
-   the shared `website/_redirects` file, which could create a loop on Cloudflare.
-   Keep the old site available for incoming links. Its `netlify.app` address is
-   owned by Netlify and cannot be moved through DNS.
-
-The Netlify configuration and source-page metadata remain intact until live
-cutover is verified. Cloudflare publishes `dist`, where the build supplies the
-new metadata; Netlify currently publishes `website`.
+Cloudflare publishes `dist`. Source pages in `website/` already use
+`https://barpour.pages.dev`; the build rewrites that origin only when the
+deployed origin differs.
 
 ### Local build checks
 
@@ -91,8 +77,8 @@ SITE_URL=https://barpour.pages.dev python3 scripts/build_website.py
 python3 -m http.server 8080 --directory dist
 ```
 
-This local build demonstrates the requested address in generated metadata; it
-does not reserve a Pages name or deploy a site. Generated `dist/` is ignored by
+This local build writes `https://barpour.pages.dev` into generated metadata; it
+does not deploy a site. Generated `dist/` is ignored by
 Git. Existing directories without the generator marker are never overwritten.
 
 ## Content and privacy
@@ -103,10 +89,10 @@ The app is in development. Keep download calls to action pointed at the status s
 
 ## Hosting security headers
 
-Cloudflare Pages reads `_headers` from the generated publish directory; the
-same format also works on the current Netlify site. It restricts scripts and
-assets to this origin, blocks network API calls and framing, and disables
-camera/microphone/geolocation permissions. Inline styles remain allowed because
+Cloudflare Pages reads `_headers` from the generated publish directory. It
+restricts scripts and assets to this origin, blocks network API calls and
+framing, and disables camera/microphone/geolocation permissions. Inline styles
+remain allowed because
 the static page uses inline presentation styles; inline scripts are blocked.
 `python3 -m http.server` does not apply these headers. Check the real deployed
 response headers after publishing.
@@ -120,6 +106,6 @@ Reset demo requests confirmation and clears this demo state. Clipboard failures
 show selectable recipe text instead of claiming a successful copy. The current
 CSP still permits no remote API connections.
 
-Run its logic regression suite with `node scripts/test_demo.cjs`. After Cloudflare
-activation, test `/try` on the confirmed Pages address; opening a browser demo
-does not validate native persistence, haptics, iOS sharing, or StoreKit.
+Run its logic regression suite with `node scripts/test_demo.cjs`. On production,
+test `/try` at `https://barpour.pages.dev/try`. Opening a browser demo does not
+validate native persistence, haptics, iOS sharing, or StoreKit.
