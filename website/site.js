@@ -6,9 +6,10 @@ const mobileLayout = window.matchMedia('(max-width: 860px)');
 
 function setMenuOpen(open, restoreFocus = false) {
   menu.classList.toggle('open', open);
+  document.body.classList.toggle('nav-open', open);
   toggle.setAttribute('aria-expanded', String(open));
   toggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
-  if (restoreFocus) toggle.focus();
+  if (restoreFocus) toggle.focus({ preventScroll: true });
 }
 
 toggle.addEventListener('click', () => {
@@ -35,13 +36,35 @@ document.addEventListener('keydown', event => {
   }
 });
 
+// Keep the overlay mounted until click so a tap cannot fall through to the page.
+let pointerDown = false;
+
+document.addEventListener('pointerdown', () => {
+  pointerDown = true;
+}, true);
+
+document.addEventListener('pointerup', () => {
+  pointerDown = false;
+}, true);
+
+document.addEventListener('pointercancel', () => {
+  pointerDown = false;
+}, true);
+
 document.addEventListener('click', event => {
-  if (!event.target.closest('nav')) setMenuOpen(false);
+  if (!menu.classList.contains('open')) return;
+  const target = event.target instanceof Element ? event.target : event.target.parentElement;
+  if (!target || toggle.contains(target) || target.closest('#nav-menu a')) return;
+  // Empty overlay and other non-controls return focus to the hamburger, like Escape.
+  // A tap on another link or button still activates that control.
+  const activatedControl = target.closest('a, button, summary');
+  setMenuOpen(false, !activatedControl);
 });
 
 // This is a disclosure menu, not a modal: keyboard users can Tab out normally.
 document.querySelector('nav').addEventListener('focusout', event => {
   if (!event.currentTarget.contains(event.relatedTarget)) {
+    if (pointerDown) return;
     setMenuOpen(false);
     // Some browsers blur a newly hidden mobile link before the media-query
     // change event runs. Keep keyboard focus in the visible desktop navigation.

@@ -92,6 +92,7 @@ class WebsiteChecks(unittest.TestCase):
     def test_document_landmarks_and_image_alternatives(self):
         self.assertIn(SITE / "index.html", self.pages)
         self.assertIn(SITE / "privacy.html", self.pages)
+        self.assertIn(SITE / "support.html", self.pages)
         self.assertIn(SITE / "404.html", self.pages)
         for path, page in self.pages.items():
             with self.subTest(page=path.name):
@@ -143,10 +144,11 @@ class WebsiteChecks(unittest.TestCase):
         self.assertEqual(headers["X-Content-Type-Options"].strip(), "nosniff")
         self.assertEqual(headers["X-Frame-Options"].strip(), "DENY")
 
-    def test_privacy_and_sitemap_remain_reachable(self):
+    def test_privacy_support_and_sitemap_remain_reachable(self):
         homepage = self.pages[SITE / "index.html"]
-        self.assertTrue(any(local_target(SITE / "index.html", link) ==
-                            (SITE / "privacy.html", "") for link in homepage.links))
+        for name in ("privacy.html", "support.html"):
+            self.assertTrue(any(local_target(SITE / "index.html", link) ==
+                                (SITE / name, "") for link in homepage.links), name)
         sitemap = ET.parse(SITE / "sitemap.xml")
         locations = sitemap.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
         self.assertGreaterEqual(len(locations), 2)
@@ -158,6 +160,34 @@ class WebsiteChecks(unittest.TestCase):
             target = local_target(SITE / "index.html", parsed.path)
             self.assertTrue(target[0].is_file(), parsed.path)
         self.assertIn("/privacy.html", paths)
+        self.assertIn("/support.html", paths)
+
+    def test_subpages_share_the_existing_social_image(self):
+        image = "https://barpour.pages.dev/assets/og-image.jpg"
+        for name in ("index.html", "privacy.html", "try.html", "support.html"):
+            source = self.sources[SITE / name]
+            with self.subTest(page=name):
+                self.assertIn(f'property="og:image" content="{image}"', source)
+                self.assertIn(f'property="og:title"', source)
+                self.assertIn(f'property="og:url" content="https://barpour.pages.dev/', source)
+                self.assertIn('name="twitter:card" content="summary_large_image"', source)
+                self.assertIn(f'name="twitter:image" content="{image}"', source)
+        self.assertTrue((SITE / "assets" / "og-image.jpg").is_file())
+
+    def test_support_points_at_github_issues_without_an_email(self):
+        source = self.sources[SITE / "support.html"]
+        self.assertIn("https://github.com/aturnbough93-hue/pour/issues", source)
+        lowered = "\n".join(self.sources.values()).lower()
+        self.assertNotIn("support@", lowered)
+        self.assertNotIn("@example.com", lowered)
+
+    def test_parked_homepage_does_not_offer_pro_or_a_competing_status_button(self):
+        homepage = self.sources[SITE / "index.html"]
+        self.assertNotIn('href="#pro"', homepage)
+        self.assertNotIn('id="pro"', homepage)
+        self.assertNotIn("hero-photo", homepage)
+        self.assertNotIn(">App status<", homepage)
+        self.assertGreaterEqual(homepage.count("iPhone app status"), 2)
 
 
 if __name__ == "__main__":
