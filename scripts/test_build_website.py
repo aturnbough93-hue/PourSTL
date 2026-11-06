@@ -26,7 +26,7 @@ class CloudflareBuildTests(unittest.TestCase):
         origin = "https://confirmed-pour.pages.dev"
         build_site(self.source, self.output, origin)
         self.assertEqual(fingerprints(self.source), before)
-        for name in ["index.html", "privacy.html", "sitemap.xml", "robots.txt"]:
+        for name in ["index.html", "privacy.html", "try.html", "support.html", "sitemap.xml", "robots.txt"]:
             output = (self.output / name).read_text()
             self.assertNotIn(OLD_ORIGIN, output)
             self.assertIn(origin, output)
@@ -36,10 +36,15 @@ class CloudflareBuildTests(unittest.TestCase):
         self.assertFalse((self.output / "README.md").exists())
         self.assertTrue((self.output / MARKER).exists())
         self.assertTrue((self.output / "404.html").is_file())
-        self.assertIn(f'href="{origin}/privacy"', (self.output / "privacy.html").read_text())
-        self.assertIn(f"<loc>{origin}/privacy</loc>", (self.output / "sitemap.xml").read_text())
-        self.assertIn(f'href="{origin}/try"', (self.output / "try.html").read_text())
-        self.assertIn(f"<loc>{origin}/try</loc>", (self.output / "sitemap.xml").read_text())
+        for page in ("privacy", "try", "support"):
+            html = (self.output / f"{page}.html").read_text()
+            sitemap = (self.output / "sitemap.xml").read_text()
+            self.assertIn(f'href="{origin}/{page}"', html)
+            self.assertIn(f'property="og:url" content="{origin}/{page}"', html)
+            self.assertNotIn(f"{origin}/{page}.html", html)
+            self.assertIn(f"<loc>{origin}/{page}</loc>", sitemap)
+            self.assertNotIn(f"{origin}/{page}.html", sitemap)
+            self.assertIn(f'content="{origin}/assets/og-image.jpg"', html)
         self.assertEqual((self.output / "demo-core.js").read_bytes(), (self.source / "demo-core.js").read_bytes())
 
     def test_metadata_rewriting_preserves_copy_and_regular_links(self):

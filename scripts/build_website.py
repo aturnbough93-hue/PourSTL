@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 OLD_ORIGIN = "https://barpour.pages.dev"
+EXTENSIONLESS_PAGES = ("privacy", "try", "support")
 MARKER = ".pour-generated-site"
 MARKER_CONTENT = "Pour static website build v1\n"
 DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
@@ -67,6 +68,14 @@ def deployment_settings(environment):
     return origin, preview
 
 
+def without_html_extension(url):
+    """Cloudflare Pages serves these routes without the .html suffix."""
+    for page in EXTENSIONLESS_PAGES:
+        if url.endswith(f"/{page}.html"):
+            return url[:-5]
+    return url
+
+
 def rewrite_metadata(html, origin):
     """Rewrite public metadata only, leaving page copy and outbound links intact."""
     def rewrite_tag(match):
@@ -80,8 +89,8 @@ def rewrite_metadata(html, origin):
             if attribute[1].lower() == target and attribute[3].startswith(OLD_ORIGIN + "/"):
                 start, end = attribute.span(3)
                 destination = origin + attribute[3][len(OLD_ORIGIN):]
-                if target == "href" and destination in (origin + "/privacy.html", origin + "/try.html"):
-                    destination = destination[:-5]
+                if target == "href" or values.get("property", "").lower() == "og:url":
+                    destination = without_html_extension(destination)
                 return tag[:start] + destination + tag[end:]
         return tag
     return TAG.sub(rewrite_tag, html)
@@ -113,9 +122,10 @@ def build_site(source, output, origin, preview=False):
         for page in stage.rglob("*.html"):
             page.write_text(rewrite_metadata(page.read_text(), origin))
         sitemap = stage / "sitemap.xml"
-        sitemap.write_text(sitemap.read_text().replace(OLD_ORIGIN + "/", origin + "/")
-                           .replace(origin + "/privacy.html", origin + "/privacy")
-                           .replace(origin + "/try.html", origin + "/try"))
+        sitemap_text = sitemap.read_text().replace(OLD_ORIGIN + "/", origin + "/")
+        for page in EXTENSIONLESS_PAGES:
+            sitemap_text = sitemap_text.replace(f"{origin}/{page}.html", f"{origin}/{page}")
+        sitemap.write_text(sitemap_text)
         robots = stage / "robots.txt"
         robots.write_text("User-agent: *\nDisallow: /\n" if preview else
                           robots.read_text().replace(OLD_ORIGIN + "/", origin + "/"))
