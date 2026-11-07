@@ -74,8 +74,16 @@ struct ParsedBarcode: Equatable {
 
 enum BarcodeManualEntryResult: Equatable {
     case parsed(ParsedBarcode)
+    /// Eight digits that are a valid EAN-8 and a valid UPC-E. The two readings are different products.
+    case ambiguous(ean8: ParsedBarcode, upce: ParsedBarcode)
     case empty
     case invalid
+}
+
+struct BarcodeSymbologyChoice: Equatable, Identifiable {
+    var ean8: ParsedBarcode
+    var upce: ParsedBarcode
+    var id: String { "\(ean8.normalizedCode)|\(upce.normalizedCode)" }
 }
 
 enum BarcodeCheckDigit {
@@ -100,8 +108,25 @@ enum BarcodeCheckDigit {
 enum BarcodeParser {
     static func interpretManualEntry(_ raw: String) -> BarcodeManualEntryResult {
         if raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .empty }
+        if let conflict = conflictingEightDigit(raw) {
+            return .ambiguous(ean8: conflict.ean8, upce: conflict.upce)
+        }
         guard let parsed = parse(payload: raw) else { return .invalid }
         return .parsed(parsed)
+    }
+
+    /// Eight printed digits that pass both an EAN-8 check and a UPC-E expansion.
+    /// Manual entry has no symbology hint, so guessing would store a different product
+    /// than a camera scan of the same EAN-8.
+    private static func conflictingEightDigit(_ raw: String) -> (ean8: ParsedBarcode, upce: ParsedBarcode)? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let compact = compactDigits(from: trimmed), compact.count == 8 else { return nil }
+        guard BarcodeCheckDigit.isValidGTIN(compact) else { return nil }
+        guard let expanded = expandUPCE(compact, allowBareSixDigits: false),
+              let upce = makeUPCA(raw: trimmed, upca: expanded, symbology: .upce),
+              upce.normalizedCode != compact else { return nil }
+        let ean8 = make(raw: trimmed, normalized: compact, symbology: .ean8, extraKeys: [])
+        return (ean8, upce)
     }
 
     static func sameProductCode(_ lhs: String?, _ rhs: String) -> Bool {
@@ -125,13 +150,16 @@ enum BarcodeParser {
             return nil
         }
 
-        // An unlabeled 6- or 8-digit code can be UPC-E. Prefer that when the
-        // expansion check digit matches; otherwise an 8-digit code falls through to EAN-8.
-        // A camera that already identified EAN-8 must not be rewritten as UPC-E.
+        // Unlabeled 6-digit codes expand to UPC-A. Unlabeled 8-digit codes expand only
+        // when they are not also a valid EAN-8; otherwise the printed digits stay an EAN-8.
+        // Manual entry asks which type was printed. A camera EAN-8 hint never reaches this branch.
         if hint != .ean8,
            compact.count == 6 || compact.count == 8,
            let expanded = expandUPCE(compact, allowBareSixDigits: hint == nil) {
-            return makeUPCA(raw: trimmed, upca: expanded, symbology: .upce)
+            let ambiguousEAN8 = hint == nil && compact.count == 8 && BarcodeCheckDigit.isValidGTIN(compact)
+            if !ambiguousEAN8, let parsed = makeUPCA(raw: trimmed, upca: expanded, symbology: .upce) {
+                return parsed
+            }
         }
 
         if compact.count == 16, compact.hasPrefix("01") {
@@ -348,6 +376,21 @@ struct BarcodeStockSnapshot: Equatable {
     var name: String
     var barcode: String?
     var isInStock: Bool
+    var isLowStock: Bool = false
+    /// Persistent identity of the inventory row. Nil only for callers that have a single row per name.
+    var rowID: String? = nil
+}
+
+extension BarcodeStockSnapshot {
+    init(item: InventoryItem) {
+        self.init(
+            name: item.name,
+            barcode: item.barcode,
+            isInStock: item.isInStock,
+            isLowStock: item.isLowStock,
+            rowID: item.barcodeRowID
+        )
+    }
 }
 
 struct ExistingBarcodeMatch: Equatable, Identifiable {
@@ -355,7 +398,34 @@ struct ExistingBarcodeMatch: Equatable, Identifiable {
     var isInStock: Bool
     var scannedCode: String
     var canAttachBarcode: Bool
-    var id: String { "\(name)|\(scannedCode)|\(canAttachBarcode)" }
+    var rowID: String? = nil
+    /// True when the matched row already stores this scanned code.
+    var holdsScannedCode: Bool = false
+    var id: String {
+        let row = rowID ?? name
+        return "\(row)|\(scannedCode)|\(canAttachBarcode)|\(holdsScannedCode)"
+    }
+}
+
+struct BarcodeRowMutation: Equatable {
+    var isInStock: Bool
+    var barcode: String?
+    var isLowStock: Bool
+    var didChange: Bool
+}
+
+enum BarcodeStockWrite: Equatable {
+    /// Already-in-bar sheet. The button is the confirmation to restock or save the code.
+    case confirmedSheet
+    /// Unknown-code editor. `isInStock` is the In stock toggle.
+    case editor(isInStock: Bool, isLowStock: Bool)
+}
+
+enum UnknownBarcodeSave: Equatable {
+    case insert(BarcodeConfirmedItem)
+    case update(ExistingBarcodeMatch, BarcodeRowMutation)
+    case offerExisting(ExistingBarcodeMatch)
+    case rejected
 }
 
 enum BarcodeExistingAction: Equatable {
@@ -408,12 +478,7 @@ enum BarcodeResolver {
             }
         }
         if let hit = stock.first(where: { BarcodeParser.sameProductCode($0.barcode, code) }) {
-            return .alreadyInBar(ExistingBarcodeMatch(
-                name: hit.name,
-                isInStock: hit.isInStock,
-                scannedCode: code,
-                canAttachBarcode: false
-            ))
+            return .alreadyInBar(match(for: hit, scannedCode: code, holdsScannedCode: true))
         }
         return .needsName(barcode: code)
     }
@@ -421,23 +486,212 @@ enum BarcodeResolver {
     static func commit(name: String, barcode: String, stock: [BarcodeStockSnapshot]) -> BarcodeCommit? {
         guard let confirmed = BarcodeConfirmedItem.make(name: name, barcode: barcode) else { return nil }
         if let hit = stock.first(where: { BarcodeParser.sameProductCode($0.barcode, confirmed.barcode) }) {
-            return .alreadyInBar(ExistingBarcodeMatch(
-                name: hit.name,
-                isInStock: hit.isInStock,
-                scannedCode: confirmed.barcode,
-                canAttachBarcode: false
-            ))
+            return .alreadyInBar(match(for: hit, scannedCode: confirmed.barcode, holdsScannedCode: true))
         }
         let normalized = IngredientNormalizer.normalize(confirmed.name)
         if let hit = stock.first(where: { IngredientNormalizer.normalize($0.name) == normalized }) {
-            let canAttach = hit.barcode?.isEmpty != false
-            return .alreadyInBar(ExistingBarcodeMatch(
-                name: hit.name,
-                isInStock: hit.isInStock,
-                scannedCode: confirmed.barcode,
-                canAttachBarcode: canAttach
-            ))
+            let holdsScannedCode = BarcodeParser.sameProductCode(hit.barcode, confirmed.barcode)
+            return .alreadyInBar(match(for: hit, scannedCode: confirmed.barcode, holdsScannedCode: holdsScannedCode))
         }
         return .insert(confirmed)
+    }
+
+    /// The row whose stock status produced `match`, even when another row shares its name.
+    static func locate(_ match: ExistingBarcodeMatch, stock: [BarcodeStockSnapshot]) -> Int? {
+        if let rowID = match.rowID,
+           let index = stock.firstIndex(where: { $0.rowID == rowID }) {
+            return index
+        }
+        if let index = stock.firstIndex(where: { BarcodeParser.sameProductCode($0.barcode, match.scannedCode) }) {
+            return index
+        }
+        let normalized = IngredientNormalizer.normalize(match.name)
+        guard !normalized.isEmpty else { return nil }
+        return stock.firstIndex(where: { IngredientNormalizer.normalize($0.name) == normalized })
+    }
+
+    static func mutation(
+        match: ExistingBarcodeMatch,
+        row: BarcodeStockSnapshot,
+        update: BarcodeStockWrite
+    ) -> BarcodeRowMutation {
+        switch update {
+        case .confirmedSheet:
+            let canAttach = match.canAttachBarcode && (row.barcode?.isEmpty != false)
+            let action = existingAction(isInStock: row.isInStock, canAttachBarcode: canAttach)
+            switch action {
+            case .markInStockAndSaveBarcode:
+                return BarcodeRowMutation(isInStock: true, barcode: match.scannedCode, isLowStock: row.isLowStock, didChange: true)
+            case .markInStock:
+                return BarcodeRowMutation(isInStock: true, barcode: row.barcode, isLowStock: row.isLowStock, didChange: true)
+            case .saveBarcode:
+                return BarcodeRowMutation(isInStock: row.isInStock, barcode: match.scannedCode, isLowStock: row.isLowStock, didChange: true)
+            case .none:
+                return BarcodeRowMutation(isInStock: row.isInStock, barcode: row.barcode, isLowStock: row.isLowStock, didChange: false)
+            }
+        case .editor(let isInStock, let isLowStock):
+            let canAttach = match.canAttachBarcode && (row.barcode?.isEmpty != false)
+            let barcode = canAttach ? match.scannedCode : row.barcode
+            let changed = isInStock != row.isInStock
+                || isLowStock != row.isLowStock
+                || barcodeChanged(from: row.barcode, to: barcode)
+            return BarcodeRowMutation(isInStock: isInStock, barcode: barcode, isLowStock: isLowStock, didChange: changed)
+        }
+    }
+
+    /// Unknown-code save. A duplicate that would not change the matched row is offered
+    /// back to the bartender instead of being discarded. The In stock toggle is the
+    /// stock value written when the row does change.
+    static func saveUnknownCode(
+        name: String,
+        barcode: String,
+        isInStock: Bool,
+        isLowStock: Bool,
+        stock: [BarcodeStockSnapshot]
+    ) -> UnknownBarcodeSave {
+        guard let decision = commit(name: name, barcode: barcode, stock: stock) else { return .rejected }
+        switch decision {
+        case .insert(let item):
+            var item = item
+            item.isInStock = isInStock
+            return .insert(item)
+        case .alreadyInBar(let match):
+            guard let index = locate(match, stock: stock) else { return .offerExisting(match) }
+            let row = stock[index]
+            let typedName = IngredientNormalizer.normalize(name)
+            guard typedName == IngredientNormalizer.normalize(row.name) else {
+                return .offerExisting(match)
+            }
+            // A different code is already on this bottle. Explain that instead of
+            // closing the scanner and dropping the code the bartender just entered.
+            if !match.holdsScannedCode && !match.canAttachBarcode {
+                return .offerExisting(match)
+            }
+            let change = mutation(
+                match: match,
+                row: row,
+                update: .editor(isInStock: isInStock, isLowStock: isLowStock)
+            )
+            if change.didChange {
+                return .update(match, change)
+            }
+            return .offerExisting(match)
+        }
+    }
+
+    /// Pick a symbology when eight digits are both EAN-8 and UPC-E.
+    /// An inventory or catalog hit for exactly one reading wins; otherwise the bartender chooses.
+    static func resolveManualEntry(_ raw: String, stock: [BarcodeStockSnapshot]) -> BarcodeManualEntryResult {
+        let entered = BarcodeParser.interpretManualEntry(raw)
+        switch entered {
+        case .empty, .invalid, .parsed:
+            return entered
+        case .ambiguous(let ean8, let upce):
+            let eanKnown = isKnown(ean8, stock: stock)
+            let upcKnown = isKnown(upce, stock: stock)
+            switch (eanKnown, upcKnown) {
+            case (true, false): return .parsed(ean8)
+            case (false, true): return .parsed(upce)
+            default: return .ambiguous(ean8: ean8, upce: upce)
+            }
+        }
+    }
+
+    private static func match(
+        for hit: BarcodeStockSnapshot,
+        scannedCode: String,
+        holdsScannedCode: Bool
+    ) -> ExistingBarcodeMatch {
+        let canAttach = !holdsScannedCode && (hit.barcode?.isEmpty != false)
+        return ExistingBarcodeMatch(
+            name: hit.name,
+            isInStock: hit.isInStock,
+            scannedCode: scannedCode,
+            canAttachBarcode: canAttach,
+            rowID: hit.rowID,
+            holdsScannedCode: holdsScannedCode
+        )
+    }
+
+    private static func isKnown(_ parsed: ParsedBarcode, stock: [BarcodeStockSnapshot]) -> Bool {
+        if BarcodeCatalog.displayName(matching: parsed) != nil { return true }
+        return stock.contains { BarcodeParser.sameProductCode($0.barcode, parsed.normalizedCode) }
+    }
+
+    private static func barcodeChanged(from existing: String?, to updated: String?) -> Bool {
+        let left = existing?.isEmpty == false ? existing : nil
+        let right = updated?.isEmpty == false ? updated : nil
+        switch (left, right) {
+        case (nil, nil):
+            return false
+        case (nil, _), (_, nil):
+            return true
+        case (let lhs?, let rhs?):
+            if lhs == rhs { return false }
+            return !BarcodeParser.sameProductCode(lhs, rhs)
+        }
+    }
+}
+
+struct BarcodeSymbol: Equatable {
+    var payload: String
+    var type: String
+}
+
+enum BarcodeCaptureSelection {
+    /// A product code wins over a marketing QR listed first in the same frame.
+    static func preferred(_ symbols: [BarcodeSymbol]) -> BarcodeSymbol? {
+        let visible = symbols.filter { !$0.payload.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if let product = visible.first(where: { BarcodeParser.parse(payload: $0.payload, metadataType: $0.type) != nil }) {
+            return product
+        }
+        return visible.first
+    }
+}
+
+/// Stops one barcode from reopening its sheet while it is still in the viewfinder.
+struct BarcodeScanLatch: Equatable {
+    static let quietInterval: TimeInterval = 2
+
+    private(set) var heldPayload: String?
+    private(set) var lastSeen: Date?
+    private(set) var holdingDismissal = false
+    private(set) var seenSinceDismissal = false
+
+    /// Returns true when this payload should open a sheet.
+    mutating func receive(payload: String, now: Date) -> Bool {
+        if payload == heldPayload {
+            if holdingDismissal {
+                if !seenSinceDismissal {
+                    seenSinceDismissal = true
+                    lastSeen = now
+                    return false
+                }
+                let gap = lastSeen.map { now.timeIntervalSince($0) } ?? 0
+                lastSeen = now
+                if gap < Self.quietInterval {
+                    return false
+                }
+                holdingDismissal = false
+                seenSinceDismissal = false
+                return true
+            }
+            let gap = lastSeen.map { now.timeIntervalSince($0) } ?? 0
+            lastSeen = now
+            return gap >= Self.quietInterval
+        }
+        heldPayload = payload
+        lastSeen = now
+        holdingDismissal = false
+        seenSinceDismissal = false
+        return true
+    }
+
+    /// Keep the payload that was on screen. The next frame of that same code must not reopen the sheet.
+    mutating func noteSheetDismissed(now: Date) {
+        guard heldPayload != nil else { return }
+        holdingDismissal = true
+        seenSinceDismissal = false
+        lastSeen = now
     }
 }

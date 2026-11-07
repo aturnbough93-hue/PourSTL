@@ -16,7 +16,8 @@ struct BarcodeScannerView: View {
     @State private var manualCode = ""
     @State private var manualError: String?
     @State private var scanMessage: String?
-    @State private var lastPayload: String?
+    @State private var scanLatch = BarcodeScanLatch()
+    @State private var symbologyChoice: BarcodeSymbologyChoice?
     @State private var torchAvailable = false
     @State private var torchOn = false
     @State private var showSaveError = false
@@ -50,7 +51,7 @@ struct BarcodeScannerView: View {
                         .accessibilityAddTraits(.isButton)
                 }
             }
-            .sheet(item: $route, onDismiss: { lastPayload = nil }) { route in
+            .sheet(item: $route, onDismiss: { scanLatch.noteSheetDismissed(now: Date()) }) { route in
                 scannerDestination(route)
                     .alert("Bar wasn’t updated", isPresented: $showSaveError) {
                         Button("OK", role: .cancel) {}
@@ -79,13 +80,22 @@ struct BarcodeScannerView: View {
                 applyExisting(match)
             }
         case .nameEntry(let seed):
-            InventoryEditSheet(item: nil, seed: seed) {
-                dismiss()
+            InventoryEditSheet(item: nil, seed: seed) { result in
+                switch result {
+                case .saved:
+                    dismiss()
+                case .alreadyInBar(let match):
+                    route = .existing(match)
+                }
             }
         case .manual:
-            BarcodeManualEntrySheet(code: $manualCode, error: $manualError) {
-                lookupManualCode()
-            } onAddByName: {
+            BarcodeManualEntrySheet(
+                code: $manualCode,
+                error: $manualError,
+                symbologyChoice: $symbologyChoice,
+                onLookup: { lookupManualCode() },
+                onPickSymbology: { chooseSymbology($0) }
+            ) onAddByName: {
                 route = .nameEntry(InventorySeed(
                     name: "",
                     barcode: nil,
@@ -96,9 +106,7 @@ struct BarcodeScannerView: View {
     }
 
     private var snapshots: [BarcodeStockSnapshot] {
-        items.map {
-            BarcodeStockSnapshot(name: $0.name, barcode: $0.barcode, isInStock: $0.isInStock)
-        }
+        items.map { BarcodeStockSnapshot(item: $0) }
     }
 
     private var cameraScreen: some View {
@@ -187,9 +195,13 @@ struct BarcodeScannerView: View {
                     .accessibilityLabel("Open Settings")
                     .accessibilityAddTraits(.isButton)
                 }
-                BarcodeCodeEntryFields(code: $manualCode, error: $manualError) {
-                    lookupManualCode()
-                }
+                BarcodeCodeEntryFields(
+                    code: $manualCode,
+                    error: $manualError,
+                    symbologyChoice: $symbologyChoice,
+                    onLookup: { lookupManualCode() },
+                    onPickSymbology: { chooseSymbology($0) }
+                )
                 Button("Add by name") {
                     route = .nameEntry(InventorySeed(name: "", barcode: nil, scanNote: nil))
                 }
@@ -220,8 +232,7 @@ struct BarcodeScannerView: View {
 
     private func handleScan(payload: String, metadataType: String) {
         guard route == nil else { return }
-        guard payload != lastPayload else { return }
-        lastPayload = payload
+        guard scanLatch.receive(payload: payload, now: Date()) else { return }
         guard let parsed = BarcodeParser.parse(payload: payload, metadataType: metadataType) else {
             scanMessage = "That isn’t a product barcode. Try again, enter the code, or add the bottle by name."
             Haptics.warning()
@@ -233,16 +244,29 @@ struct BarcodeScannerView: View {
     }
 
     private func lookupManualCode() {
-        switch BarcodeParser.interpretManualEntry(manualCode) {
+        switch BarcodeResolver.resolveManualEntry(manualCode, stock: snapshots) {
         case .empty:
             manualError = nil
+            symbologyChoice = nil
         case .invalid:
+            symbologyChoice = nil
             manualError = "That doesn’t look like a product barcode. Check the digits, or add the bottle by name."
             Haptics.warning()
         case .parsed(let parsed):
             manualError = nil
+            symbologyChoice = nil
             present(parsed)
+        case .ambiguous(let ean8, let upce):
+            manualError = nil
+            symbologyChoice = BarcodeSymbologyChoice(ean8: ean8, upce: upce)
+            Haptics.warning()
         }
+    }
+
+    private func chooseSymbology(_ parsed: ParsedBarcode) {
+        manualError = nil
+        symbologyChoice = nil
+        present(parsed)
     }
 
     private func present(_ parsed: ParsedBarcode) {
@@ -280,27 +304,17 @@ struct BarcodeScannerView: View {
     }
 
     private func applyExisting(_ match: ExistingBarcodeMatch) {
-        guard let item = items.first(where: {
-            IngredientNormalizer.normalize($0.name) == IngredientNormalizer.normalize(match.name)
-        }) ?? items.first(where: { BarcodeParser.sameProductCode($0.barcode, match.scannedCode) }) else {
-            return
-        }
-        let action = BarcodeResolver.existingAction(
-            isInStock: item.isInStock,
-            canAttachBarcode: match.canAttachBarcode && (item.barcode?.isEmpty != false)
-        )
-        switch action {
-        case .markInStockAndSaveBarcode:
-            item.isInStock = true
-            if item.barcode?.isEmpty != false { item.barcode = match.scannedCode }
-        case .markInStock:
-            item.isInStock = true
-        case .saveBarcode:
-            if item.barcode?.isEmpty != false { item.barcode = match.scannedCode }
-        case .none:
+        let current = Array(items)
+        let stock = current.map { BarcodeStockSnapshot(item: $0) }
+        guard let index = BarcodeResolver.locate(match, stock: stock) else { return }
+        let mutation = BarcodeResolver.mutation(match: match, row: stock[index], update: .confirmedSheet)
+        guard mutation.didChange else {
             dismiss()
             return
         }
+        let item = current[index]
+        item.isInStock = mutation.isInStock
+        item.barcode = mutation.barcode
         guard saveChanges() else { return }
         Haptics.success()
         dismiss()
@@ -388,7 +402,9 @@ private struct CameraFrameOverlay: View {
 private struct BarcodeCodeEntryFields: View {
     @Binding var code: String
     @Binding var error: String?
+    @Binding var symbologyChoice: BarcodeSymbologyChoice?
     var onLookup: () -> Void
+    var onPickSymbology: (ParsedBarcode) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -402,13 +418,28 @@ private struct BarcodeCodeEntryFields: View {
                 .background(PourColor.surface, in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityLabel("Barcode number")
                 .onSubmit(onLookup)
-                .onChange(of: code) { _, _ in error = nil }
+                .onChange(of: code) { _, _ in
+                    error = nil
+                    symbologyChoice = nil
+                }
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
                     .foregroundStyle(PourColor.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel(error)
+            }
+            if let symbologyChoice {
+                Text("These digits can be an EAN-8 or a UPC-E. Pick the type printed on the bottle.")
+                    .font(.subheadline)
+                    .foregroundStyle(PourColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                symbologyButton(title: "EAN-8", code: symbologyChoice.ean8.normalizedCode, parsed: symbologyChoice.ean8)
+                symbologyButton(
+                    title: "UPC-E",
+                    code: BarcodeFormatting.grouped(symbologyChoice.upce.normalizedCode),
+                    parsed: symbologyChoice.upce
+                )
             }
             Button("Look up code", action: onLookup)
                 .buttonStyle(PourPrimaryButtonStyle())
@@ -418,12 +449,29 @@ private struct BarcodeCodeEntryFields: View {
                 .accessibilityAddTraits(.isButton)
         }
     }
+
+    private func symbologyButton(title: String, code: String, parsed: ParsedBarcode) -> some View {
+        Button {
+            onPickSymbology(parsed)
+        } label: {
+            VStack(spacing: 2) {
+                Text(title)
+                Text(code)
+                    .font(.subheadline.monospacedDigit())
+            }
+        }
+        .buttonStyle(PourSecondaryButtonStyle())
+        .accessibilityLabel("Use \(title), \(code)")
+        .accessibilityAddTraits(.isButton)
+    }
 }
 
 private struct BarcodeManualEntrySheet: View {
     @Binding var code: String
     @Binding var error: String?
+    @Binding var symbologyChoice: BarcodeSymbologyChoice?
     var onLookup: () -> Void
+    var onPickSymbology: (ParsedBarcode) -> Void
     var onAddByName: () -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -435,7 +483,13 @@ private struct BarcodeManualEntrySheet: View {
                         .font(.body)
                         .foregroundStyle(PourColor.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    BarcodeCodeEntryFields(code: $code, error: $error, onLookup: onLookup)
+                    BarcodeCodeEntryFields(
+                        code: $code,
+                        error: $error,
+                        symbologyChoice: $symbologyChoice,
+                        onLookup: onLookup,
+                        onPickSymbology: onPickSymbology
+                    )
                     Button("Add by name", action: onAddByName)
                         .buttonStyle(PourSecondaryButtonStyle())
                         .accessibilityLabel("Add bottle by name")
@@ -535,7 +589,7 @@ private struct BarcodeConfirmSheet: View {
     }
 }
 
-private struct BarcodeExistingSheet: View {
+struct BarcodeExistingSheet: View {
     let match: ExistingBarcodeMatch
     var onApply: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -606,11 +660,17 @@ private struct BarcodeExistingSheet: View {
         case .markInStockAndSaveBarcode:
             return "\(match.name) is already in your bar and marked out of stock. You can mark it in stock and keep this barcode on it."
         case .markInStock:
-            return "\(match.name) is already in your bar and marked out of stock."
+            if match.holdsScannedCode {
+                return "\(match.name) is already in your bar and marked out of stock."
+            }
+            return "\(match.name) is already in your bar with a different barcode, so this code wasn’t added. It’s marked out of stock."
         case .saveBarcode:
             return "\(match.name) is already in your bar. Save this barcode on it so the next scan finds it."
         case .none:
-            return "\(match.name) is already in your bar with this barcode."
+            if match.holdsScannedCode {
+                return "\(match.name) is already in your bar with this barcode."
+            }
+            return "\(match.name) is already in your bar with a different barcode, so this code wasn’t added."
         }
     }
 }
@@ -715,12 +775,15 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
         didOutput metadataObjects: [AVMetadataObject],
         from connection: AVCaptureConnection
     ) {
-        guard let object = metadataObjects.compactMap({ $0 as? AVMetadataMachineReadableCodeObject }).first,
-              let value = object.stringValue,
-              !value.isEmpty else { return }
-        let type = object.type.rawValue
+        let symbols: [BarcodeSymbol] = metadataObjects.compactMap { object in
+            guard let code = object as? AVMetadataMachineReadableCodeObject,
+                  let value = code.stringValue,
+                  !value.isEmpty else { return nil }
+            return BarcodeSymbol(payload: value, type: code.type.rawValue)
+        }
+        guard let chosen = BarcodeCaptureSelection.preferred(symbols) else { return }
         DispatchQueue.main.async { [weak self] in
-            self?.onCode?(value, type)
+            self?.onCode?(chosen.payload, chosen.type)
         }
     }
 
