@@ -582,6 +582,15 @@ final class BarcodeScanningTests: XCTestCase {
         XCTAssertTrue(latch.receive(payload: "075496000407", now: returned))
     }
 
+    func testALongLookAtTheSheetDoesNotCountAsTheCodeLeaving() {
+        var latch = BarcodeScanLatch()
+        let start = Date(timeIntervalSince1970: 1_000)
+        XCTAssertTrue(latch.receive(payload: "075496000407", now: start))
+        let resumed = start.addingTimeInterval(BarcodeScanLatch.quietInterval + 5)
+        latch.noteSheetDismissed(now: resumed)
+        XCTAssertFalse(latch.receive(payload: "075496000407", now: resumed.addingTimeInterval(0.05)))
+    }
+
     func testADifferentBottleClearsTheDismissalHold() {
         var latch = BarcodeScanLatch()
         let start = Date(timeIntervalSince1970: 1_000)
@@ -662,6 +671,34 @@ final class BarcodeScanningTests: XCTestCase {
     }
 
     // MARK: - Camera availability
+
+    func testSessionRestartsOnlyWhenTheScannerIsVisibleAndStopped() {
+        XCTAssertTrue(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true, isOnScreen: true, isRunning: false, isInterrupted: false
+            )
+        )
+        XCTAssertFalse(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true, isOnScreen: true, isRunning: false, isInterrupted: true
+            )
+        )
+        XCTAssertFalse(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true, isOnScreen: true, isRunning: true, isInterrupted: false
+            )
+        )
+        XCTAssertFalse(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true, isOnScreen: false, isRunning: false, isInterrupted: false
+            )
+        )
+        XCTAssertFalse(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: false, isOnScreen: true, isRunning: false, isInterrupted: false
+            )
+        )
+    }
 
     func testCameraReadinessMatrix() {
         let cases: [(Bool, CameraAuthorizationState, BarcodeCameraReadiness)] = [

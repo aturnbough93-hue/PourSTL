@@ -54,6 +54,19 @@ enum BarcodeCameraPolicy {
     }
 }
 
+enum BarcodeSessionRecovery {
+    /// Start again only when the scanner is on screen, the preview is stopped,
+    /// and an interruption is not still in effect.
+    static func shouldRestart(
+        wantsRunning: Bool,
+        isOnScreen: Bool,
+        isRunning: Bool,
+        isInterrupted: Bool
+    ) -> Bool {
+        wantsRunning && isOnScreen && !isRunning && !isInterrupted
+    }
+}
+
 enum BarcodeSymbology: String, Equatable {
     case ean13
     case ean8

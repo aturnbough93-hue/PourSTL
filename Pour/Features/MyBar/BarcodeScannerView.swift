@@ -61,6 +61,12 @@ struct BarcodeScannerView: View {
             }
         }
         .task { await prepareCamera() }
+        .onChange(of: route == nil) { _, scannerVisible in
+            // Arm before the camera's next frame. onDismiss can run after the session restarts.
+            if scannerVisible {
+                scanLatch.noteSheetDismissed(now: Date())
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await prepareCamera() }
@@ -112,7 +118,7 @@ struct BarcodeScannerView: View {
 
     private var cameraScreen: some View {
         ZStack {
-            BarcodeCameraPreview(isRunning: route == nil, torchOn: torchOn) { payload, type in
+            BarcodeCameraPreview(isRunning: route == nil && scenePhase == .active, torchOn: torchOn) { payload, type in
                 handleScan(payload: payload, metadataType: type)
             } onUnavailable: {
                 readiness = .unavailable
@@ -718,9 +724,12 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
     private let sessionQueue = DispatchQueue(label: "com.devin.pour.barcode-session")
     private var isConfigured = false
     private var wantsRunning = false
+    private var isOnScreen = false
+    private var isInterrupted = false
     private var desiredTorch = false
     private var device: AVCaptureDevice?
     private var didReportUnavailable = false
+    private var sessionObservers: [NSObjectProtocol] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -731,9 +740,33 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
         preview.videoLayer.session = session
         preview.videoLayer.videoGravity = .resizeAspectFill
         view.addSubview(preview)
+        observeSessionNotifications()
         sessionQueue.async { [weak self] in
             self?.configureSession()
         }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            self.isOnScreen = true
+            self.applyRunning()
+        }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        sessionQueue.async { [self] in
+            self.isOnScreen = false
+            guard self.isConfigured, self.session.isRunning else { return }
+            self.session.stopRunning()
+        }
+    }
+
+    deinit {
+        let center = NotificationCenter.default
+        sessionObservers.forEach { center.removeObserver($0) }
     }
 
     override func viewDidLayoutSubviews() {
@@ -762,7 +795,43 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
     }
 
     func stop() {
-        setRunning(false)
+        sessionQueue.async { [self] in
+            self.wantsRunning = false
+            self.isInterrupted = false
+            guard self.isConfigured, self.session.isRunning else { return }
+            self.session.stopRunning()
+        }
+    }
+
+    private func observeSessionNotifications() {
+        let center = NotificationCenter.default
+        let names = [
+            AVCaptureSession.wasInterruptedNotification,
+            AVCaptureSession.interruptionEndedNotification,
+            AVCaptureSession.runtimeErrorNotification,
+        ]
+        sessionObservers = names.map { name in
+            center.addObserver(forName: name, object: session, queue: nil) { [weak self] notification in
+                self?.handleSessionNotification(notification)
+            }
+        }
+    }
+
+    private func handleSessionNotification(_ notification: Notification) {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            switch notification.name {
+            case AVCaptureSession.wasInterruptedNotification:
+                self.isInterrupted = true
+            case AVCaptureSession.interruptionEndedNotification:
+                self.isInterrupted = false
+                self.applyRunning()
+            case AVCaptureSession.runtimeErrorNotification:
+                self.applyRunning()
+            default:
+                break
+            }
+        }
     }
 
     nonisolated func metadataOutput(
@@ -822,10 +891,18 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
 
     private func applyRunning() {
         guard isConfigured else { return }
-        if wantsRunning {
-            if !session.isRunning { session.startRunning() }
+        let interrupted = isInterrupted || session.isInterrupted
+        if BarcodeSessionRecovery.shouldRestart(
+            wantsRunning: wantsRunning,
+            isOnScreen: isOnScreen,
+            isRunning: session.isRunning,
+            isInterrupted: interrupted
+        ) {
+            session.startRunning()
             applyTorch()
-        } else if session.isRunning {
+        } else if wantsRunning, session.isRunning {
+            applyTorch()
+        } else if !wantsRunning, session.isRunning {
             session.stopRunning()
         }
     }
