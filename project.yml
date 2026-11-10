@@ -11,6 +11,8 @@ targets:
       - path: Pour
         excludes:
           - Info.plist
+      - path: Pour.storekit
+        buildPhase: resources
     info:
       path: Pour/Info.plist
       properties:
@@ -56,8 +58,12 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: PourTests
+      - path: Pour.storekit
+        buildPhase: resources
     dependencies:
       - target: Pour
+      - sdk: StoreKit.framework
+      - sdk: StoreKitTest.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.devin.pour.tests
@@ -76,6 +82,7 @@ schemes:
         - PourTests
     run:
       config: Debug
+      storeKitConfiguration: Pour.storekit
     profile:
       config: Release
     analyze:

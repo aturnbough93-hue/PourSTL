@@ -104,49 +104,216 @@ struct BarcodeScannerPlaceholderView: View {
 }
 
 struct ProUpsellView: View {
+    @Environment(ProEntitlementStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-
-    private let features: [(String, String)] = [
-        ("sparkles", "AI Bartender Assistant — substitutions and suggestions"),
-        ("video", "AI video generation for technique demos"),
-        ("square.stack.3d.up", "Bottle-level tracking, costing and export"),
-        ("person.2", "Shared inventory and venue teams"),
-        ("icloud", "CloudKit sync across devices"),
-    ]
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Image(systemName: "crown")
-                    .font(.system(size: 56, weight: .regular))
-                    .foregroundStyle(PourColor.gold)
-                    .accessibilityHidden(true)
-                Text("Pour Pro")
-                    .font(.pourTitle)
-                    .foregroundStyle(PourColor.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-                VStack(alignment: .leading, spacing: 14) {
-                    ForEach(features, id: \.0) { symbol, text in
-                        Label(text, systemImage: symbol)
-                            .font(.subheadline)
-                            .foregroundStyle(PourColor.textSecondary)
-                    }
+            ScrollView {
+                VStack(spacing: 24) {
+                    header
+                    featureList
+                    purchaseSection
+                    statusMessages
+                    legalLinks
+                    Button("Not now", action: { dismiss() })
+                        .buttonStyle(PourSecondaryButtonStyle())
+                        .accessibilityLabel("Not now")
+                        .accessibilityAddTraits(.isButton)
                 }
-                Text("These features are planned. Everything available today is free and works offline.")
-                    .font(.caption)
-                    .foregroundStyle(PourColor.textTertiary)
-                    .multilineTextAlignment(.center)
-                Button("Maybe later") { dismiss() }
-                    .buttonStyle(PourPrimaryButtonStyle())
-                    .accessibilityLabel("Maybe later")
-                    .accessibilityAddTraits(.isButton)
+                .padding(32)
+                .frame(maxWidth: .infinity)
             }
-            .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(PourColor.background)
             .navigationTitle("Pour Pro")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .accessibilityLabel("Done")
+                        .accessibilityAddTraits(.isButton)
+                }
+            }
+            .task { await store.loadProducts() }
+            .onChange(of: store.purchaseStatus.announcement) { _, message in
+                announce(message)
+            }
+            .onChange(of: store.restoreStatus.announcement) { _, message in
+                announce(message)
+            }
         }
+    }
+
+    private var header: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "crown")
+                .font(.system(size: 56, weight: .regular))
+                .foregroundStyle(PourColor.gold)
+                .accessibilityHidden(true)
+            Text("Pour Pro")
+                .font(.pourTitle)
+                .foregroundStyle(PourColor.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            Text("A subscription is optional. Everything available today is free and works offline.")
+                .font(.body)
+                .foregroundStyle(PourColor.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var featureList: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(ProGate.plannedFeatures) { feature in
+                Label {
+                    Text(feature.text)
+                } icon: {
+                    Image(systemName: feature.symbol)
+                        .accessibilityHidden(true)
+                }
+                .font(.subheadline)
+                .foregroundStyle(PourColor.textSecondary)
+                .accessibilityLabel(feature.text)
+            }
+            Text("These features are planned. Everything available today is free and works offline.")
+                .font(.caption)
+                .foregroundStyle(PourColor.textTertiary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var purchaseSection: some View {
+        VStack(spacing: 12) {
+            if store.isPro {
+                Label(ProStoreCopy.proActive, systemImage: "checkmark.circle.fill")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(PourColor.canMake)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .accessibilityLabel(ProStoreCopy.proActive)
+                Button("Manage subscription") {
+                    Task { await store.manageSubscriptions() }
+                }
+                .buttonStyle(PourSecondaryButtonStyle())
+                .accessibilityLabel("Manage subscription")
+                .accessibilityAddTraits(.isButton)
+            } else if store.productsState == .loaded {
+                ForEach(store.offers) { offer in
+                    Button {
+                        Task { await store.purchase(productID: offer.id) }
+                    } label: {
+                        Text(offer.title)
+                            .multilineTextAlignment(.center)
+                    }
+                    .buttonStyle(PourPrimaryButtonStyle())
+                    .disabled(controlsDisabled)
+                    .opacity(controlsDisabled ? 0.6 : 1)
+                    .accessibilityLabel(offer.title)
+                    .accessibilityHint("Starts an App Store subscription. Today’s features stay free.")
+                    .accessibilityAddTraits(.isButton)
+                }
+            } else if store.productsState == .unavailable {
+                Text("Subscriptions aren’t available right now. Pour still works offline. Try again when you can reach the App Store.")
+                    .font(.body)
+                    .foregroundStyle(PourColor.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityLabel("Subscriptions aren’t available right now. Pour still works offline.")
+                Button("Try again") {
+                    Task { await store.loadProducts() }
+                }
+                .buttonStyle(PourPrimaryButtonStyle())
+                .disabled(controlsDisabled)
+                .accessibilityLabel("Try again")
+                .accessibilityAddTraits(.isButton)
+            } else {
+                ProgressView("Loading subscriptions")
+                    .tint(PourColor.accent)
+                    .foregroundStyle(PourColor.textSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .accessibilityLabel("Loading subscriptions")
+            }
+
+            Button {
+                Task { await store.restore() }
+            } label: {
+                if store.restoreStatus == .inProgress {
+                    ProgressView()
+                        .tint(PourColor.accent)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                } else {
+                    Text("Restore purchases")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+            }
+            .font(.body.weight(.semibold))
+            .foregroundStyle(PourColor.accent)
+            .disabled(controlsDisabled)
+            .opacity(controlsDisabled ? 0.6 : 1)
+            .accessibilityLabel(store.restoreStatus == .inProgress ? "Restoring purchases" : "Restore purchases")
+            .accessibilityAddTraits(.isButton)
+        }
+    }
+
+    @ViewBuilder
+    private var statusMessages: some View {
+        VStack(spacing: 8) {
+            if let message = store.purchaseStatus.message {
+                statusText(message, isFailure: store.purchaseStatus.isFailure)
+            }
+            if let message = store.restoreStatus.message {
+                statusText(message, isFailure: store.restoreStatus.isFailure)
+            }
+            if let notice = store.notice {
+                statusText(notice, isFailure: true)
+            }
+        }
+    }
+
+    private func statusText(_ message: String, isFailure: Bool) -> some View {
+        Text(message)
+            .font(.subheadline)
+            .foregroundStyle(isFailure ? PourColor.destructive : PourColor.textSecondary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel(message)
+    }
+
+    private var legalLinks: some View {
+        VStack(spacing: 8) {
+            Text("Payment is processed by the App Store. A subscription renews until you cancel it there.")
+                .font(.caption)
+                .foregroundStyle(PourColor.textTertiary)
+                .multilineTextAlignment(.center)
+            Link(destination: ProProductID.privacyPolicyURL) {
+                Text("Privacy")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(minHeight: 44)
+            }
+            .accessibilityLabel("Privacy")
+        }
+    }
+
+    private var controlsDisabled: Bool {
+        store.purchaseStatus == .inProgress || store.restoreStatus == .inProgress
+    }
+
+    private func announce(_ message: String?) {
+        guard let message else { return }
+        AccessibilityNotification.Announcement(message).post()
+    }
+}
+
+private struct PourSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(PourColor.accent)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(
+                PourColor.surface.opacity(configuration.isPressed ? 0.7 : 1),
+                in: RoundedRectangle(cornerRadius: 14)
+            )
     }
 }
 

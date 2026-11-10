@@ -87,6 +87,7 @@ struct PourApp: App {
     @State private var store = PersistentStoreController()
     @State private var settings = AppSettings()
     @State private var router = DeepLinkRouter()
+    @State private var pro = ProEntitlementStore()
 
     var body: some Scene {
         WindowGroup {
@@ -104,9 +105,15 @@ struct PourApp: App {
             }
             .environment(settings)
             .environment(router)
+            .environment(pro)
             .preferredColorScheme(settings.appearance.colorScheme)
             .tint(PourColor.accent)
             .task { store.openIfNeeded() }
+            .task {
+                // XCTest hosts this app. Tests open the StoreKit session themselves.
+                guard !ProRuntime.isUnitTestHost else { return }
+                await pro.start()
+            }
             .onOpenURL { router.handle($0) }
         }
     }
