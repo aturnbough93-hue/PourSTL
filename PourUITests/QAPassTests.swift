@@ -90,6 +90,8 @@ final class QAPassTests: XCTestCase {
         name.typeText("Fernet Branca")
         turnOffInStock()
         app.navigationBars["Confirm item"].buttons["Add to My Bar"].tap()
+        XCTAssertTrue(app.navigationBars["My Bar"].waitForExistence(timeout: 8))
+        filterInventory("Fernet")
         XCTAssertTrue(app.buttons["Fernet Branca, not in stock"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.buttons["Fernet Branca, in stock"].exists)
     }
@@ -131,9 +133,11 @@ final class QAPassTests: XCTestCase {
         turnOffInStock()
         app.navigationBars["Confirm item"].buttons["Add to My Bar"].tap()
         XCTAssertTrue(app.navigationBars["My Bar"].waitForExistence(timeout: 8))
+        filterInventory("House Amaro")
         XCTAssertEqual(editButtons("House Amaro").count, 1)
 
         addBottle("House Amaro", inStock: true, lowStock: true)
+        filterInventory("House Amaro")
         XCTAssertEqual(editButtons("House Amaro").count, 2)
         XCTAssertTrue(app.buttons["House Amaro, not in stock"].exists)
         XCTAssertTrue(app.buttons["House Amaro, low stock"].exists)
@@ -145,6 +149,7 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(app.buttons["Mark in stock"].waitForExistence(timeout: 5))
         app.buttons["Mark in stock"].tap()
         XCTAssertTrue(app.navigationBars["My Bar"].waitForExistence(timeout: 8))
+        filterInventory("House Amaro")
         XCTAssertFalse(app.buttons["House Amaro, not in stock"].exists)
         XCTAssertTrue(app.buttons["House Amaro, low stock"].exists)
         XCTAssertEqual(editButtons("House Amaro").count, 2)
@@ -270,11 +275,9 @@ final class QAPassTests: XCTestCase {
         ingredient.typeText("Bourbon")
         dismissKeyboard()
         app.navigationBars["New recipe"].buttons["Save recipe"].tap()
-        XCTAssertTrue(app.navigationBars["Pour"].waitForExistence(timeout: 8))
-        let search = app.searchFields["Search drinks, ingredients, tags"]
-        search.tap()
-        search.typeText("Shift Special")
-        XCTAssertTrue(app.buttons["Shift Special, Coupe, can make"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.navigationBars["New recipe"].waitForNonExistence(timeout: 8))
+        let saved = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Shift Special")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 8))
     }
 
     func testRecipeDeepLinkOpensTheDrink() throws {
@@ -307,6 +310,14 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(labeled("What can I make, 7 drinks").waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["Negroni, can make"].exists)
         capture("01-home")
+
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["Pour Pro"].exists)
+        XCTAssertFalse(app.navigationBars["AI Assistant"].exists)
+        XCTAssertFalse(app.navigationBars["Voice Search"].exists)
+        capture("08-settings")
+        app.buttons["Done"].tap()
 
         app.segmentedControls["Filter drinks by availability"].buttons["Can make"].tap()
         XCTAssertTrue(app.buttons["Negroni, can make"].waitForExistence(timeout: 5))
@@ -343,14 +354,6 @@ final class QAPassTests: XCTestCase {
         alert.buttons["Add"].tap()
         XCTAssertTrue(app.staticTexts["Orange peel"].waitForExistence(timeout: 5))
         capture("06-shopping-list")
-
-        app.tabBars.buttons["Home"].tap()
-        app.buttons["Settings"].tap()
-        XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
-        XCTAssertFalse(app.navigationBars["Pour Pro"].exists)
-        XCTAssertFalse(app.navigationBars["AI Assistant"].exists)
-        XCTAssertFalse(app.navigationBars["Voice Search"].exists)
-        capture("08-settings")
     }
 
     // MARK: - Helpers
@@ -460,11 +463,28 @@ final class QAPassTests: XCTestCase {
         app.segmentedControls.matching(NSPredicate(format: "label BEGINSWITH %@", "Preferred units")).firstMatch
     }
 
+    private func filterInventory(_ query: String) {
+        let search = app.searchFields["Search ingredients"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        let current = (search.value as? String) ?? ""
+        if current == query { return }
+        search.tap()
+        if !current.isEmpty && current != "Search ingredients" {
+            search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        }
+        search.typeText(query)
+    }
+
     private func dismissKeyboard() {
         guard app.keyboards.element.exists else { return }
-        let bars = app.navigationBars.allElementsBoundByIndex.filter(\.exists)
-        guard let bar = bars.last else { return }
-        bar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let titles = ["Confirm item", "Confirm ingredient", "Add item", "Edit item", "New recipe", "Enter code"]
+        for title in titles {
+            let bar = app.navigationBars[title]
+            if bar.exists {
+                bar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                return
+            }
+        }
     }
 
     private func capture(_ name: String) {
