@@ -385,6 +385,11 @@ final class QAPassTests: XCTestCase {
     }
 
     private func openScanner() {
+        if !app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 2),
+           app.buttons["Cancel"].exists {
+            app.buttons["Cancel"].tap()
+        }
+        XCTAssertTrue(app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 5))
         app.buttons["Scan barcode to add ingredient"].tap()
         XCTAssertTrue(app.navigationBars["Scan"].waitForExistence(timeout: 8))
     }
