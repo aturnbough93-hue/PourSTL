@@ -72,7 +72,16 @@ enum BarcodeSessionRecovery {
 struct BarcodeInterruptionLatch: Equatable {
     private(set) var isInterrupted = false
 
-    mutating func noteBegan() { isInterrupted = true }
+    /// Only a session that is still running, with no stop already requested, can become interrupted.
+    /// A late `wasInterrupted` after `stopSession` clears the latch instead of re-arming it.
+    mutating func noteBegan(sessionIsRunning: Bool, stopPending: Bool) {
+        guard sessionIsRunning, !stopPending else {
+            isInterrupted = false
+            return
+        }
+        isInterrupted = true
+    }
+
     mutating func noteEnded() { isInterrupted = false }
     mutating func noteStopped() { isInterrupted = false }
 
