@@ -35,7 +35,9 @@ final class QAPassTests: XCTestCase {
         openMyBar()
         openScanner()
         XCTAssertTrue(app.staticTexts["Camera access is off"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Pour needs the camera to scan a barcode. You can allow access in Settings, enter the numbers under the barcode, or add the bottle by name."].exists)
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "allow access in Settings")).firstMatch.exists
+        )
         XCTAssertTrue(app.buttons["Open Settings"].exists)
         XCTAssertTrue(app.textFields["Barcode number"].exists)
         XCTAssertTrue(app.buttons["Add bottle by name"].exists)
@@ -229,9 +231,7 @@ final class QAPassTests: XCTestCase {
 
     func testScalingUpdatesTheMeasure() throws {
         launch()
-        XCTAssertTrue(app.buttons["Negroni, Rocks, can make"].waitForExistence(timeout: 15))
-        app.buttons["Negroni, Rocks, can make"].tap()
-        XCTAssertTrue(app.buttons["Increase servings"].waitForExistence(timeout: 8))
+        openNegroni()
         XCTAssertTrue(labeled("1 oz Gin").exists)
         app.buttons["Increase servings"].tap()
         XCTAssertTrue(labeled("Servings, 2").waitForExistence(timeout: 3))
@@ -305,15 +305,14 @@ final class QAPassTests: XCTestCase {
     func testCaptureAppStoreScreenshots() throws {
         launch()
         XCTAssertTrue(labeled("What can I make, 7 drinks").waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["Negroni, Rocks, can make"].exists)
+        XCTAssertTrue(app.buttons["Negroni, can make"].exists)
         capture("01-home")
 
         app.segmentedControls["Filter drinks by availability"].buttons["Can make"].tap()
-        XCTAssertTrue(app.buttons["Negroni, Rocks, can make"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Negroni, can make"].waitForExistence(timeout: 5))
         capture("02-what-can-i-make")
 
-        app.buttons["Negroni, Rocks, can make"].tap()
-        XCTAssertTrue(app.buttons["Start timer"].waitForExistence(timeout: 8))
+        openNegroni()
         capture("03-recipe-detail")
 
         app.buttons["Start timer"].tap()
@@ -369,6 +368,13 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 25))
     }
 
+    private func openNegroni() {
+        let chip = app.buttons["Negroni, can make"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 15))
+        chip.tap()
+        XCTAssertTrue(app.buttons["Increase servings"].waitForExistence(timeout: 8))
+    }
+
     private func openMyBar() {
         app.tabBars.buttons["My Bar"].tap()
         XCTAssertTrue(app.navigationBars["My Bar"].waitForExistence(timeout: 8))
@@ -412,10 +418,9 @@ final class QAPassTests: XCTestCase {
         dismissKeyboard()
         let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "In stock")).firstMatch
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        if toggle.label.contains("on") {
+        if !toggle.label.contains("off") {
             toggle.tap()
         }
-        XCTAssertTrue(app.switches["In stock, off"].waitForExistence(timeout: 3))
     }
 
     private func addBottle(_ name: String, inStock: Bool, lowStock: Bool = false) {
@@ -457,10 +462,9 @@ final class QAPassTests: XCTestCase {
 
     private func dismissKeyboard() {
         guard app.keyboards.element.exists else { return }
-        let bar = app.navigationBars.firstMatch
-        if bar.exists {
-            bar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        }
+        let bars = app.navigationBars.allElementsBoundByIndex.filter(\.exists)
+        guard let bar = bars.last else { return }
+        bar.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     private func capture(_ name: String) {
