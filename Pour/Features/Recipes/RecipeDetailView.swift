@@ -140,14 +140,14 @@ struct RecipeDetailView: View {
                     .foregroundStyle(PourColor.textSecondary)
                 HStack(spacing: 4) {
                     Button {
-                        if servings > 1 { servings -= 1 }
+                        if servings > RecipeScaling.minimumServings { servings -= 1 }
                         Haptics.selection()
                     } label: {
                         Image(systemName: "minus.circle.fill")
                             .font(.title2)
-                            .foregroundStyle(servings > 1 ? PourColor.accent : PourColor.textTertiary)
+                            .foregroundStyle(servings > RecipeScaling.minimumServings ? PourColor.accent : PourColor.textTertiary)
                     }
-                    .disabled(servings <= 1)
+                    .disabled(servings <= RecipeScaling.minimumServings)
                     .accessibilityLabel("Decrease servings")
                     .accessibilityAddTraits(.isButton)
 
@@ -159,14 +159,14 @@ struct RecipeDetailView: View {
                         .accessibilityAddTraits(.updatesFrequently)
 
                     Button {
-                        if servings < 24 { servings += 1 }
+                        if servings < RecipeScaling.maximumServings { servings += 1 }
                         Haptics.selection()
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundStyle(servings < 24 ? PourColor.accent : PourColor.textTertiary)
+                            .foregroundStyle(servings < RecipeScaling.maximumServings ? PourColor.accent : PourColor.textTertiary)
                     }
-                    .disabled(servings >= 24)
+                    .disabled(servings >= RecipeScaling.maximumServings)
                     .accessibilityLabel("Increase servings")
                     .accessibilityAddTraits(.isButton)
                 }

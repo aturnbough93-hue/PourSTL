@@ -40,7 +40,7 @@ struct SettingsView: View {
                     .accessibilityLabel("Preferred units, \(settings.unit.rawValue)")
                 }
 
-                Section("Pro") {
+                Section("Assistant") {
                     Button {
                         showAssistant = true
                     } label: {
@@ -48,7 +48,11 @@ struct SettingsView: View {
                             .foregroundStyle(PourColor.textPrimary)
                     }
                     .accessibilityLabel("AI Bartender Assistant")
+                    .accessibilityHint("Answers from recipes and My Bar on this device")
                     .accessibilityAddTraits(.isButton)
+                }
+
+                Section("Pro") {
                     Button {
                         showVenue = true
                     } label: {
@@ -107,7 +111,7 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $showVenue) { VenueSheet() }
-            .sheet(isPresented: $showAssistant) { AssistantPlaceholderView() }
+            .sheet(isPresented: $showAssistant) { AssistantSheet() }
             .sheet(isPresented: $showPro) { ProUpsellView() }
             .confirmationDialog("Replay onboarding on next launch?", isPresented: $showResetConfirm) {
                 Button("Replay onboarding") {

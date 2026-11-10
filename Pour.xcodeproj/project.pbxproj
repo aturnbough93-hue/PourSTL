@@ -10,6 +10,9 @@
 		B0E8A3C29F674F41A6395A01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0E8A3C29F674F41A6395A02 /* Assets.xcassets */; };
 		A0E8A3C29F674F41A6395A01 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A0E8A3C29F674F41A6395A02 /* PrivacyInfo.xcprivacy */; };
 		026B20F0A9904D234BD1B162 /* RecipeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 459C0A911778E79D3A0281AA /* RecipeDetailView.swift */; };
+		AA5100000000000000000002 /* AssistantSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5100000000000000000001 /* AssistantSheet.swift */; };
+		AA5100000000000000000004 /* BartenderAssistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5100000000000000000003 /* BartenderAssistant.swift */; };
+		AA5100000000000000000006 /* BartenderAssistantTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5100000000000000000005 /* BartenderAssistantTests.swift */; };
 		16035B5B3DD7D312392BF6FE /* BarUnits.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4463C986813CFB230D0C59AB /* BarUnits.swift */; };
 		1996EDC5C405EE951EE9DC56 /* ShoppingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE0821C4D342493CDB8A3C2 /* ShoppingListView.swift */; };
 		1AC479873B2220C72D4D233F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B348E4708883218604F81ABF /* SettingsView.swift */; };
@@ -47,6 +50,9 @@
 		B0E8A3C29F674F41A6395A02 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A0E8A3C29F674F41A6395A02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		068F64BC31785A70C7CF0F9B /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		AA5100000000000000000001 /* AssistantSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantSheet.swift; sourceTree = "<group>"; };
+		AA5100000000000000000003 /* BartenderAssistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BartenderAssistant.swift; sourceTree = "<group>"; };
+		AA5100000000000000000005 /* BartenderAssistantTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BartenderAssistantTests.swift; sourceTree = "<group>"; };
 		11C6FC535BF978F2166A45DF /* IngredientNormalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngredientNormalizationTests.swift; sourceTree = "<group>"; };
 		1ADC90E98244097B4FC8EF61 /* TimerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerSheet.swift; sourceTree = "<group>"; };
 		22E478D9872EC71EF4CFF205 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -73,6 +79,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		AA5100000000000000000007 /* Assistant */ = {
+			isa = PBXGroup;
+			children = (
+				AA5100000000000000000001 /* AssistantSheet.swift */,
+			);
+			path = Assistant;
+			sourceTree = "<group>";
+		};
 		06027C6624C639BC64F79222 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -165,6 +179,7 @@
 		A18EE7721BFEE2FDDBB0AD3A /* PourTests */ = {
 			isa = PBXGroup;
 			children = (
+				AA5100000000000000000005 /* BartenderAssistantTests.swift */,
 				11C6FC535BF978F2166A45DF /* IngredientNormalizationTests.swift */,
 				319E4AEC18E52C62FED31363 /* RecipeEngineTests.swift */,
 				52965890A0614416836843AB /* UnitConversionTests.swift */,
@@ -175,6 +190,7 @@
 		C120242DAB9ECA1BFEECD95A /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				AA5100000000000000000007 /* Assistant */,
 				8D3FB6A1E88684F83A5CC839 /* Home */,
 				995C750632BCAE54F5A361BC /* MyBar */,
 				1DBF73C531C76730DB67BBF4 /* Onboarding */,
@@ -209,6 +225,7 @@
 			children = (
 				068F64BC31785A70C7CF0F9B /* AppSettings.swift */,
 				4463C986813CFB230D0C59AB /* BarUnits.swift */,
+				AA5100000000000000000003 /* BartenderAssistant.swift */,
 				D06ECB9C1E4C6AEB5393FEC4 /* Haptics.swift */,
 				910AF77E26E2DB5116F30A20 /* IngredientNormalizer.swift */,
 				70D0815DB3CE18AB1EEAC2DB /* RecipeEngine.swift */,
@@ -324,7 +341,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				994FFE9301D921FA5E469A7E /* AppSettings.swift in Sources */,
+				AA5100000000000000000002 /* AssistantSheet.swift in Sources */,
 				16035B5B3DD7D312392BF6FE /* BarUnits.swift in Sources */,
+				AA5100000000000000000004 /* BartenderAssistant.swift in Sources */,
 				607E7F062FE98FEE9E586F19 /* ContentView.swift in Sources */,
 				99A692FB585BBFDF373F0A2B /* Haptics.swift in Sources */,
 				EAE1571AD1B590E8E78532F0 /* HomeView.swift in Sources */,
@@ -349,6 +368,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA5100000000000000000006 /* BartenderAssistantTests.swift in Sources */,
 				A92497A8EA6D57CFF1E9835E /* IngredientNormalizationTests.swift in Sources */,
 				F90DAEAF9C20A5280CE40BE7 /* RecipeEngineTests.swift in Sources */,
 				2A513549294875396BD6C0CC /* UnitConversionTests.swift in Sources */,
