@@ -225,6 +225,10 @@ struct BarcodeScannerView: View {
     }
 
     private func prepareCamera() async {
+        if let simulated = LaunchConfiguration.simulatedReadiness() {
+            readiness = simulated
+            return
+        }
         let hardware = AVCaptureDevice.default(for: .video) != nil
         let status = CameraAuthorizationState(AVCaptureDevice.authorizationStatus(for: .video))
         var decision = BarcodeCameraPolicy.readiness(hardwarePresent: hardware, authorization: status)

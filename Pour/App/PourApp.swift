@@ -77,16 +77,29 @@ final class PersistentStoreController {
             ShoppingListItem.self,
             Venue.self,
         ])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: LaunchConfiguration.usesEphemeralStore
+        )
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 }
 
 @main
 struct PourApp: App {
-    @State private var store = PersistentStoreController()
-    @State private var settings = AppSettings()
-    @State private var router = DeepLinkRouter()
+    @State private var store: PersistentStoreController
+    @State private var settings: AppSettings
+    @State private var router: DeepLinkRouter
+
+    init() {
+        let settings = AppSettings()
+        if LaunchConfiguration.isUITesting {
+            settings.hasCompletedOnboarding = true
+        }
+        _store = State(initialValue: PersistentStoreController())
+        _settings = State(initialValue: settings)
+        _router = State(initialValue: DeepLinkRouter())
+    }
 
     var body: some Scene {
         WindowGroup {
