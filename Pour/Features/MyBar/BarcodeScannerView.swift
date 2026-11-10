@@ -126,6 +126,10 @@ struct BarcodeScannerView: View {
                 torchAvailable = hasTorch
             }
             .accessibilityHidden(true)
+            .onChange(of: scanMessage) { _, message in
+                guard let message, !message.isEmpty else { return }
+                AccessibilityNotification.Announcement(message).post()
+            }
 
             CameraFrameOverlay()
                 .allowsHitTesting(false)
@@ -554,7 +558,8 @@ private struct BarcodeConfirmSheet: View {
                     Text(BarcodeFormatting.grouped(draft.barcode))
                         .font(.body.monospacedDigit())
                         .foregroundStyle(PourColor.textPrimary)
-                        .accessibilityLabel("Barcode \(draft.barcode)")
+                        .accessibilityLabel("Barcode \(BarcodeFormatting.spokenDigits(draft.barcode))")
+                        .speechSpellsOutCharacters()
                 }
             }
             .scrollContentBackground(.hidden)
@@ -622,7 +627,8 @@ struct BarcodeExistingSheet: View {
                 Text(BarcodeFormatting.grouped(match.scannedCode))
                     .font(.body.monospacedDigit())
                     .foregroundStyle(PourColor.textTertiary)
-                    .accessibilityLabel("Barcode \(match.scannedCode)")
+                    .accessibilityLabel("Barcode \(BarcodeFormatting.spokenDigits(match.scannedCode))")
+                    .speechSpellsOutCharacters()
                 Button(action.buttonTitle) {
                     if action == .none {
                         dismiss()
@@ -725,7 +731,7 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
     private var isConfigured = false
     private var wantsRunning = false
     private var isOnScreen = false
-    private var isInterrupted = false
+    private var interruption = BarcodeInterruptionLatch()
     private var desiredTorch = false
     private var device: AVCaptureDevice?
     private var didReportUnavailable = false
@@ -759,8 +765,7 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
         super.viewDidDisappear(animated)
         sessionQueue.async { [self] in
             self.isOnScreen = false
-            guard self.isConfigured, self.session.isRunning else { return }
-            self.session.stopRunning()
+            self.stopSession()
         }
     }
 
@@ -797,9 +802,7 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
     func stop() {
         sessionQueue.async { [self] in
             self.wantsRunning = false
-            self.isInterrupted = false
-            guard self.isConfigured, self.session.isRunning else { return }
-            self.session.stopRunning()
+            self.stopSession()
         }
     }
 
@@ -822,9 +825,9 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
             guard let self else { return }
             switch notification.name {
             case AVCaptureSession.wasInterruptedNotification:
-                self.isInterrupted = true
+                self.interruption.noteBegan()
             case AVCaptureSession.interruptionEndedNotification:
-                self.isInterrupted = false
+                self.interruption.noteEnded()
                 self.applyRunning()
             case AVCaptureSession.runtimeErrorNotification:
                 self.applyRunning()
@@ -875,7 +878,7 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
         output.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
         session.commitConfiguration()
         let wanted: [AVMetadataObject.ObjectType] = [
-            .ean13, .ean8, .upce, .code128, .code39, .itf14, .interleaved2of5, .qr,
+            .ean13, .ean8, .upce, .code128, .itf14, .interleaved2of5, .qr,
         ]
         let supported = wanted.filter { output.availableMetadataObjectTypes.contains($0) }
         if !supported.isEmpty {
@@ -891,20 +894,32 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
 
     private func applyRunning() {
         guard isConfigured else { return }
-        let interrupted = isInterrupted || session.isInterrupted
+        if !wantsRunning {
+            stopSession()
+            return
+        }
+        let blocked = interruption.blocksRestart(
+            sessionIsInterrupted: session.isInterrupted,
+            sessionIsRunning: session.isRunning
+        )
         if BarcodeSessionRecovery.shouldRestart(
             wantsRunning: wantsRunning,
             isOnScreen: isOnScreen,
             isRunning: session.isRunning,
-            isInterrupted: interrupted
+            isInterrupted: blocked
         ) {
             session.startRunning()
             applyTorch()
-        } else if wantsRunning, session.isRunning {
+        } else if session.isRunning {
             applyTorch()
-        } else if !wantsRunning, session.isRunning {
-            session.stopRunning()
         }
+    }
+
+    /// Stopping ends the running session, so a missed interruptionEnded cannot stick.
+    private func stopSession() {
+        interruption.noteStopped()
+        guard isConfigured, session.isRunning else { return }
+        session.stopRunning()
     }
 
     private func applyTorch() {

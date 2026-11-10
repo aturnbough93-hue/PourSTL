@@ -67,6 +67,23 @@ enum BarcodeSessionRecovery {
     }
 }
 
+/// Remembers a capture interruption. Stopping the session clears it, because
+/// backgrounding can stop the session without delivering interruptionEnded.
+struct BarcodeInterruptionLatch: Equatable {
+    private(set) var isInterrupted = false
+
+    mutating func noteBegan() { isInterrupted = true }
+    mutating func noteEnded() { isInterrupted = false }
+    mutating func noteStopped() { isInterrupted = false }
+
+    /// A stopped session must not stay blocked by an interruption that already ended
+    /// or was swallowed when the app left the foreground.
+    func blocksRestart(sessionIsInterrupted: Bool, sessionIsRunning: Bool) -> Bool {
+        if !sessionIsRunning && !isInterrupted { return false }
+        return isInterrupted || sessionIsInterrupted
+    }
+}
+
 enum BarcodeSymbology: String, Equatable {
     case ean13
     case ean8
@@ -320,6 +337,11 @@ enum BarcodeFormatting {
         guard upc.count == 12 else { return digits }
         let chars = Array(upc)
         return "\(chars[0]) \(String(chars[1...5])) \(String(chars[6...10])) \(chars[11])"
+    }
+
+    /// Spaces digits so VoiceOver does not read a barcode as one large number.
+    static func spokenDigits(_ code: String) -> String {
+        String(code.filter(\.isNumber)).map(String.init).joined(separator: " ")
     }
 }
 
@@ -660,12 +682,22 @@ struct BarcodeSymbol: Equatable {
 
 enum BarcodeCaptureSelection {
     /// A product code wins over a marketing QR listed first in the same frame.
+    /// Interleaved 2 of 5 is only a product barcode at ITF-14 length.
     static func preferred(_ symbols: [BarcodeSymbol]) -> BarcodeSymbol? {
-        let visible = symbols.filter { !$0.payload.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let visible = symbols.filter(accepts)
         if let product = visible.first(where: { BarcodeParser.parse(payload: $0.payload, metadataType: $0.type) != nil }) {
             return product
         }
         return visible.first
+    }
+
+    static func accepts(_ symbol: BarcodeSymbol) -> Bool {
+        let trimmed = symbol.payload.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        if symbol.type == "org.iso.Interleaved2of5" || symbol.type == "org.gs1.ITF14" {
+            return trimmed.filter(\.isNumber).count == 14
+        }
+        return true
     }
 }
 

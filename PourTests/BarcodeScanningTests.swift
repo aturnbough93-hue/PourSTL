@@ -71,6 +71,11 @@ final class BarcodeScanningTests: XCTestCase {
         XCTAssertEqual(BarcodeFormatting.grouped("0075496000407"), "0 75496 00040 7")
     }
 
+    func testSpokenBarcodeDigitsAreSeparated() {
+        XCTAssertEqual(BarcodeFormatting.spokenDigits("0075496000407"), "0 0 7 5 4 9 6 0 0 0 4 0 7")
+        XCTAssertEqual(BarcodeFormatting.spokenDigits("0 75496 00040 7"), "0 7 5 4 9 6 0 0 0 4 0 7")
+    }
+
     // MARK: - Catalog and confirm
 
     func testEveryCatalogEntryIsAValidKnownIngredient() {
@@ -655,6 +660,19 @@ final class BarcodeScanningTests: XCTestCase {
         XCTAssertEqual(chosenUPC.normalizedCode, "0010000000009")
     }
 
+    func testShortInterleavedReadsAreIgnored() {
+        let shortITF = BarcodeSymbol(payload: "55123457", type: "org.iso.Interleaved2of5")
+        XCTAssertFalse(BarcodeCaptureSelection.accepts(shortITF))
+        let itf14 = BarcodeSymbol(payload: "10075496000404", type: "org.gs1.ITF14")
+        XCTAssertTrue(BarcodeCaptureSelection.accepts(itf14))
+        let chosen = BarcodeCaptureSelection.preferred([
+            shortITF,
+            BarcodeSymbol(payload: "075496000407", type: "org.gs1.EAN-13"),
+        ])
+        XCTAssertEqual(chosen?.payload, "075496000407")
+        XCTAssertNil(BarcodeCaptureSelection.preferred([shortITF]))
+    }
+
     func testProductBarcodeBeatsALeadingMarketingQR() {
         let chosen = BarcodeCaptureSelection.preferred([
             BarcodeSymbol(payload: "https://brand.example/bottle", type: "org.iso.QRCode"),
@@ -671,6 +689,26 @@ final class BarcodeScanningTests: XCTestCase {
     }
 
     // MARK: - Camera availability
+
+    func testStoppingTheSessionClearsASwallowedInterruption() {
+        var latch = BarcodeInterruptionLatch()
+        latch.noteBegan()
+        XCTAssertTrue(latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false))
+        latch.noteStopped()
+        XCTAssertFalse(latch.isInterrupted)
+        XCTAssertFalse(latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false))
+        XCTAssertTrue(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true,
+                isOnScreen: true,
+                isRunning: false,
+                isInterrupted: latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false)
+            )
+        )
+        latch.noteBegan()
+        latch.noteEnded()
+        XCTAssertFalse(latch.blocksRestart(sessionIsInterrupted: false, sessionIsRunning: false))
+    }
 
     func testSessionRestartsOnlyWhenTheScannerIsVisibleAndStopped() {
         XCTAssertTrue(

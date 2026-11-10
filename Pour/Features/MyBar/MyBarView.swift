@@ -316,7 +316,8 @@ struct InventoryEditSheet: View {
                         Text(BarcodeFormatting.grouped(barcode))
                             .font(.body.monospacedDigit())
                             .foregroundStyle(PourColor.textPrimary)
-                            .accessibilityLabel("Barcode \(barcode)")
+                            .accessibilityLabel("Barcode \(BarcodeFormatting.spokenDigits(barcode))")
+                            .speechSpellsOutCharacters()
                     }
                 }
                 if !suggestedMissing.isEmpty && item == nil {
