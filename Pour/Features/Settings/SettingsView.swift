@@ -3,12 +3,23 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(ProEntitlementStore.self) private var pro
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var showVenue = false
     @State private var showAssistant = false
     @State private var showPro = false
     @State private var showResetConfirm = false
+
+    private var proStatus: String {
+        guard pro.hasResolvedEntitlements else { return "Checking" }
+        return pro.isPro ? "Active" : "Upgrade"
+    }
+
+    private var proAccessibilityLabel: String {
+        guard pro.hasResolvedEntitlements else { return "Pour Pro, checking subscription" }
+        return pro.isPro ? "Pour Pro, active" : "Pour Pro upgrade"
+    }
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -60,10 +71,16 @@ struct SettingsView: View {
                     Button {
                         showPro = true
                     } label: {
-                        Label("Pour Pro", systemImage: "crown")
-                            .foregroundStyle(PourColor.gold)
+                        HStack {
+                            Label("Pour Pro", systemImage: "crown")
+                                .foregroundStyle(PourColor.gold)
+                            Spacer()
+                            Text(proStatus)
+                                .font(.subheadline)
+                                .foregroundStyle(pro.isPro ? PourColor.canMake : PourColor.textSecondary)
+                        }
                     }
-                    .accessibilityLabel("Pour Pro upgrade")
+                    .accessibilityLabel(proAccessibilityLabel)
                     .accessibilityAddTraits(.isButton)
                 }
 

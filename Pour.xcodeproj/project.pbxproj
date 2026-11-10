@@ -31,6 +31,12 @@
 		F43E0E79038741F1C08D3D1F /* IngredientNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910AF77E26E2DB5116F30A20 /* IngredientNormalizer.swift */; };
 		F550993DED54D2D87E69B699 /* PourTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4F811EAC4D61EC3A448710D /* PourTheme.swift */; };
 		F90DAEAF9C20A5280CE40BE7 /* RecipeEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319E4AEC18E52C62FED31363 /* RecipeEngineTests.swift */; };
+		C0FFEE0000000000000000A2 /* Pour.storekit in Resources */ = {isa = PBXBuildFile; fileRef = C0FFEE0000000000000000A1 /* Pour.storekit */; };
+		C0FFEE0000000000000000A3 /* Pour.storekit in Resources */ = {isa = PBXBuildFile; fileRef = C0FFEE0000000000000000A1 /* Pour.storekit */; };
+		C0FFEE0000000000000000B2 /* ProProductID.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE0000000000000000B1 /* ProProductID.swift */; };
+		C0FFEE0000000000000000C2 /* ProEntitlement.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE0000000000000000C1 /* ProEntitlement.swift */; };
+		C0FFEE0000000000000000D2 /* ProEntitlementStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE0000000000000000D1 /* ProEntitlementStore.swift */; };
+		C0FFEE0000000000000000E2 /* ProEntitlementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE0000000000000000E1 /* ProEntitlementTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +76,11 @@
 		CCE0821C4D342493CDB8A3C2 /* ShoppingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListView.swift; sourceTree = "<group>"; };
 		D06ECB9C1E4C6AEB5393FEC4 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		DA4464E4775D9CE0ACC73DE8 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		C0FFEE0000000000000000A1 /* Pour.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Pour.storekit; sourceTree = "<group>"; };
+		C0FFEE0000000000000000B1 /* ProProductID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProProductID.swift; sourceTree = "<group>"; };
+		C0FFEE0000000000000000C1 /* ProEntitlement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProEntitlement.swift; sourceTree = "<group>"; };
+		C0FFEE0000000000000000D1 /* ProEntitlementStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProEntitlementStore.swift; sourceTree = "<group>"; };
+		C0FFEE0000000000000000E1 /* ProEntitlementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProEntitlementTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -150,6 +161,7 @@
 			children = (
 				2D43B43B187F87018C8FC7AD /* Pour */,
 				A18EE7721BFEE2FDDBB0AD3A /* PourTests */,
+				C0FFEE0000000000000000A1 /* Pour.storekit */,
 				898F0C3C6C9566051A50A6E4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -166,6 +178,7 @@
 			isa = PBXGroup;
 			children = (
 				11C6FC535BF978F2166A45DF /* IngredientNormalizationTests.swift */,
+				C0FFEE0000000000000000E1 /* ProEntitlementTests.swift */,
 				319E4AEC18E52C62FED31363 /* RecipeEngineTests.swift */,
 				52965890A0614416836843AB /* UnitConversionTests.swift */,
 			);
@@ -211,6 +224,9 @@
 				4463C986813CFB230D0C59AB /* BarUnits.swift */,
 				D06ECB9C1E4C6AEB5393FEC4 /* Haptics.swift */,
 				910AF77E26E2DB5116F30A20 /* IngredientNormalizer.swift */,
+				C0FFEE0000000000000000C1 /* ProEntitlement.swift */,
+				C0FFEE0000000000000000D1 /* ProEntitlementStore.swift */,
+				C0FFEE0000000000000000B1 /* ProProductID.swift */,
 				70D0815DB3CE18AB1EEAC2DB /* RecipeEngine.swift */,
 				C4218CC729DE94FC857757D4 /* SeedData.swift */,
 			);
@@ -242,6 +258,15 @@
 			files = (
 				A0E8A3C29F674F41A6395A01 /* PrivacyInfo.xcprivacy in Resources */,
 				B0E8A3C29F674F41A6395A01 /* Assets.xcassets in Resources */,
+				C0FFEE0000000000000000A2 /* Pour.storekit in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FFEE0000000000000000A4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0FFEE0000000000000000A3 /* Pour.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -271,6 +296,7 @@
 			buildConfigurationList = 8E78A8CAADD60AC58A1BB9D1 /* Build configuration list for PBXNativeTarget "PourTests" */;
 			buildPhases = (
 				8CD4D03E87AF1D4B296C6990 /* Sources */,
+				C0FFEE0000000000000000A4 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -330,6 +356,9 @@
 				EAE1571AD1B590E8E78532F0 /* HomeView.swift in Sources */,
 				F43E0E79038741F1C08D3D1F /* IngredientNormalizer.swift in Sources */,
 				78EE00B28B74B6ECA9206558 /* Models.swift in Sources */,
+				C0FFEE0000000000000000C2 /* ProEntitlement.swift in Sources */,
+				C0FFEE0000000000000000D2 /* ProEntitlementStore.swift in Sources */,
+				C0FFEE0000000000000000B2 /* ProProductID.swift in Sources */,
 				AB091A84FCECFB8ECB4D79F5 /* MyBarView.swift in Sources */,
 				DEAE92E7B417B58BDFC13151 /* OnboardingView.swift in Sources */,
 				A769438A4F44D27674A09C44 /* PourApp.swift in Sources */,
@@ -350,6 +379,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A92497A8EA6D57CFF1E9835E /* IngredientNormalizationTests.swift in Sources */,
+				C0FFEE0000000000000000E2 /* ProEntitlementTests.swift in Sources */,
 				F90DAEAF9C20A5280CE40BE7 /* RecipeEngineTests.swift in Sources */,
 				2A513549294875396BD6C0CC /* UnitConversionTests.swift in Sources */,
 			);

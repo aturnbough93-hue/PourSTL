@@ -66,17 +66,17 @@ archive, sign, or distribute the app.
 - Empty / error states throughout; everything works fully offline
 - XCTest coverage for unit conversion and ingredient normalization
 - `pour://` deep links (`pour://recipe?name=Negroni`, `pour://tab/bar`) as seams for future App Intents
+- Pour Pro upsell using StoreKit 2. The shared Pour scheme loads `Pour.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `Pour/Services/ProProductID.swift`: `com.devin.pour.pro.monthly` and `com.devin.pour.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
 
 ### Stubbed entry points (clean seams, not functional)
 
 - AI Bartender Assistant (Pro) — toolbar/sheet entry point exists
 - Venue check-in / shift mode — model + entry point exist
 - Barcode scanning button on My Bar — placeholder sheet
-- "Pro" upsell surface
 
 ### Planned (out of scope for this build)
 
-- StoreKit 2 subscriptions, CloudKit sync, Sign in with Apple
+- CloudKit sync, Sign in with Apple. Charging customers still needs Apple Developer enrollment and App Store Connect products; the local StoreKit configuration does not create those.
 - Voice search (Speech framework), agentic commands
 - Live Activities / widgets
 - AI video generation, venue QR onboarding, team features, inventory costing/export
