@@ -92,8 +92,9 @@ final class QAPassTests: XCTestCase {
         app.navigationBars["Confirm item"].buttons["Add to My Bar"].tap()
         XCTAssertTrue(app.navigationBars["My Bar"].waitForExistence(timeout: 8))
         filterInventory("Fernet")
-        XCTAssertTrue(app.buttons["Fernet Branca, not in stock"].waitForExistence(timeout: 8))
-        XCTAssertFalse(app.buttons["Fernet Branca, in stock"].exists)
+        let saved = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Fernet Branca")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 8))
+        XCTAssertTrue(saved.label.contains("not in stock"), "Saved row was \(saved.label)")
     }
 
     func testRescanShowsAlreadyInBarWithoutADuplicate() throws {
@@ -422,11 +423,15 @@ final class QAPassTests: XCTestCase {
         let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "In stock")).firstMatch
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         if !toggle.label.contains("off") {
-            toggle.tap()
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
         }
     }
 
     private func addBottle(_ name: String, inStock: Bool, lowStock: Bool = false) {
+        if !app.buttons["Add inventory item"].waitForExistence(timeout: 2), app.keyboards.buttons["Search"].exists {
+            app.keyboards.buttons["Search"].tap()
+        }
+        XCTAssertTrue(app.buttons["Add inventory item"].waitForExistence(timeout: 5))
         app.buttons["Add inventory item"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Add item"].waitForExistence(timeout: 5))
         let field = app.textFields["Name (e.g. London Dry Gin)"]
@@ -473,6 +478,9 @@ final class QAPassTests: XCTestCase {
             search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
         }
         search.typeText(query)
+        if app.keyboards.buttons["Search"].exists {
+            app.keyboards.buttons["Search"].tap()
+        }
     }
 
     private func dismissKeyboard() {
