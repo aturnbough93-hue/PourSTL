@@ -12,6 +12,10 @@ final class ProEntitlementLogicTests: XCTestCase {
         ])
         XCTAssertEqual(ProProductID.all, Set(ProProductID.ordered))
         XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://barpour.pages.dev/privacy.html")
+        XCTAssertEqual(
+            ProProductID.termsOfUseURL.absoluteString,
+            "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+        )
     }
 
     func testStoreKitFileMatchesProductIDs() throws {

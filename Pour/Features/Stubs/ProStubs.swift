@@ -285,13 +285,35 @@ struct ProUpsellView: View {
                 .font(.caption)
                 .foregroundStyle(PourColor.textTertiary)
                 .multilineTextAlignment(.center)
-            Link(destination: ProProductID.privacyPolicyURL) {
-                Text("Privacy")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(minHeight: 44)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 24) {
+                    privacyLink
+                    termsOfUseLink
+                }
+                VStack(spacing: 4) {
+                    privacyLink
+                    termsOfUseLink
+                }
             }
-            .accessibilityLabel("Privacy")
         }
+    }
+
+    private var privacyLink: some View {
+        Link(destination: ProProductID.privacyPolicyURL) {
+            Text("Privacy")
+                .font(.subheadline.weight(.semibold))
+                .frame(minHeight: 44)
+        }
+        .accessibilityLabel("Privacy")
+    }
+
+    private var termsOfUseLink: some View {
+        Link(destination: ProProductID.termsOfUseURL) {
+            Text("Terms of Use")
+                .font(.subheadline.weight(.semibold))
+                .frame(minHeight: 44)
+        }
+        .accessibilityLabel("Terms of Use")
     }
 
     private var controlsDisabled: Bool {
