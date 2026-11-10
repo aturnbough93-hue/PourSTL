@@ -420,9 +420,14 @@ final class QAPassTests: XCTestCase {
 
     private func turnOffInStock() {
         dismissKeyboard()
-        let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "In stock")).firstMatch
+        setSwitch(prefix: "In stock", on: false)
+    }
+
+    private func setSwitch(prefix: String, on: Bool) {
+        let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        if !toggle.label.contains("off") {
+        let currentlyOn = toggle.label.hasSuffix("on")
+        if currentlyOn != on {
             toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
         }
     }
@@ -441,18 +446,9 @@ final class QAPassTests: XCTestCase {
         field.tap()
         field.typeText(name)
         dismissKeyboard()
-        let stock = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "In stock")).firstMatch
-        if inStock, stock.label.contains("off") {
-            stock.tap()
-        }
-        if !inStock, stock.label.contains("on") {
-            stock.tap()
-        }
+        setSwitch(prefix: "In stock", on: inStock)
         if lowStock {
-            let low = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Low stock")).firstMatch
-            if low.label.contains("off") {
-                low.tap()
-            }
+            setSwitch(prefix: "Low stock", on: true)
         }
         dismissKeyboard()
         app.navigationBars["Add item"].buttons["Add inventory item"].tap()
