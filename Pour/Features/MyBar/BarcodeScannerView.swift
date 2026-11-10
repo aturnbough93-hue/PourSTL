@@ -94,14 +94,15 @@ struct BarcodeScannerView: View {
                 error: $manualError,
                 symbologyChoice: $symbologyChoice,
                 onLookup: { lookupManualCode() },
-                onPickSymbology: { chooseSymbology($0) }
-            ) onAddByName: {
-                route = .nameEntry(InventorySeed(
-                    name: "",
-                    barcode: nil,
-                    scanNote: nil
-                ))
-            }
+                onPickSymbology: { chooseSymbology($0) },
+                onAddByName: {
+                    route = .nameEntry(InventorySeed(
+                        name: "",
+                        barcode: nil,
+                        scanNote: nil
+                    ))
+                }
+            )
         }
     }
 
@@ -312,9 +313,7 @@ struct BarcodeScannerView: View {
             dismiss()
             return
         }
-        let item = current[index]
-        item.isInStock = mutation.isInStock
-        item.barcode = mutation.barcode
+        mutation.applyStockAndBarcode(to: current[index])
         guard saveChanges() else { return }
         Haptics.success()
         dismiss()
@@ -434,12 +433,8 @@ private struct BarcodeCodeEntryFields: View {
                     .font(.subheadline)
                     .foregroundStyle(PourColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                symbologyButton(title: "EAN-8", code: symbologyChoice.ean8.normalizedCode, parsed: symbologyChoice.ean8)
-                symbologyButton(
-                    title: "UPC-E",
-                    code: BarcodeFormatting.grouped(symbologyChoice.upce.normalizedCode),
-                    parsed: symbologyChoice.upce
-                )
+                symbologyButton(title: "EAN-8", code: symbologyChoice.printedDigits, parsed: symbologyChoice.ean8)
+                symbologyButton(title: "UPC-E", code: symbologyChoice.printedDigits, parsed: symbologyChoice.upce)
             }
             Button("Look up code", action: onLookup)
                 .buttonStyle(PourPrimaryButtonStyle())

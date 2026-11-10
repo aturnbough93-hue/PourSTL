@@ -359,7 +359,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "Well Gin",
             barcode: "012345678905",
             isInStock: false,
-            isLowStock: false,
             stock: stock
         ) else {
             XCTFail("the named bottle should be updated")
@@ -379,7 +378,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "well gin",
             barcode: "012345678905",
             isInStock: true,
-            isLowStock: false,
             stock: stock
         ) else {
             XCTFail("the named bottle should be updated")
@@ -398,7 +396,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "Well Gin",
             barcode: "012345678905",
             isInStock: true,
-            isLowStock: false,
             stock: stock
         ) else {
             XCTFail("the coded row should be restocked")
@@ -418,7 +415,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "Well Gin",
             barcode: "088110110307",
             isInStock: true,
-            isLowStock: false,
             stock: stock
         ) else {
             XCTFail("a different barcode should be offered instead of discarded")
@@ -439,7 +435,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "Well Gin",
             barcode: "012345678905",
             isInStock: true,
-            isLowStock: false,
             stock: stock
         ) else {
             XCTFail("saving a code that is already on the bottle should offer it, not dismiss")
@@ -457,7 +452,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "Well Gin",
             barcode: "012345678905",
             isInStock: false,
-            isLowStock: false,
             stock: stock
         ) else {
             XCTFail("an unchanged out-of-stock bottle should be offered, not marked in stock")
@@ -475,7 +469,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "Maker's Mark",
             barcode: "012345678905",
             isInStock: true,
-            isLowStock: false,
             stock: stock
         ) else {
             XCTFail("the barcode already belongs to Well Gin")
@@ -491,7 +484,6 @@ final class BarcodeScanningTests: XCTestCase {
             name: "Maker's Mark",
             barcode: "012345678905",
             isInStock: false,
-            isLowStock: false,
             stock: []
         ) else {
             XCTFail("a new name should insert")
@@ -500,6 +492,60 @@ final class BarcodeScanningTests: XCTestCase {
         XCTAssertEqual(item.name, "Maker's Mark")
         XCTAssertFalse(item.isInStock)
         XCTAssertEqual(item.barcode, "0012345678905")
+    }
+
+    @MainActor
+    func testDuplicateScanKeepsExistingBottleSettings() throws {
+        let schema = Schema([Recipe.self, IngredientLine.self, InventoryItem.self, ShoppingListItem.self, Venue.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let context = ModelContext(container)
+        let gin = InventoryItem(name: "Well Gin", category: .spirits, isInStock: false)
+        gin.isLowStock = true
+        gin.canonicalOverride = "gin"
+        context.insert(gin)
+        try context.save()
+
+        guard case .update(_, let mutation) = BarcodeResolver.saveUnknownCode(
+            name: "Well Gin",
+            barcode: "012345678905",
+            isInStock: true,
+            stock: [BarcodeStockSnapshot(item: gin)]
+        ) else {
+            XCTFail("the named bottle should take the barcode and the stock toggle")
+            return
+        }
+        XCTAssertTrue(mutation.isLowStock)
+        mutation.applyStockAndBarcode(to: gin)
+        XCTAssertEqual(gin.name, "Well Gin")
+        XCTAssertEqual(gin.category, InventoryCategory.spirits.rawValue)
+        XCTAssertEqual(gin.canonicalOverride, "gin")
+        XCTAssertTrue(gin.isLowStock)
+        XCTAssertTrue(gin.isInStock)
+        XCTAssertEqual(gin.barcode, "0012345678905")
+    }
+
+    func testLowStockAloneDoesNotCountAsADuplicateUpdate() {
+        let stock = [
+            BarcodeStockSnapshot(
+                name: "Well Gin",
+                barcode: "0012345678905",
+                isInStock: true,
+                isLowStock: true,
+                rowID: "gin"
+            ),
+        ]
+        guard case .offerExisting(let match) = BarcodeResolver.saveUnknownCode(
+            name: "Well Gin",
+            barcode: "012345678905",
+            isInStock: true,
+            stock: stock
+        ) else {
+            XCTFail("a stock toggle that already matches should not rewrite the row")
+            return
+        }
+        XCTAssertEqual(match.rowID, "gin")
+        XCTAssertTrue(stock[0].isLowStock)
     }
 
     // MARK: - Dismissed scan does not retrigger
@@ -511,9 +557,19 @@ final class BarcodeScanningTests: XCTestCase {
         XCTAssertFalse(latch.receive(payload: "075496000407", now: start.addingTimeInterval(0.1)))
 
         latch.noteSheetDismissed(now: start.addingTimeInterval(4))
-        XCTAssertFalse(latch.receive(payload: "075496000407", now: start.addingTimeInterval(8)))
-        XCTAssertFalse(latch.receive(payload: "075496000407", now: start.addingTimeInterval(8.2)))
-        XCTAssertFalse(latch.receive(payload: "075496000407", now: start.addingTimeInterval(9.5)))
+        XCTAssertFalse(latch.receive(payload: "075496000407", now: start.addingTimeInterval(4.2)))
+        XCTAssertFalse(latch.receive(payload: "075496000407", now: start.addingTimeInterval(4.4)))
+        XCTAssertFalse(latch.receive(payload: "075496000407", now: start.addingTimeInterval(5.5)))
+    }
+
+    func testReturningBarcodeOpensOnTheFirstFrameAfterItLeft() {
+        var latch = BarcodeScanLatch()
+        let start = Date(timeIntervalSince1970: 1_000)
+        XCTAssertTrue(latch.receive(payload: "075496000407", now: start))
+        latch.noteSheetDismissed(now: start.addingTimeInterval(1))
+        let returned = start.addingTimeInterval(1 + BarcodeScanLatch.quietInterval + 3)
+        XCTAssertTrue(latch.receive(payload: "075496000407", now: returned))
+        XCTAssertFalse(latch.receive(payload: "075496000407", now: returned.addingTimeInterval(0.1)))
     }
 
     func testSameBottleCanScanAgainAfterItLeavesTheFrame() {
@@ -559,6 +615,15 @@ final class BarcodeScanningTests: XCTestCase {
         XCTAssertEqual(ean8.symbology, .ean8)
         XCTAssertEqual(upce.normalizedCode, "0010000000009")
         XCTAssertEqual(upce.symbology, .upce)
+        let choice = BarcodeSymbologyChoice(ean8: ean8, upce: upce)
+        XCTAssertEqual(choice.printedDigits, "01000009")
+        XCTAssertNotEqual(choice.printedDigits, upce.normalizedCode)
+
+        guard case .ambiguous(let spacedEAN, let spacedUPC) = BarcodeParser.interpretManualEntry("0100 0009") else {
+            XCTFail("spaced digits should stay ambiguous")
+            return
+        }
+        XCTAssertEqual(BarcodeSymbologyChoice(ean8: spacedEAN, upce: spacedUPC).printedDigits, "0100 0009")
 
         guard case .ambiguous = BarcodeResolver.resolveManualEntry("01000009", stock: []) else {
             XCTFail("neither reading is already in the bar")

@@ -84,6 +84,9 @@ struct BarcodeSymbologyChoice: Equatable, Identifiable {
     var ean8: ParsedBarcode
     var upce: ParsedBarcode
     var id: String { "\(ean8.normalizedCode)|\(upce.normalizedCode)" }
+
+    /// The digits the bartender typed. Both choices show this, not the expanded UPC-A.
+    var printedDigits: String { ean8.rawPayload }
 }
 
 enum BarcodeCheckDigit {
@@ -412,13 +415,19 @@ struct BarcodeRowMutation: Equatable {
     var barcode: String?
     var isLowStock: Bool
     var didChange: Bool
+
+    /// Stock and barcode only. Name, category, canonical override, and low stock stay as they are.
+    func applyStockAndBarcode(to item: InventoryItem) {
+        item.isInStock = isInStock
+        item.barcode = barcode
+    }
 }
 
 enum BarcodeStockWrite: Equatable {
     /// Already-in-bar sheet. The button is the confirmation to restock or save the code.
     case confirmedSheet
     /// Unknown-code editor. `isInStock` is the In stock toggle.
-    case editor(isInStock: Bool, isLowStock: Bool)
+    case editor(isInStock: Bool)
 }
 
 enum UnknownBarcodeSave: Equatable {
@@ -529,13 +538,16 @@ enum BarcodeResolver {
             case .none:
                 return BarcodeRowMutation(isInStock: row.isInStock, barcode: row.barcode, isLowStock: row.isLowStock, didChange: false)
             }
-        case .editor(let isInStock, let isLowStock):
+        case .editor(let isInStock):
             let canAttach = match.canAttachBarcode && (row.barcode?.isEmpty != false)
             let barcode = canAttach ? match.scannedCode : row.barcode
-            let changed = isInStock != row.isInStock
-                || isLowStock != row.isLowStock
-                || barcodeChanged(from: row.barcode, to: barcode)
-            return BarcodeRowMutation(isInStock: isInStock, barcode: barcode, isLowStock: isLowStock, didChange: changed)
+            let changed = isInStock != row.isInStock || barcodeChanged(from: row.barcode, to: barcode)
+            return BarcodeRowMutation(
+                isInStock: isInStock,
+                barcode: barcode,
+                isLowStock: row.isLowStock,
+                didChange: changed
+            )
         }
     }
 
@@ -546,7 +558,6 @@ enum BarcodeResolver {
         name: String,
         barcode: String,
         isInStock: Bool,
-        isLowStock: Bool,
         stock: [BarcodeStockSnapshot]
     ) -> UnknownBarcodeSave {
         guard let decision = commit(name: name, barcode: barcode, stock: stock) else { return .rejected }
@@ -567,11 +578,7 @@ enum BarcodeResolver {
             if !match.holdsScannedCode && !match.canAttachBarcode {
                 return .offerExisting(match)
             }
-            let change = mutation(
-                match: match,
-                row: row,
-                update: .editor(isInStock: isInStock, isLowStock: isLowStock)
-            )
+            let change = mutation(match: match, row: row, update: .editor(isInStock: isInStock))
             if change.didChange {
                 return .update(match, change)
             }
@@ -656,42 +663,34 @@ struct BarcodeScanLatch: Equatable {
     private(set) var heldPayload: String?
     private(set) var lastSeen: Date?
     private(set) var holdingDismissal = false
-    private(set) var seenSinceDismissal = false
 
     /// Returns true when this payload should open a sheet.
     mutating func receive(payload: String, now: Date) -> Bool {
         if payload == heldPayload {
-            if holdingDismissal {
-                if !seenSinceDismissal {
-                    seenSinceDismissal = true
-                    lastSeen = now
-                    return false
-                }
-                let gap = lastSeen.map { now.timeIntervalSince($0) } ?? 0
-                lastSeen = now
-                if gap < Self.quietInterval {
-                    return false
-                }
-                holdingDismissal = false
-                seenSinceDismissal = false
-                return true
-            }
-            let gap = lastSeen.map { now.timeIntervalSince($0) } ?? 0
+            // Measure the gap before refreshing lastSeen. The first frame after a real
+            // absence is the return, and it has to be allowed to open the sheet.
+            let gap = lastSeen.map { now.timeIntervalSince($0) } ?? .infinity
+            let cameBack = gap >= Self.quietInterval
             lastSeen = now
-            return gap >= Self.quietInterval
+            if holdingDismissal {
+                if cameBack {
+                    holdingDismissal = false
+                    return true
+                }
+                return false
+            }
+            return cameBack
         }
         heldPayload = payload
         lastSeen = now
         holdingDismissal = false
-        seenSinceDismissal = false
         return true
     }
 
-    /// Keep the payload that was on screen. The next frame of that same code must not reopen the sheet.
+    /// Keep the payload that was on screen. Frames that continue without a gap stay suppressed.
     mutating func noteSheetDismissed(now: Date) {
         guard heldPayload != nil else { return }
         holdingDismissal = true
-        seenSinceDismissal = false
         lastSeen = now
     }
 }

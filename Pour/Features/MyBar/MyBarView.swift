@@ -408,7 +408,6 @@ struct InventoryEditSheet: View {
                 name: trimmed,
                 barcode: cleanedBarcode,
                 isInStock: isInStock,
-                isLowStock: isLowStock,
                 stock: stock
             ) {
             case .insert(let confirmed):
@@ -422,13 +421,7 @@ struct InventoryEditSheet: View {
                     offerExisting(match)
                     return
                 }
-                let existing = rows[index].0
-                existing.name = trimmed
-                existing.category = category.rawValue
-                existing.canonicalOverride = override.isEmpty ? nil : override
-                existing.isInStock = mutation.isInStock
-                existing.isLowStock = mutation.isLowStock
-                existing.barcode = mutation.barcode
+                mutation.applyStockAndBarcode(to: rows[index].0)
             case .offerExisting(let match):
                 offerExisting(match)
                 return
@@ -471,9 +464,7 @@ struct InventoryEditSheet: View {
             duplicateOffer = nil
             return
         }
-        let existing = rows[index].0
-        existing.isInStock = mutation.isInStock
-        existing.barcode = mutation.barcode
+        mutation.applyStockAndBarcode(to: rows[index].0)
         do {
             try modelContext.save()
             Haptics.success()
