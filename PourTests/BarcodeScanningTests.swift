@@ -692,7 +692,7 @@ final class BarcodeScanningTests: XCTestCase {
 
     func testStoppingTheSessionClearsASwallowedInterruption() {
         var latch = BarcodeInterruptionLatch()
-        latch.noteBegan()
+        latch.noteBegan(stopPending: false)
         XCTAssertTrue(latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false))
         latch.noteStopped()
         XCTAssertFalse(latch.isInterrupted)
@@ -705,9 +705,57 @@ final class BarcodeScanningTests: XCTestCase {
                 isInterrupted: latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false)
             )
         )
-        latch.noteBegan()
+        latch.noteBegan(stopPending: false)
         latch.noteEnded()
         XCTAssertFalse(latch.blocksRestart(sessionIsInterrupted: false, sessionIsRunning: false))
+    }
+
+    func testWasInterruptedAfterStopDoesNotBlockRestart() {
+        var latch = BarcodeInterruptionLatch()
+        latch.noteBegan(stopPending: false)
+        latch.noteStopped()
+        latch.noteBegan(stopPending: true)
+        XCTAssertFalse(latch.isInterrupted)
+        let blocked = latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false)
+        XCTAssertFalse(blocked)
+        XCTAssertTrue(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true,
+                isOnScreen: true,
+                isRunning: false,
+                isInterrupted: blocked
+            )
+        )
+        latch.noteBegan(stopPending: true)
+        XCTAssertFalse(latch.isInterrupted)
+    }
+
+    func testWasInterruptedOnAnAlreadyStoppedSessionWaitsForItToEnd() {
+        var latch = BarcodeInterruptionLatch()
+        latch.noteBegan(stopPending: false)
+        XCTAssertTrue(latch.isInterrupted)
+        let during = latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false)
+        XCTAssertTrue(during)
+        XCTAssertFalse(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true,
+                isOnScreen: true,
+                isRunning: false,
+                isInterrupted: during
+            )
+        )
+        latch.noteEnded()
+        let after = latch.blocksRestart(sessionIsInterrupted: false, sessionIsRunning: false)
+        XCTAssertFalse(after)
+        XCTAssertFalse(latch.isInterrupted)
+        XCTAssertTrue(
+            BarcodeSessionRecovery.shouldRestart(
+                wantsRunning: true,
+                isOnScreen: true,
+                isRunning: false,
+                isInterrupted: after
+            )
+        )
     }
 
     func testSessionRestartsOnlyWhenTheScannerIsVisibleAndStopped() {
