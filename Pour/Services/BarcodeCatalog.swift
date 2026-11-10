@@ -67,29 +67,41 @@ enum BarcodeSessionRecovery {
     }
 }
 
-/// Remembers a capture interruption. Stopping the session clears it, because
-/// backgrounding can stop the session without delivering interruptionEnded.
+/// Remembers a capture interruption until `interruptionEnded`.
+/// A stop we already requested does not get re-armed by a late `wasInterrupted`.
 struct BarcodeInterruptionLatch: Equatable {
-    private(set) var isInterrupted = false
+    /// The system reported `wasInterrupted` and has not reported `interruptionEnded`.
+    private(set) var systemInterrupted = false
+    /// Our own stop is in progress, so a late interruption notice must not stick.
+    private(set) var stopPending = false
 
-    /// Only a session that is still running, with no stop already requested, can become interrupted.
-    /// A late `wasInterrupted` after `stopSession` clears the latch instead of re-arming it.
-    mutating func noteBegan(sessionIsRunning: Bool, stopPending: Bool) {
-        guard sessionIsRunning, !stopPending else {
-            isInterrupted = false
-            return
-        }
-        isInterrupted = true
+    /// True when a system interruption should keep the preview from starting.
+    var isInterrupted: Bool { systemInterrupted && !stopPending }
+
+    /// Always records the system interruption. Whether the session is still running
+    /// is not an input: AVFoundation may already have stopped it, and that flag is
+    /// read after the hop onto the session queue. Only `stopPending` suppresses a re-arm.
+    mutating func noteBegan(stopPending: Bool) {
+        systemInterrupted = true
+        self.stopPending = stopPending
     }
 
-    mutating func noteEnded() { isInterrupted = false }
-    mutating func noteStopped() { isInterrupted = false }
+    mutating func noteEnded() {
+        systemInterrupted = false
+        stopPending = false
+    }
 
-    /// A stopped session must not stay blocked by an interruption that already ended
-    /// or was swallowed when the app left the foreground.
+    mutating func noteStopped() {
+        systemInterrupted = false
+        stopPending = true
+    }
+
+    /// Honor `sessionIsInterrupted` until interruption-ended, except while our stop
+    /// is what cleared the running session.
     func blocksRestart(sessionIsInterrupted: Bool, sessionIsRunning: Bool) -> Bool {
-        if !sessionIsRunning && !isInterrupted { return false }
-        return isInterrupted || sessionIsInterrupted
+        _ = sessionIsRunning
+        if stopPending { return false }
+        return systemInterrupted || sessionIsInterrupted
     }
 }
 

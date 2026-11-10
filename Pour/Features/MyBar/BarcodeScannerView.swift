@@ -825,10 +825,10 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
             guard let self else { return }
             switch notification.name {
             case AVCaptureSession.wasInterruptedNotification:
-                self.interruption.noteBegan(
-                    sessionIsRunning: self.session.isRunning,
-                    stopPending: !self.wantsRunning
-                )
+                // Do not consult session.isRunning here. It is often already false
+                // by the time this block runs, including for a real interruption.
+                self.interruption.noteBegan(stopPending: !self.wantsRunning)
+                self.applyRunning()
             case AVCaptureSession.interruptionEndedNotification:
                 self.interruption.noteEnded()
                 self.applyRunning()
