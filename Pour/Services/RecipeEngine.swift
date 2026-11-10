@@ -13,6 +13,12 @@ struct RecipeMatch {
     var isAlmost: Bool { !canMake && missing.count <= 2 }
 }
 
+/// Serving range used by the recipe screen and the on-device assistant.
+enum RecipeScaling {
+    static let minimumServings = 1
+    static let maximumServings = 24
+}
+
 enum RecipeEngine {
 
     static func match(_ recipe: Recipe, inventory: [InventoryItem]) -> RecipeMatch {
