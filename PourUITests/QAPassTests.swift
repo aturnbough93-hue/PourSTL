@@ -428,8 +428,11 @@ final class QAPassTests: XCTestCase {
     }
 
     private func addBottle(_ name: String, inStock: Bool, lowStock: Bool = false) {
-        if !app.buttons["Add inventory item"].waitForExistence(timeout: 2), app.keyboards.buttons["Search"].exists {
-            app.keyboards.buttons["Search"].tap()
+        if !app.buttons["Add inventory item"].waitForExistence(timeout: 2) {
+            let cancel = app.buttons["Cancel"]
+            if cancel.exists {
+                cancel.tap()
+            }
         }
         XCTAssertTrue(app.buttons["Add inventory item"].waitForExistence(timeout: 5))
         app.buttons["Add inventory item"].firstMatch.tap()
