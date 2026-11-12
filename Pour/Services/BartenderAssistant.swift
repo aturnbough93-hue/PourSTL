@@ -153,7 +153,7 @@ enum AssistantQuestionParser {
             break
         }
         let focus = trimFiller(rest)
-        if focus.isEmpty || focus == "my bar" || focus == "the bar" || focus == "what i have" {
+        if focus.isEmpty || focus == "bar" || focus == "what i have" {
             return nil
         }
         return focus

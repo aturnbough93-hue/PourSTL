@@ -33,6 +33,8 @@ final class BartenderAssistantTests: XCTestCase {
 
     func testParsesWhatCanIMakeQuestions() {
         XCTAssertEqual(AssistantQuestionParser.intent(for: "What can I make?"), .whatCanIMake(focus: nil))
+        XCTAssertEqual(AssistantQuestionParser.intent(for: "What can I make with my bar?"), .whatCanIMake(focus: nil))
+        XCTAssertEqual(AssistantQuestionParser.intent(for: "What can I make with the bar?"), .whatCanIMake(focus: nil))
         XCTAssertEqual(AssistantQuestionParser.intent(for: "What can I make with gin?"), .whatCanIMake(focus: "gin"))
         XCTAssertEqual(AssistantQuestionParser.intent(for: "What can I make with Beefeater?"), .whatCanIMake(focus: "beefeater"))
         XCTAssertEqual(AssistantQuestionParser.intent(for: "What can I make for 4 people?"), .whatCanIMake(focus: nil))
