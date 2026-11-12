@@ -143,6 +143,8 @@
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--accent); margin-bottom: 18px;
+    /* Keep a narrow wrap from leaving one word on its own line. */
+    text-wrap: balance;
   }
   .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 1px; }
   h1 {
@@ -278,6 +280,10 @@
   .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
 
   .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  /* Four history stories. Two columns keeps the last card from sitting alone. */
+  @media (min-width: 961px) {
+    #history .feat-grid { grid-template-columns: 1fr 1fr; }
+  }
   .feat {
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 26px 24px;
@@ -421,7 +427,7 @@
 <header class="hero" id="top">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow">iOS 17+ · Offline-first · Private by default</span>
+      <span class="eyebrow">iOS 17+&nbsp;· Offline-first&nbsp;· Private by default</span>
       <h1>The bar tool that keeps up with <em>service</em>.</h1>
       <p class="hero-sub">Pour is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
       <div class="hero-ctas">
