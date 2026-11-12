@@ -4,39 +4,6 @@ import SwiftData
 /// Clean seams for out-of-scope Pro features. Each stub matches where the spec
 /// places the entry point and shows an honest, styled placeholder.
 
-struct AssistantPlaceholderView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 56, weight: .regular))
-                    .foregroundStyle(PourColor.accent)
-                    .accessibilityHidden(true)
-                Text("AI Bartender Assistant")
-                    .font(.pourTitle2)
-                    .foregroundStyle(PourColor.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-                Text("Coming soon: ask what you can make, explore substitutions, and refine drinks together. For now, use Home to find drinks from your bar.")
-                    .font(.body)
-                    .foregroundStyle(PourColor.textSecondary)
-                    .multilineTextAlignment(.center)
-                Button("Not now") { dismiss() }
-                    .buttonStyle(PourPrimaryButtonStyle())
-                    .padding(.top, 12)
-                    .accessibilityLabel("Not now")
-                    .accessibilityAddTraits(.isButton)
-            }
-            .padding(32)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(PourColor.background)
-            .navigationTitle("AI Assistant")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-}
-
 struct VoiceSearchPlaceholderView: View {
     @Environment(\.dismiss) private var dismiss
 

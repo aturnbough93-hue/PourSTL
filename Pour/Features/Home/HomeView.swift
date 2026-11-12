@@ -86,19 +86,19 @@ struct HomeView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button { showAssistant = true } label: {
+                            Label("AI Bartender Assistant", systemImage: "sparkles")
+                        }
                         Section("Coming soon") {
                             Button { showVoiceStub = true } label: {
                                 Label("Voice search", systemImage: "mic")
-                            }
-                            Button { showAssistant = true } label: {
-                                Label("AI Bartender Assistant", systemImage: "sparkles")
                             }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .foregroundStyle(PourColor.textSecondary)
                     }
-                    .accessibilityLabel("Coming soon features")
+                    .accessibilityLabel("More features")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -114,7 +114,7 @@ struct HomeView: View {
             .navigationDestination(for: Recipe.self) { recipe in
                 RecipeDetailView(recipe: recipe)
             }
-            .sheet(isPresented: $showAssistant) { AssistantPlaceholderView() }
+            .sheet(isPresented: $showAssistant) { AssistantSheet() }
             .sheet(isPresented: $showVoiceStub) { VoiceSearchPlaceholderView() }
             .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: $showVenueSheet) { VenueSheet() }
