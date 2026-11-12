@@ -74,6 +74,16 @@ final class ProEntitlementLogicTests: XCTestCase {
         XCTAssertFalse(ProEntitlementDecision.isActive(snapshot, knownProductIDs: ProProductID.all, now: Date()))
     }
 
+    func testUpgradedTransactionIsNotEntitled() {
+        let snapshot = ProTransactionSnapshot(
+            productID: ProProductID.monthly,
+            revocationDate: nil,
+            expirationDate: Date().addingTimeInterval(3_600),
+            isUpgraded: true
+        )
+        XCTAssertFalse(ProEntitlementDecision.isActive(snapshot, knownProductIDs: ProProductID.all, now: Date()))
+    }
+
     func testMissingExpirationStaysActiveUntilRevoked() {
         let snapshot = ProTransactionSnapshot(
             productID: ProProductID.yearly,
@@ -106,7 +116,10 @@ final class ProEntitlementLogicTests: XCTestCase {
         )
         XCTAssertTrue(ProGate.freeOffline.contains(.barcodeScanner))
         XCTAssertTrue(ProGate.freeOffline.contains(.venueCheckIn))
+        XCTAssertTrue(ProGate.freeOffline.contains(.aiAssistant))
         XCTAssertFalse(ProGate.proPlaceholders.contains(.barcodeScanner))
+        XCTAssertFalse(ProGate.proPlaceholders.contains(.aiAssistant))
+        XCTAssertFalse(ProGate.plannedFeatures.contains { $0.id == "assistant" })
         XCTAssertFalse(ProGate.placeholdersArePaywalled)
         for capability in PourCapability.allCases {
             XCTAssertFalse(ProGate.isLocked(capability, isPro: false), capability.rawValue)
@@ -185,22 +198,6 @@ final class ProEntitlementStoreTests: XCTestCase {
         }
     }
 
-    func testInAppPurchaseFailsClosedOrUnlocks() async throws {
-        try await purchase(ProProductID.monthly)
-        switch store.purchaseStatus {
-        case .succeeded:
-            XCTAssertTrue(store.isPro)
-            XCTAssertEqual(store.activeProductIDs, [ProProductID.monthly])
-        case .failed:
-            // Unsigned simulator runs cannot present the purchase sheet.
-            // A thrown purchase must not unlock Pour Pro.
-            XCTAssertFalse(store.isPro)
-            XCTAssertTrue(store.activeProductIDs.isEmpty)
-        default:
-            XCTFail("Unexpected purchase status \(store.purchaseStatus)")
-        }
-    }
-
     func testTransactionUpdatesGrantEntitlement() async throws {
         XCTAssertFalse(store.isPro)
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
@@ -265,12 +262,6 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
     }
 
-    private func purchase(_ productID: String) async throws {
-        await store.loadProducts()
-        XCTAssertEqual(store.productsState, .loaded)
-        await store.purchase(productID: productID)
-    }
-
     private func waitUntil(timeout: TimeInterval = 10, _ condition: @MainActor () async -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -278,6 +269,261 @@ final class ProEntitlementStoreTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
         return await condition()
+    }
+}
+
+/// Exact outcomes and a controlled clock keep purchase regressions visible even
+/// when CI cannot show a signed App Store purchase sheet.
+@MainActor
+final class ProPurchaseStateTests: XCTestCase {
+    private let date = Date(timeIntervalSince1970: 1_700_000_000)
+
+    func testVerifiedPurchaseUnlocksBeforeHistoryCatchesUp() async {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.performPurchase { .verified(self.transaction()) }
+        XCTAssertEqual(store.purchaseStatus, .succeeded)
+        XCTAssertEqual(store.activeProductIDs, [ProProductID.monthly])
+        await store.refreshEntitlements() // Deliberately stale, empty history.
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.purchaseStatus, .succeeded)
+    }
+
+    func testLateRefreshCannotEraseVerifiedPurchase() async {
+        let history = ProSuspendedOperation<[ProTransactionSnapshot]>()
+        let store = ProEntitlementStore(now: { self.date }, loadEntitlements: {
+            await history.run()
+        })
+        defer { store.stop() }
+        let refresh = Task { await store.refreshEntitlements() }
+        await history.waitUntilStarted()
+        await store.performPurchase { .verified(self.transaction()) }
+        history.resume(returning: [])
+        await refresh.value
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.purchaseStatus, .succeeded)
+    }
+
+    func testExpirationIsCheckedWithoutAnotherStoreKitEvent() async {
+        var currentDate = date
+        let store = ProEntitlementStore(now: { currentDate }, loadEntitlements: { [] })
+        defer { store.stop() }
+        await store.performPurchase { .verified(self.transaction()) }
+        XCTAssertTrue(store.isPro)
+        currentDate = date.addingTimeInterval(3_600)
+        XCTAssertFalse(store.isPro)
+        XCTAssertTrue(store.activeProductIDs.isEmpty)
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.purchaseStatus, .idle)
+    }
+
+    func testReconciledHistoryCanRemoveAnExpiredSubscription() async {
+        var history: [ProTransactionSnapshot] = []
+        let store = ProEntitlementStore(now: { self.date }, loadEntitlements: { history })
+        defer { store.stop() }
+        let purchase = transaction()
+        await store.performPurchase { .verified(purchase) }
+        history = [purchase]
+        await store.refreshEntitlements() // History now acknowledges the purchase.
+        history = []
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.isPro)
+    }
+
+    func testSameTransactionWithUpdatedExpiryIsAuthoritative() async {
+        var purchase = transaction()
+        let store = ProEntitlementStore(now: { self.date }, loadEntitlements: { [purchase] })
+        defer { store.stop() }
+        store.applyVerifiedTransaction(purchase)
+        purchase.expirationDate = date
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.isPro)
+    }
+
+    func testVerifiedRevocationCannotBeUndoneByStaleHistoryOrUpdate() async {
+        let purchase = transaction()
+        let store = ProEntitlementStore(now: { self.date }, loadEntitlements: { [purchase] })
+        defer { store.stop() }
+        store.applyVerifiedTransaction(purchase)
+        var revoked = purchase
+        revoked.revocationDate = date
+        store.applyVerifiedTransaction(revoked)
+        XCTAssertFalse(store.isPro)
+        await store.refreshEntitlements()
+        store.applyVerifiedTransaction(purchase)
+        XCTAssertFalse(store.isPro)
+    }
+
+    func testOlderRevocationCannotRemoveRenewedSubscription() {
+        let store = makeStore()
+        defer { store.stop() }
+        var renewal = transaction()
+        renewal.transactionID = 2
+        renewal.purchaseDate = date.addingTimeInterval(1)
+        store.applyVerifiedTransaction(renewal)
+        var oldPurchase = transaction()
+        oldPurchase.revocationDate = date
+        store.applyVerifiedTransaction(oldPurchase)
+        XCTAssertTrue(store.isPro)
+    }
+
+    func testUnverifiedAndInvalidTransactionsCannotUnlock() async {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.performPurchase { .unverified }
+        XCTAssertEqual(store.purchaseStatus, .failed(ProStoreCopy.unverified))
+        XCTAssertFalse(store.isPro)
+        var invalid = transaction()
+        invalid.productID = "unknown"
+        await store.performPurchase { .verified(invalid) }
+        XCTAssertEqual(store.purchaseStatus, .failed(ProStoreCopy.notIncluded))
+        XCTAssertFalse(store.isPro)
+        invalid = transaction()
+        invalid.expirationDate = date
+        await store.performPurchase { .verified(invalid) }
+        XCTAssertEqual(store.purchaseStatus, .failed(ProStoreCopy.notIncluded))
+        XCTAssertFalse(store.isPro)
+        invalid = transaction()
+        invalid.revocationDate = date
+        await store.performPurchase { .verified(invalid) }
+        XCTAssertEqual(store.purchaseStatus, .failed(ProStoreCopy.notIncluded))
+        XCTAssertFalse(store.isPro)
+    }
+
+    func testPendingApprovalCompletesThroughVerifiedUpdate() async {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.performPurchase { .pending }
+        XCTAssertEqual(store.purchaseStatus, .pending)
+        XCTAssertFalse(store.isPro)
+        store.resetTransientStatus()
+        XCTAssertEqual(store.purchaseStatus, .pending)
+        store.applyVerifiedTransaction(transaction())
+        XCTAssertEqual(store.purchaseStatus, .succeeded)
+        XCTAssertTrue(store.isPro)
+    }
+
+    func testApprovalArrivingBeforePendingResultStillSucceeds() async {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.performPurchase {
+            store.applyVerifiedTransaction(self.transaction())
+            return .pending
+        }
+        XCTAssertEqual(store.purchaseStatus, .succeeded)
+        XCTAssertTrue(store.isPro)
+    }
+
+    func testStalePurchaseResultCannotUndoARevocation() async {
+        let store = makeStore()
+        defer { store.stop() }
+        let purchase = transaction()
+        var revoked = purchase
+        revoked.revocationDate = date
+        store.applyVerifiedTransaction(revoked)
+        await store.performPurchase { .verified(purchase) }
+        XCTAssertEqual(store.purchaseStatus, .failed(ProStoreCopy.notIncluded))
+        XCTAssertFalse(store.isPro)
+    }
+
+    func testCancellationFailureAndRestoreMessagesResetForNextPresentation() async {
+        let store = makeStore()
+        defer { store.stop() }
+        await store.performPurchase { .cancelled }
+        XCTAssertEqual(store.purchaseStatus, .cancelled)
+        store.resetTransientStatus()
+        XCTAssertEqual(store.purchaseStatus, .idle)
+        await store.performPurchase { throw TestFailure.offline }
+        XCTAssertEqual(store.purchaseStatus, .failed(ProStoreCopy.purchaseFailed))
+        XCTAssertFalse(store.isPro)
+        store.resetTransientStatus()
+        XCTAssertEqual(store.purchaseStatus, .idle)
+        await store.restore()
+        XCTAssertEqual(store.restoreStatus, .nothingToRestore)
+        store.resetTransientStatus()
+        XCTAssertEqual(store.restoreStatus, .idle)
+    }
+
+    func testRestoreFailureDoesNotGrantAccess() async {
+        let store = ProEntitlementStore(
+            now: { self.date }, loadEntitlements: { [] },
+            restorePurchases: { throw TestFailure.offline }
+        )
+        defer { store.stop() }
+        await store.restore()
+        XCTAssertEqual(store.restoreStatus, .failed(ProStoreCopy.restoreFailed))
+        XCTAssertFalse(store.isPro)
+    }
+
+    func testOverlappingPurchaseAndRestoreDoNotStart() async {
+        let result = ProSuspendedOperation<ProPurchaseOutcome>()
+        var restores = 0
+        var extraPurchases = 0
+        let store = ProEntitlementStore(
+            now: { self.date }, loadEntitlements: { [] },
+            restorePurchases: { restores += 1 }
+        )
+        defer { store.stop() }
+        let purchase = Task {
+            await store.performPurchase { await result.run() }
+        }
+        await result.waitUntilStarted()
+        XCTAssertEqual(store.purchaseStatus, .inProgress)
+        store.resetTransientStatus()
+        await store.restore()
+        await store.performPurchase {
+            extraPurchases += 1
+            return .cancelled
+        }
+        XCTAssertEqual(store.purchaseStatus, .inProgress)
+        XCTAssertEqual(restores, 0)
+        XCTAssertEqual(extraPurchases, 0)
+        result.resume(returning: .cancelled)
+        await purchase.value
+        XCTAssertEqual(store.purchaseStatus, .cancelled)
+    }
+
+    private func makeStore() -> ProEntitlementStore {
+        ProEntitlementStore(now: { self.date }, loadEntitlements: { [] }, restorePurchases: {})
+    }
+
+    private func transaction() -> ProTransactionSnapshot {
+        ProTransactionSnapshot(
+            productID: ProProductID.monthly,
+            revocationDate: nil,
+            expirationDate: date.addingTimeInterval(3_600),
+            transactionID: 1,
+            purchaseDate: date
+        )
+    }
+
+    private enum TestFailure: Error { case offline }
+}
+
+/// A handshake makes interleaving tests deterministic without sleeps or yields.
+@MainActor
+private final class ProSuspendedOperation<Value> {
+    private var hasStarted = false
+    private var started: CheckedContinuation<Void, Never>?
+    private var result: CheckedContinuation<Value, Never>?
+
+    func run() async -> Value {
+        await withCheckedContinuation { continuation in
+            result = continuation
+            hasStarted = true
+            started?.resume()
+            started = nil
+        }
+    }
+
+    func waitUntilStarted() async {
+        guard !hasStarted else { return }
+        await withCheckedContinuation { started = $0 }
+    }
+
+    func resume(returning value: Value) {
+        result?.resume(returning: value)
+        result = nil
     }
 }
 

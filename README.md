@@ -6,7 +6,7 @@ Dark-mode-first SwiftUI app with a copper-accented design system, seeded with ~3
 
 ## Requirements
 
-- Xcode 15+ (built with Xcode 26)
+- Xcode 26 with an installed iOS Simulator runtime (CI uses macos-15)
 - iOS 17.0+ deployment target
 - iPhone simulator or device
 
@@ -44,10 +44,14 @@ node --check website/site.js
 bash scripts/test_ios.sh
 ```
 
-GitHub Actions runs the website checks and unsigned simulator build/tests on
-pushes to `main` and `codex/**`, and on pull requests. The native runner chooses
-an available iPhone instead of depending on one simulator name. This does not
-archive, sign, or distribute the app.
+GitHub Actions runs the website checks and native unit tests on pushes to `main`
+and `codex/**`, and on pull requests. A successful run includes a downloadable
+**Pour-Simulator** artifact: a universal Release simulator app, commit/build
+manifest, checksum, and installation guide. A separate **Simulator QA pass**
+workflow records current UI tests and screenshots. See
+[docs/PERSONAL_TESTING.md](docs/PERSONAL_TESTING.md) for installation and the
+personal testing checklist. These unsigned builds require a Mac with Xcode;
+physical iPhone installation and TestFlight need Apple provisioning/signing.
 
 ## Feature status
 
@@ -65,13 +69,13 @@ archive, sign, or distribute the app.
 - Settings: manual dark/light/system appearance (persisted), preferred measurement unit (oz/ml) applied app-wide
 - Ingredient normalization: local alias map ("London Dry Gin", "Beefeater" → gin) powering matching, "What can I make", and search
 - Empty / error states throughout; everything works fully offline
-- XCTest coverage for unit conversion, ingredient normalization, and barcode parsing, catalog matching, confirm/add, and camera availability
+- XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
 - `pour://` deep links (`pour://recipe?name=Negroni`, `pour://tab/bar`) as seams for future App Intents
+- Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
 - Pour Pro upsell using StoreKit 2. The shared Pour scheme loads `Pour.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `Pour/Services/ProProductID.swift`: `com.devin.pour.pro.monthly` and `com.devin.pour.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
 
 ### Stubbed entry points (clean seams, not functional)
 
-- AI Bartender Assistant (Pro) — toolbar/sheet entry point exists
 - Venue check-in / shift mode — model + entry point exist
 
 ### Planned (out of scope for this build)
@@ -97,7 +101,7 @@ Pour/
   Design/         palette, typography, glass→SF Symbol mapping
   Models/         SwiftData models
   Services/       conversion, normalization, matching, seeding, haptics, settings
-  Features/       Home, RecipeDetail, MyBar, Shopping, Editor, Timer, Settings, stubs
+  Features/       Home, Recipes, MyBar, Shopping, Timer, Assistant, Settings, stubs
 PourTests/        XCTest unit tests
 project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 ```

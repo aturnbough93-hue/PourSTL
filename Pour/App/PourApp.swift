@@ -87,6 +87,7 @@ final class PersistentStoreController {
 
 @main
 struct PourApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var store: PersistentStoreController
     @State private var settings: AppSettings
     @State private var router: DeepLinkRouter
@@ -129,6 +130,12 @@ struct PourApp: App {
                 await pro.start()
             }
             .onOpenURL { router.handle($0) }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active,
+                      !ProRuntime.isUnitTestHost,
+                      !LaunchConfiguration.isUITesting else { return }
+                Task { await pro.refreshEntitlements() }
+            }
         }
     }
 }

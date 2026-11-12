@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # GitHub-hosted iPhone simulator QA. No paid device farms, secrets, or third-party services.
-set -uo pipefail
+set -euo pipefail
 cd "$(dirname "$0")/.."
 
-artifacts="${RUNNER_TEMP:-/tmp}/qa-artifacts"
+artifacts="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/pour-qa.XXXXXX")"
 mkdir -p "$artifacts/screenshots"
-rm -rf "$artifacts/PourQA.xcresult"
-find "$artifacts/screenshots" -mindepth 1 -delete
+touch "$artifacts/run-start"
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+  printf 'artifacts_directory=%s\n' "$artifacts" >> "$GITHUB_OUTPUT"
+fi
 
 select_device() {
   python3 - <<'PY'
@@ -70,8 +72,6 @@ xcode_version="$(xcodebuild -version | tr '\n' ' ')"
 echo "Xcode: $xcode_version"
 
 defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
-xcrun simctl shutdown "$simulator_id" >/dev/null 2>&1 || true
-xcrun simctl boot "$simulator_id"
 xcrun simctl bootstatus "$simulator_id" -b
 xcrun simctl status_bar "$simulator_id" override \
   --time "9:41" \
@@ -85,6 +85,8 @@ destination="platform=iOS Simulator,id=$simulator_id"
 derived="$artifacts/derived"
 test_status=0
 
+# Preserve xcodebuild's exit status while still generating failure evidence.
+set +e
 xcodebuild build-for-testing \
   -project Pour.xcodeproj \
   -scheme PourQA \
@@ -93,6 +95,7 @@ xcodebuild build-for-testing \
   CODE_SIGNING_ALLOWED=NO \
   | tee "$artifacts/pour-xcodebuild.log"
 test_status=${PIPESTATUS[0]}
+set -e
 
 app_path="$derived/Build/Products/Debug-iphonesimulator/Pour.app"
 if [[ "$test_status" -eq 0 ]]; then
@@ -103,6 +106,7 @@ if [[ "$test_status" -eq 0 ]]; then
   else
     xcrun simctl install "$simulator_id" "$app_path"
     xcrun simctl privacy "$simulator_id" revoke camera com.devin.pour || true
+    set +e
     xcodebuild test-without-building \
       -project Pour.xcodeproj \
       -scheme PourQA \
@@ -113,27 +117,25 @@ if [[ "$test_status" -eq 0 ]]; then
       CODE_SIGNING_ALLOWED=NO \
       | tee -a "$artifacts/pour-xcodebuild.log"
     test_status=${PIPESTATUS[0]}
+    set -e
   fi
 fi
 
 if [[ -d "$artifacts/PourQA.xcresult" ]]; then
   xcrun xcresulttool get test-results summary \
     --path "$artifacts/PourQA.xcresult" \
-    > "$artifacts/pour-test-summary.json" || true
+    > "$artifacts/pour-test-summary.json" || test_status=1
 fi
 
-shot_src="$(find "$HOME/Library/Developer/CoreSimulator/Devices/$simulator_id" -type d -name pour-screenshots -print -quit || true)"
+shot_src="$(find "$HOME/Library/Developer/CoreSimulator/Devices/$simulator_id" \
+  -type d -name 'pour-screenshots-*' -newer "$artifacts/run-start" -print -quit || true)"
 if [[ -n "$shot_src" ]]; then
   cp -R "$shot_src"/. "$artifacts/screenshots/"
 fi
 
 sha="$(git rev-parse HEAD)"
-base="$(git rev-parse HEAD^ 2>/dev/null || echo unknown)"
-# The harness commit's parent is the PR #10 head when this branch has one commit on top.
-if git merge-base --is-ancestor a6ba7eda9f886ca9eb5d07be5746d14ec880998a HEAD; then
-  base="a6ba7eda9f886ca9eb5d07be5746d14ec880998a"
-fi
 
+set +e
 python3 scripts/qa_results.py \
   --log "$artifacts/pour-xcodebuild.log" \
   --observations "$artifacts/screenshots/observations.txt" \
@@ -141,10 +143,15 @@ python3 scripts/qa_results.py \
   --output "$artifacts/qa-results.md" \
   --summary "$artifacts/pour-test-summary.json" \
   --sha "$sha" \
-  --base "$base" \
   --device "$device_name" \
   --xcode "$xcode_version"
 results_status=$?
+set -e
+
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f "$artifacts/qa-results.md" ]]; then
+  cat "$artifacts/qa-results.md" >> "$GITHUB_STEP_SUMMARY"
+fi
+echo "QA evidence: $artifacts"
 
 if [[ "$test_status" -ne 0 ]]; then
   exit "$test_status"

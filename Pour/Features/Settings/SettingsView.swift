@@ -55,11 +55,11 @@ struct SettingsView: View {
                     Button {
                         showAssistant = true
                     } label: {
-                        Label("AI Bartender Assistant", systemImage: "sparkles")
+                        Label("Bar Assistant", systemImage: "sparkles")
                             .foregroundStyle(PourColor.textPrimary)
                     }
-                    .accessibilityLabel("AI Bartender Assistant")
-                    .accessibilityHint("Answers from recipes and My Bar on this device")
+                    .accessibilityLabel("Bar Assistant")
+                    .accessibilityHint("Offline recipe helper using recipes and My Bar on this device")
                     .accessibilityAddTraits(.isButton)
                 }
 

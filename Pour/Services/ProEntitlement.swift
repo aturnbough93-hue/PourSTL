@@ -6,6 +6,9 @@ struct ProTransactionSnapshot: Equatable, Sendable {
     var productID: String
     var revocationDate: Date?
     var expirationDate: Date?
+    var transactionID: UInt64? = nil
+    var purchaseDate: Date? = nil
+    var isUpgraded: Bool = false
 }
 
 /// Pure entitlement rules. StoreKit current entitlements are the source of truth;
@@ -14,6 +17,7 @@ enum ProEntitlementDecision {
     static func isActive(_ transaction: ProTransactionSnapshot, knownProductIDs: Set<String>, now: Date) -> Bool {
         guard knownProductIDs.contains(transaction.productID) else { return false }
         if transaction.revocationDate != nil { return false }
+        if transaction.isUpgraded { return false }
         if let expirationDate = transaction.expirationDate, expirationDate <= now { return false }
         return true
     }
@@ -57,15 +61,14 @@ enum ProGate {
 
     static let freeOffline: Set<PourCapability> = [
         .recipes, .inventory, .shoppingList, .timers, .customRecipes,
-        .search, .settings, .barcodeScanner, .venueCheckIn,
+        .search, .settings, .barcodeScanner, .venueCheckIn, .aiAssistant,
     ]
 
     static let proPlaceholders: Set<PourCapability> = [
-        .aiAssistant, .aiVideo, .costingExport, .sharedTeams, .cloudSync,
+        .aiVideo, .costingExport, .sharedTeams, .cloudSync,
     ]
 
     static let plannedFeatures: [ProPlannedFeature] = [
-        ProPlannedFeature(id: "assistant", symbol: "sparkles", text: "AI Bartender Assistant — substitutions and suggestions"),
         ProPlannedFeature(id: "video", symbol: "video", text: "AI video generation for technique demos"),
         ProPlannedFeature(id: "costing", symbol: "square.stack.3d.up", text: "Bottle-level tracking, costing and export"),
         ProPlannedFeature(id: "teams", symbol: "person.2", text: "Shared inventory and venue teams"),
@@ -88,6 +91,17 @@ enum ProProductsState: Equatable {
     case loading
     case loaded
     case unavailable
+}
+
+/// Only verified StoreKit transactions may enter the entitlement decision.
+/// Separating purchase outcomes also lets tests exercise every result without
+/// relying on whether an unsigned simulator can present an App Store sheet.
+enum ProPurchaseOutcome {
+    case verified(ProTransactionSnapshot)
+    case unverified
+    case pending
+    case cancelled
+    case unexpected
 }
 
 enum ProPurchaseStatus: Equatable {

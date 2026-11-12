@@ -135,4 +135,14 @@ final class UnitConversionTests: XCTestCase {
         XCTAssertTrue(Measure(amount: 0, unit: .rinse).isValidRecipeAmount)
     }
 
+    func testPluralUnitAliasesAndBarspoonLabels() {
+        for alias in ["ozs", "fl ozs"] { XCTAssertEqual(BarUnit.parse(alias), .ounce) }
+        XCTAssertEqual(BarUnit.parse("mls"), .milliliter)
+        XCTAssertEqual(BarUnit.parse("bsps"), .barspoon)
+        XCTAssertEqual(BarUnit.parse("tsps"), .teaspoon)
+        XCTAssertEqual(BarUnit.parse("tbsps"), .tablespoon)
+        XCTAssertEqual(Measure(amount: 1, unit: .barspoon).formattedNative(), "1 barspoon")
+        XCTAssertEqual(Measure(amount: 2, unit: .barspoon).formattedNative(), "2 barspoons")
+    }
+
 }

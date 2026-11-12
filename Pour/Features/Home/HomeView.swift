@@ -87,7 +87,7 @@ struct HomeView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button { showAssistant = true } label: {
-                            Label("AI Bartender Assistant", systemImage: "sparkles")
+                            Label("Bar Assistant", systemImage: "sparkles")
                         }
                         Section("Coming soon") {
                             Button { showVoiceStub = true } label: {

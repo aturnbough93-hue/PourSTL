@@ -1,5 +1,41 @@
 # Pour product, code, UI, and security review
 
+## November 12 integration review
+
+The current release integrates the root Apple touch icon, StoreKit purchase and
+restore flow, offline Bar Assistant, and simulator QA pull requests. The approved
+production icon is preserved. Cloudflare is already hosting the public website
+at **https://barpour.pages.dev**; the browser demo remains at `/try.html`.
+
+Additional fixes address SwiftData actor isolation, negative/decimal and invalid
+scaled measures, recipe-name ambiguity, ingredient matching, stock-question
+routing, and allergy/diet questions the rule-based helper cannot assess. The
+helper is labeled honestly and remains free. StoreKit verified transactions
+apply immediately, expiration/foreground checks refresh access, stale queries
+cannot overwrite newer transactions, and transient states reset on reopening.
+No free offline tools depend on a purchase.
+
+Local validation passed 10 website checks, 7 Cloudflare build tests and 10 demo
+logic tests. Rendered desktop/mobile checks covered navigation, demo storage,
+shopping, scaling, keyboard use, privacy/support copy, and error fallbacks.
+Live Cloudflare checks verified security headers and a real unknown-page 404.
+Final native XCTest/UI results and the exact tested commit are recorded in
+GitHub Actions; do not treat source inspection as an executed native test.
+
+The new CI artifact supplies a universal **Release simulator app**, provenance
+manifest and checksum. [Personal testing instructions](docs/PERSONAL_TESTING.md)
+explain installation, StoreKit sessions and the device test checklist. Physical
+camera/lifecycle/accessibility checks, owner signing, actual App Store products,
+and TestFlight distribution remain separate release requirements.
+
+The review below is historical (November 5). Its validation counts, icon
+concept, permission inventory and hosting activation notes describe that older
+revision. Camera access has since shipped for on-device barcode scanning;
+StoreKit may contact Apple when billing is tested, and the Bar Assistant uses
+local rules rather than a remote model.
+
+## November 5 review (historical)
+
 Reviewed November 5, 2026. Scope: checked-in SwiftUI/SwiftData app, XCTest source,
 Xcode project, static website, development configuration, and Git history.
 

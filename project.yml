@@ -121,6 +121,7 @@ schemes:
         - PourUITests
     run:
       config: Debug
+      storeKitConfiguration: Pour.storekit
     profile:
       config: Release
     analyze:

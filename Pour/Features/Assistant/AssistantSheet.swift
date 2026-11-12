@@ -1,8 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Chat sheet for on-device bar questions. The assistant value is injected so a
-/// later backend can replace `LocalBartenderAssistant` without a new screen.
+/// Ephemeral conversation with the offline recipe helper.
 struct AssistantSheet: View {
     @Query(sort: \Recipe.name) private var recipes: [Recipe]
     @Query private var inventory: [InventoryItem]
@@ -28,7 +27,7 @@ struct AssistantSheet: View {
                 footer
             }
             .background(PourColor.background)
-            .navigationTitle("AI Assistant")
+            .navigationTitle("Bar Assistant")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -38,7 +37,12 @@ struct AssistantSheet: View {
                 }
             }
         }
-        .onDisappear { answerTask?.cancel() }
+        .onDisappear {
+            answerTask?.cancel()
+            answerTask = nil
+            messages = []
+            draft = ""
+        }
     }
 
     private var conversation: some View {
@@ -72,7 +76,7 @@ struct AssistantSheet: View {
             EmptyStateView(
                 symbol: "sparkles",
                 title: "Ask your bar",
-                message: "Ask what you can make, what can stand in for a bottle, or how to scale a recipe. Answers come from recipes and inventory on this device."
+                message: "An offline recipe helper for what you can make, ingredient stand-ins, and scaled measures. It understands a fixed set of question patterns using recipes and My Bar on this device."
             )
             VStack(spacing: 8) {
                 ForEach(LocalBartenderAssistant.starterQuestions, id: \.self) { question in
@@ -149,13 +153,12 @@ struct AssistantSheet: View {
 
     private var footer: some View {
         VStack(spacing: 8) {
-            Text("Answers use recipes and My Bar on this device. Nothing is sent off your phone.")
+            Text("Questions stay on this device and clear when you close this sheet. Stock checks ingredient presence, not quantities or dietary needs.")
                 .font(.caption)
                 .foregroundStyle(PourColor.textTertiary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
-                .accessibilityLabel("Answers use recipes and My Bar on this device. Nothing is sent off your phone.")
             HStack(alignment: .bottom, spacing: 8) {
                 TextField("Ask about your bar", text: $draft, axis: .vertical)
                     .lineLimit(1...4)
@@ -165,7 +168,7 @@ struct AssistantSheet: View {
                     .padding(.vertical, 10)
                     .background(PourColor.card, in: RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(PourColor.border))
-                    .accessibilityLabel("Question for the bartender assistant")
+                    .accessibilityLabel("Question for Bar Assistant")
                     .accessibilityHint("Ask what you can make, a substitution, or a scaled recipe. Answers stay on this device.")
                     .submitLabel(.send)
                     .onSubmit { ask(draft) }

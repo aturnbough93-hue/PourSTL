@@ -2,6 +2,7 @@
 """Turn the simulator QA log into a checklist. Reads the xcodebuild log; it does not invent passes."""
 
 import argparse
+import json
 import re
 import struct
 import sys
@@ -25,22 +26,23 @@ CASE = re.compile(
 
 
 def png_size(path: Path):
+    # Read only the fixed IHDR header, including for malformed/truncated files.
     with path.open("rb") as stream:
-        if stream.read(8) != b"\x89PNG\r\n\x1a\n":
-            return None
-        length = struct.unpack(">I", stream.read(4))[0]
-        if stream.read(4) != b"IHDR":
-            return None
-        data = stream.read(length)
-    if len(data) < 8:
+        data = stream.read(24)
+    if len(data) != 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
         return None
-    return struct.unpack(">II", data[:8])
+    if struct.unpack(">I", data[8:12])[0] != 13:
+        return None
+    return struct.unpack(">II", data[16:24])
 
 
 def load_results(log_text: str):
     found = {}
     for match in CASE.finditer(log_text):
-        found[match.group("name")] = match.group("result")
+        name, result = match.group("name"), match.group("result")
+        # A later retry must not hide a failure in this run.
+        if found.get(name) != "failed":
+            found[name] = result
     return found
 
 
@@ -64,10 +66,9 @@ def main():
     parser.add_argument("--screenshots", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--sha", required=True)
-    parser.add_argument("--base", required=True)
     parser.add_argument("--device", required=True)
     parser.add_argument("--xcode", required=True)
-    parser.add_argument("--summary", default="")
+    parser.add_argument("--summary", required=True)
     args = parser.parse_args()
 
     log_path = Path(args.log)
@@ -94,7 +95,8 @@ def main():
         if size == EXPECTED_SIZE:
             shot_lines.append(f"- `{name}`: {size[0]}x{size[1]}")
         else:
-            shot_lines.append(f"- `{name}`: {size[0]}x{size[1] if size else 'unreadable'}, expected 1320x2868")
+            actual = f"{size[0]}x{size[1]}" if size else "unreadable"
+            shot_lines.append(f"- `{name}`: {actual}, expected 1320x2868")
             shot_ok = False
 
     fallback = observations.get("camera-fallback", "not recorded")
@@ -114,7 +116,7 @@ def main():
         ("11", "Ambiguous 8-digit entry shows the EAN-8 / UPC-E picker with the typed digits", outcome(found, ["testAmbiguousEightDigitsShowsThePrintedCode"]), "01000009. Both buttons show those digits."),
         ("12a", "Torch", "needs device", "The simulator has no torch."),
         ("12b", "Rotation while the scanner is up", outcome(found, ["testScannerSurvivesRotation"]), "Portrait lock stays usable in landscape and back."),
-        ("12c", "Background and foreground during a scan", outcome(found, ["testScannerSurvivesBackgrounding", "testStoppingTheSessionClearsASwallowedInterruption"]), "UI leaves the scanner and returns to manual entry. The a6ba7ed interruption latch is testStoppingTheSessionClearsASwallowedInterruption. A running preview still needs a camera."),
+        ("12c", "Background and foreground during a scan", outcome(found, ["testScannerSurvivesBackgrounding", "testStoppingTheSessionClearsASwallowedInterruption"]), "UI leaves the scanner and returns to manual entry. A unit test covers the interruption latch. A running preview still needs a camera."),
         ("12d", "Airplane mode", "needs device", "Search is local, but the radios were not switched off."),
         ("13", "VoiceOver labels on the scan button, Open Settings, picker, and toggles", outcome(found, ["testVoiceOverLabelsOnScannerControls"]), "Scan barcode to add ingredient, Open Settings, Use EAN-8 / Use UPC-E, In stock and Low stock."),
         ("S1", "Search the local library", outcome(found, ["testSearchFiltersTheLocalLibrary"]), "Negroni stays. Margarita is filtered out. No network call in this path."),
@@ -124,7 +126,10 @@ def main():
         ("S5", "Custom recipe save", outcome(found, ["testCustomRecipeSaves"]), "Shift Special with Bourbon appears in search."),
         ("S6", "pour:// deep link", outcome(found, ["testRecipeDeepLinkOpensTheDrink", "testShoppingDeepLinkSelectsTheTab"]), "pour://recipe?name=Negroni and pour://tab/shopping."),
         ("S7", "Settings persist", outcome(found, ["testSettingsUnitsPersistAcrossLaunch"]), "Preferred units stay on ml after relaunch."),
-        ("S8", "App Store screenshots", "pass" if shot_ok else "fail", "Eight portrait PNGs. The barcode shot is the confirm sheet after manual entry. AI, voice, and Pro sheets were not opened."),
+        ("S8", "Current testing screenshots", "pass" if shot_ok and outcome(found, ["testCaptureTestingScreenshots"]) == "pass" else "fail", "Eight portrait PNGs captured by this run. The barcode image follows manual entry. These are testing evidence, not App Store approval."),
+        ("S9", "Classic variation can be cancelled", outcome(found, ["testClassicVariationCanBeCancelledWithoutChangingTheOriginal"]), "Pre-filled Negroni variation editor is dismissed; the original remains read-only."),
+        ("S10", "Offline Bar Assistant", outcome(found, ["testAssistantAnswersFromTheDemoBar"]), "A supported starter question returns Negroni from the demo inventory. No AI service is connected."),
+        ("S11", "Pro sheet navigation keeps free recipes available", outcome(found, ["testProSheetCanBeDismissedWithoutPurchasing"]), "Subscription sheet opens, exposes Restore purchases, and dismisses. No purchase or restore action is invoked; billing still needs StoreKit and sandbox validation."),
     ]
 
     failures = []
@@ -134,20 +139,33 @@ def main():
     failures = failures[:40]
 
     summary = ""
+    summary_ok = False
+    summary_error = "No valid XCTest summary was produced."
     summary_path = Path(args.summary)
-    if summary_path.exists():
+    if summary_path.is_file():
         summary = summary_path.read_text(errors="replace").strip()
+        try:
+            counts = json.loads(summary)
+            summary_ok = (
+                counts["totalTestCount"] > 0
+                and counts["passedTests"] > 0
+                and counts["failedTests"] == 0
+                and counts.get("result") != "Failed"
+            )
+            summary_error = "XCTest must execute tests, pass at least one, and report zero failures."
+        except (ValueError, KeyError, TypeError):
+            summary_error = "The XCTest summary is malformed or missing test counts."
 
     lines = [
         "# Simulator QA pass",
         "",
         f"- Tested SHA: `{args.sha}`",
-        f"- PR #10 app code: `{args.base}` (this QA commit is that commit plus the simulator harness)",
         f"- Device: {args.device}",
         f"- Xcode: {args.xcode}",
-        f"- Bundle ID: `com.devin.pour` (unchanged)",
+        "- Bundle ID: `com.devin.pour`",
+        f"- XCTest summary: {'pass' if summary_ok else 'fail'}",
         "",
-        "A real camera pass on Andrew's iPhone is still needed before launch.",
+        "This report covers the simulator at the exact commit above. Physical camera, torch, real device lifecycle, and signed distribution still need iPhone testing before launch.",
         "",
         "## Checklist",
         "",
@@ -161,6 +179,8 @@ def main():
     lines.extend(shot_lines or ["- No screenshot directory was produced."])
     if summary:
         lines.extend(["", "## XCTest summary", "", "```", summary, "```"])
+    if not summary_ok:
+        lines.extend(["", f"XCTest evidence failed: {summary_error}"])
     if failures:
         lines.extend(["", "## Failure excerpts", ""])
         lines.extend(f"- `{line}`" for line in failures)
@@ -171,7 +191,8 @@ def main():
     output.write_text("\n".join(lines))
     print(output.read_text())
     automated_failed = any(result in {"fail", "missing"} for _, _, result, _ in rows)
-    if automated_failed or not shot_ok:
+    any_test_failed = any(result == "failed" for result in found.values())
+    if automated_failed or any_test_failed or not shot_ok or not summary_ok:
         return 1
     return 0
 

@@ -1,7 +1,7 @@
 import Foundation
 
-/// Snapshot the assistant can answer from. Matching, search, and scaling still
-/// go through `RecipeEngine` and `Measure`; this only carries the caller's data.
+/// Main-context models the assistant can answer from. Keep access on the main
+/// actor, just like the SwiftData queries that supply them.
 struct AssistantLibrary {
     var recipes: [Recipe]
     var inventory: [InventoryItem]
@@ -25,6 +25,7 @@ enum AssistantAnswerError: Error, Equatable {
 /// Question the bartender sheet can ask. A later backend can conform to this
 /// without changing the sheet. The v1 app ships only `LocalBartenderAssistant`.
 protocol BartenderAssistant {
+    @MainActor
     func answer(_ question: String, in library: AssistantLibrary) async throws -> AssistantReply
 }
 
@@ -33,10 +34,11 @@ enum AssistantIntent: Equatable {
     case substitution(ingredient: String, recipeName: String?)
     case scale(recipeQuery: String, servings: Double?)
     case missingIngredients(recipeQuery: String)
-    case recipe(recipeQuery: String)
+    case recipe(recipeQuery: String, servings: Double = 1)
     case inventory
     case privacy
     case help
+    case unsupportedDietaryRequest
     case empty
     case unrecognized
 }
@@ -44,10 +46,12 @@ enum AssistantIntent: Equatable {
 /// Deterministic question routing. No model and no network.
 enum AssistantQuestionParser {
     static func intent(for raw: String) -> AssistantIntent {
-        let text = IngredientNormalizer.normalize(raw)
+        let text = normalizedQuestion(raw)
         if text.isEmpty { return .empty }
         if isPrivacy(text) { return .privacy }
+        if hasDietaryRestriction(text) { return .unsupportedDietaryRequest }
         if isHelp(text) { return .help }
+        if isInventory(text) { return .inventory }
         if let substitution = substitution(in: text), !isPlainMakeQuestion(text) {
             return substitution
         }
@@ -55,8 +59,41 @@ enum AssistantQuestionParser {
         if let missing = missing(in: text) { return missing }
         if let recipe = recipe(in: text) { return recipe }
         if let scale = scale(in: text) { return scale }
-        if isInventory(text) { return .inventory }
         return .unrecognized
+    }
+
+    /// Ingredient normalization intentionally removes punctuation. Preserve
+    /// signed decimal quantities before normalizing the rest of the question.
+    private static func normalizedQuestion(_ raw: String) -> String {
+        let pattern = #"(?<![\p{L}\p{N}])[-+−]?(?:\d+(?:\.\d+)?|\.\d+)(?![\p{L}\p{N}])"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else {
+            return IngredientNormalizer.normalize(raw)
+        }
+        var parts: [String] = []
+        var start = raw.startIndex
+        for match in expression.matches(in: raw, range: NSRange(raw.startIndex..., in: raw)) {
+            guard let range = Range(match.range, in: raw) else { continue }
+            parts.append(IngredientNormalizer.normalize(String(raw[start..<range.lowerBound])))
+            parts.append(String(raw[range]).replacingOccurrences(of: "−", with: "-"))
+            start = range.upperBound
+        }
+        parts.append(IngredientNormalizer.normalize(String(raw[start...])))
+        return parts.filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    private static func hasDietaryRestriction(_ text: String) -> Bool {
+        let restrictions = [
+            "allerg", "intoleran", "dietary", "dairy free", "dairyfree", "lactose",
+            "gluten free", "glutenfree", "celiac", "coeliac", "vegan", "vegetarian",
+            "nut free", "nutfree", "egg free", "eggfree", "soy free", "soyfree",
+            "sugar free", "sugarfree", "low sugar", "diabet", "halal", "kosher",
+            "alcohol free", "alcoholfree", "non alcoholic", "nonalcoholic", "zero proof",
+            "pregnan", "medication", "cant have ", "cannot have ",
+            "without dairy", "no dairy", "without milk", "no milk", "without nuts", "no nuts",
+            "without egg", "no egg", "without gluten", "no gluten", "without alcohol", "no alcohol",
+            "avoid ", "avoiding ", "safe for ", "sober",
+        ]
+        return restrictions.contains { text.contains($0) }
     }
 
     private static let makePhrases = [
@@ -218,6 +255,7 @@ enum AssistantQuestionParser {
             "missing ingredients for ",
             "what do i need for ",
             "what do i need to make ",
+            "what do i have to make ",
             "can i make ",
         ]
         guard let marker = markers.first(where: { text.contains($0) }),
@@ -233,6 +271,9 @@ enum AssistantQuestionParser {
               let range = text.range(of: marker) else { return nil }
         let name = trimFiller(String(text[range.upperBound...]))
         guard !name.isEmpty else { return nil }
+        if let parsed = trailingServings(name) {
+            return .recipe(recipeQuery: trimFiller(parsed.name), servings: parsed.servings)
+        }
         return .recipe(recipeQuery: name)
     }
 
@@ -240,9 +281,11 @@ enum AssistantQuestionParser {
         let phrases = [
             "whats in my bar", "what is in my bar", "what do i have",
             "whats in stock", "what is in stock", "my inventory",
+            "whats out of stock", "what is out of stock", "out of stock",
+            "what do i have in stock", "what do i have out of stock",
             "show my bar", "show my inventory", "list my bar", "my bar inventory",
         ]
-        return phrases.contains { text == $0 || text.hasPrefix($0 + " ") }
+        return phrases.contains { trimFiller(text) == trimFiller($0) }
     }
 
     private static func isPrivacy(_ text: String) -> Bool {
@@ -331,15 +374,18 @@ struct LocalBartenderAssistant: BartenderAssistant {
         "Scale the Negroni for 4",
     ]
 
+    @MainActor
     func answer(_ question: String, in library: AssistantLibrary) async throws -> AssistantReply {
         try Task.checkCancellation()
         switch AssistantQuestionParser.intent(for: question) {
         case .empty:
             return reply("Ask what you can make, what can stand in for a bottle, or how to scale a recipe.", followUps: Self.starterQuestions)
         case .privacy:
-            return reply("Answers come from your recipes and My Bar on this device. Nothing is sent off the phone, and this assistant does not use a remote model.", followUps: Self.starterQuestions)
+            return reply("This offline recipe helper uses a fixed set of question patterns and your recipes and My Bar on this device. It does not use an AI model or send questions anywhere. This conversation is cleared when you close the sheet.", followUps: Self.starterQuestions)
+        case .unsupportedDietaryRequest:
+            return reply("I can't verify allergies, dietary restrictions, or whether a drink is alcohol-free. Recipes and stand-ins aren't checked for those needs. Check every ingredient's label and the manufacturer's information before choosing a drink.", followUps: [])
         case .help, .unrecognized:
-            return reply("I can answer from this device: what you can make with My Bar, stand-ins for a bottle, and scaled measures.", followUps: Self.starterQuestions)
+            return reply("I'm an offline recipe helper with a fixed set of question patterns. Ask what you can make with My Bar, a stand-in for an ingredient, missing ingredients, or scaled measures. Stock matching checks ingredient presence, not bottle quantities or dietary needs.", followUps: Self.starterQuestions)
         case .inventory:
             return inventoryAnswer(library)
         case .whatCanIMake(let focus):
@@ -350,13 +396,14 @@ struct LocalBartenderAssistant: BartenderAssistant {
             return try scaleAnswer(query: recipeQuery, servings: servings, library: library)
         case .missingIngredients(let recipeQuery):
             return missingAnswer(query: recipeQuery, library: library)
-        case .recipe(let recipeQuery):
-            return try recipeAnswer(query: recipeQuery, library: library)
+        case .recipe(let recipeQuery, let servings):
+            return try recipeAnswer(query: recipeQuery, servings: servings, library: library)
         }
     }
 
     private func reply(_ text: String, followUps: [String]) -> AssistantReply {
-        AssistantReply(text: text, followUps: followUps, sourceNote: AssistantReply.onDeviceNote)
+        var seen: Set<String> = []
+        return AssistantReply(text: text, followUps: followUps.filter { seen.insert($0).inserted }, sourceNote: AssistantReply.onDeviceNote)
     }
 
     private func whatCanIMake(focus: String?, library: AssistantLibrary) -> AssistantReply {
@@ -424,7 +471,8 @@ struct LocalBartenderAssistant: BartenderAssistant {
         guard !parts.isEmpty else { return library.recipes }
         return library.recipes.filter { recipe in
             parts.allSatisfy { part in
-                !RecipeEngine.search(recipes: [recipe], query: part).isEmpty
+                let canonical = IngredientNormalizer.canonicalName(for: part)
+                return recipe.sortedIngredients.contains { $0.canonicalName == canonical }
             }
         }
     }
@@ -446,7 +494,7 @@ struct LocalBartenderAssistant: BartenderAssistant {
                     lines.append("\(recipe.name) doesn't call for \(display).")
                 }
             case .many(let found):
-                lines.append("I found more than one drink for that: \(joinedNames(found)).")
+                return clarification(for: found, prompt: "Which drink do you mean?", followUps: found.prefix(3).map { "What can I substitute for \(raw) in a \($0.name)?" })
             case .none:
                 lines.append("I could not find \(Self.titled(recipeName)) in your recipes.")
             }
@@ -492,29 +540,12 @@ struct LocalBartenderAssistant: BartenderAssistant {
         case .none:
             return reply("I could not find \(Self.titled(query)) in your recipes. Try the drink's full name.", followUps: Self.starterQuestions)
         case .many(let found):
-            return reply("Which drink should I scale? I found \(joinedNames(found)).", followUps: found.prefix(3).map { "Scale the \($0.name) for 4" })
+            return clarification(for: found, prompt: "Which drink should I scale?", followUps: found.prefix(3).map { "Scale the \($0.name) for 4" })
         case .one(let recipe):
             guard let servings else {
                 return reply("How many servings should I scale \(recipe.name) to?", followUps: ["Scale the \(recipe.name) for 4", "Half the \(recipe.name)"])
             }
-            guard servings.isFinite else { throw AssistantAnswerError.couldNotAnswer }
-            if servings <= 0 {
-                return reply("Servings have to be greater than zero.", followUps: ["Scale the \(recipe.name) for 4"])
-            }
-            guard recipe.sortedIngredients.allSatisfy({ $0.amount.isFinite }) else {
-                throw AssistantAnswerError.couldNotAnswer
-            }
-            var factor = servings
-            var lead = ""
-            let maximum = Double(RecipeScaling.maximumServings)
-            if factor > maximum {
-                lead = "The recipe screen scales up to \(RecipeScaling.maximumServings) servings, so this stops there.\n\n"
-                factor = maximum
-            }
-            return reply(lead + spec(for: recipe, factor: factor, unit: library.preferredUnit, includeInstructions: false), followUps: [
-                "What can I make?",
-                "What am I missing for a \(recipe.name)?",
-            ])
+            return try scaledRecipeAnswer(recipe, servings: servings, library: library, includeInstructions: false)
         }
     }
 
@@ -523,7 +554,7 @@ struct LocalBartenderAssistant: BartenderAssistant {
         case .none:
             return reply("I could not find \(Self.titled(query)) in your recipes.", followUps: ["What can I make?"])
         case .many(let found):
-            return reply("Which drink do you mean? I found \(joinedNames(found)).", followUps: found.prefix(3).map { "What am I missing for a \($0.name)?" })
+            return clarification(for: found, prompt: "Which drink do you mean?", followUps: found.prefix(3).map { "What am I missing for a \($0.name)?" })
         case .one(let recipe):
             let match = RecipeEngine.match(recipe, inventory: library.inventory)
             var lines: [String] = []
@@ -541,21 +572,38 @@ struct LocalBartenderAssistant: BartenderAssistant {
         }
     }
 
-    private func recipeAnswer(query: String, library: AssistantLibrary) throws -> AssistantReply {
+    private func recipeAnswer(query: String, servings: Double, library: AssistantLibrary) throws -> AssistantReply {
         switch find(query, in: library.recipes) {
         case .none:
             return reply("I could not find \(Self.titled(query)) in your recipes.", followUps: ["What can I make?"])
         case .many(let found):
-            return reply("Which drink do you mean? I found \(joinedNames(found)).", followUps: found.prefix(3).map { "How do I make a \($0.name)?" })
+            return clarification(for: found, prompt: "Which drink do you mean?", followUps: found.prefix(3).map { "How do I make a \($0.name)?" })
         case .one(let recipe):
-            guard recipe.sortedIngredients.allSatisfy({ $0.amount.isFinite }) else {
-                throw AssistantAnswerError.couldNotAnswer
-            }
-            return reply(spec(for: recipe, factor: 1, unit: library.preferredUnit, includeInstructions: true), followUps: [
-                "Scale the \(recipe.name) for 4",
-                "What am I missing for a \(recipe.name)?",
-            ])
+            return try scaledRecipeAnswer(recipe, servings: servings, library: library, includeInstructions: true)
         }
+    }
+
+    private func scaledRecipeAnswer(_ recipe: Recipe, servings: Double, library: AssistantLibrary, includeInstructions: Bool) throws -> AssistantReply {
+        guard servings.isFinite else { throw AssistantAnswerError.couldNotAnswer }
+        guard servings > 0 else {
+            return reply("Servings have to be greater than zero.", followUps: ["Scale the \(recipe.name) for 4"])
+        }
+        let maximum = Double(RecipeScaling.maximumServings)
+        let factor = min(servings, maximum)
+        guard recipe.sortedIngredients.allSatisfy({ line in
+            let converted = line.measure.scaled(by: factor).converted(to: library.preferredUnit)
+            return line.measure.isValidRecipeAmount && converted.amount.isFinite
+                && Measure.displayAmount(converted.amount, for: converted.unit).isFinite
+        }) else {
+            throw AssistantAnswerError.couldNotAnswer
+        }
+        let lead = servings > maximum
+            ? "The recipe screen scales up to \(RecipeScaling.maximumServings) servings, so this stops there.\n\n"
+            : ""
+        return reply(lead + spec(for: recipe, factor: factor, unit: library.preferredUnit, includeInstructions: includeInstructions), followUps: [
+            "What can I make?",
+            "What am I missing for a \(recipe.name)?",
+        ])
     }
 
     private func inventoryAnswer(_ library: AssistantLibrary) -> AssistantReply {
@@ -638,9 +686,9 @@ struct LocalBartenderAssistant: BartenderAssistant {
     private func find(_ query: String, in recipes: [Recipe]) -> RecipeHit {
         let q = IngredientNormalizer.normalize(query)
         guard !q.isEmpty else { return .none }
-        if let exact = recipes.first(where: { IngredientNormalizer.normalize($0.name) == q }) {
-            return .one(exact)
-        }
+        let exact = recipes.filter { IngredientNormalizer.normalize($0.name) == q }
+        if exact.count == 1, let only = exact.first { return .one(only) }
+        if exact.count > 1 { return .many(exact) }
         let contained = recipes.filter { containsPhrase(q, phrase: IngredientNormalizer.normalize($0.name)) }
         if let bestLength = contained.map({ IngredientNormalizer.normalize($0.name).count }).max() {
             let tied = contained.filter { IngredientNormalizer.normalize($0.name).count == bestLength }
@@ -679,6 +727,14 @@ struct LocalBartenderAssistant: BartenderAssistant {
 
     private func joinedNames(_ recipes: [Recipe]) -> String {
         listed(recipes.sorted { $0.name < $1.name }.prefix(5).map(\.name))
+    }
+
+    private func clarification(for found: [Recipe], prompt: String, followUps: [String]) -> AssistantReply {
+        let names = found.map { IngredientNormalizer.normalize($0.name) }
+        if Set(names).count < names.count {
+            return reply("Your library has multiple recipes with the same name. Give them distinct names in the recipe editor so I can select the right one. I haven't selected a recipe.", followUps: ["What can I make?"])
+        }
+        return reply("\(prompt) I found \(joinedNames(found)).", followUps: followUps)
     }
 
     private func listed<S: Sequence>(_ items: S) -> String where S.Element == String {

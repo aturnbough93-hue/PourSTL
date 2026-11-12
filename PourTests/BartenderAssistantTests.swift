@@ -77,6 +77,29 @@ final class BartenderAssistantTests: XCTestCase {
         )
     }
 
+    func testScalingPreservesSignedDecimalQuantities() {
+        for (quantity, expected) in [("1.5", 1.5), (".5", 0.5), ("-2", -2.0), ("−0.5", -0.5), ("0", 0.0)] {
+            XCTAssertEqual(
+                AssistantQuestionParser.intent(for: "Scale the Negroni for \(quantity)"),
+                .scale(recipeQuery: "negroni", servings: expected)
+            )
+        }
+    }
+
+    func testRecipeQuestionsPreserveRequestedServings() {
+        for question in ["How do I make a Negroni for 4?", "Recipe for a Negroni for 4", "How to make a Negroni for 4 people"] {
+            XCTAssertEqual(AssistantQuestionParser.intent(for: question), .recipe(recipeQuery: "negroni", servings: 4))
+        }
+    }
+
+    func testInventoryAndRecipeAvailabilityQuestionsDoNotBecomeSubstitutions() {
+        XCTAssertEqual(AssistantQuestionParser.intent(for: "What's out of stock?"), .inventory)
+        XCTAssertEqual(AssistantQuestionParser.intent(for: "What do I have in stock?"), .inventory)
+        XCTAssertEqual(AssistantQuestionParser.intent(for: "Show my bar please"), .inventory)
+        XCTAssertEqual(AssistantQuestionParser.intent(for: "My inventory"), .inventory)
+        XCTAssertEqual(AssistantQuestionParser.intent(for: "What do I have to make a Negroni?"), .missingIngredients(recipeQuery: "negroni"))
+    }
+
     func testParsesPrivacyHelpAndEmpty() {
         XCTAssertEqual(AssistantQuestionParser.intent(for: "   "), .empty)
         XCTAssertEqual(AssistantQuestionParser.intent(for: "Do you upload my bar?"), .privacy)
@@ -166,6 +189,38 @@ final class BartenderAssistantTests: XCTestCase {
         assertOnDevice(reply)
         XCTAssertTrue(reply.text.contains("My Bar is empty"))
         XCTAssertFalse(reply.text.contains("You can make"))
+    }
+
+    func testGinFocusDoesNotMatchGingerBeerOrRecipeName() async throws {
+        let martini = recipe(name: "Martini", lines: [("London Dry Gin", 2, "oz", false)])
+        let mule = recipe(name: "Moscow Mule", lines: [("Ginger Beer", 4, "oz", false)])
+        let misleadingName = recipe(name: "Gin in the title", lines: [("Vodka", 2, "oz", false)])
+        let library = AssistantLibrary(recipes: [martini, mule, misleadingName], inventory: stock(["Beefeater", "Ginger Beer", "Vodka"]), preferredUnit: .oz)
+        for focus in ["gin", "Beefeater"] {
+            let reply = try await LocalBartenderAssistant().answer("What can I make with \(focus)?", in: library)
+            assertOnDevice(reply)
+            XCTAssertTrue(reply.text.contains("You can make 1 drink"))
+            XCTAssertTrue(reply.text.contains("Martini"))
+            XCTAssertFalse(reply.text.contains("Moscow Mule"))
+            XCTAssertFalse(reply.text.contains("Gin in the title"))
+        }
+    }
+
+    func testAvailabilityQuestionChecksRecipeInsteadOfListingInventory() async throws {
+        let negroni = recipe(name: "Negroni", lines: [("Gin", 1, "oz", false), ("Campari", 1, "oz", false)])
+        let library = AssistantLibrary(recipes: [negroni], inventory: stock(["Gin"]), preferredUnit: .oz)
+        let reply = try await LocalBartenderAssistant().answer("What do I have to make a Negroni?", in: library)
+        XCTAssertTrue(reply.text.contains("Negroni still needs Campari"))
+        XCTAssertFalse(reply.text.contains("In stock ("))
+    }
+
+    func testOutOfStockQuestionListsMarkedOutBottles() async throws {
+        let campari = InventoryItem(name: "Campari", category: .other, isInStock: false)
+        let library = AssistantLibrary(recipes: [], inventory: stock(["Gin"]) + [campari], preferredUnit: .oz)
+        let reply = try await LocalBartenderAssistant().answer("What's out of stock?", in: library)
+        assertOnDevice(reply)
+        XCTAssertTrue(reply.text.contains("Marked out (1): Campari"))
+        XCTAssertFalse(reply.text.contains("stand-in"))
     }
 
     // MARK: - Substitution
@@ -281,6 +336,49 @@ final class BartenderAssistantTests: XCTestCase {
         XCTAssertTrue(reply.text.contains("\(expected) Gin"))
     }
 
+    func testDecimalScalingAndNonpositiveServings() async throws {
+        let negroni = recipe(name: "Negroni", lines: [("Gin", 2, "oz", false)])
+        let library = AssistantLibrary(recipes: [negroni], inventory: [], preferredUnit: .oz)
+        let decimal = try await LocalBartenderAssistant().answer("Scale Negroni for 1.5", in: library)
+        XCTAssertTrue(decimal.text.contains("3 oz Gin"))
+        for question in ["Scale Negroni for -2", "Scale Negroni for 0", "How do I make Negroni for -0.5?"] {
+            let reply = try await LocalBartenderAssistant().answer(question, in: library)
+            XCTAssertTrue(reply.text.contains("greater than zero"), question)
+            XCTAssertFalse(reply.text.contains("oz Gin"), question)
+        }
+    }
+
+    func testRecipeQuestionScalesIngredientsAndIncludesInstructions() async throws {
+        let negroni = recipe(name: "Negroni", lines: [("Gin", 1, "oz", false)])
+        negroni.instructions = "Stir with ice and strain."
+        let library = AssistantLibrary(recipes: [negroni], inventory: [], preferredUnit: .oz)
+        for question in ["How do I make a Negroni for 4?", "Recipe for a Negroni for 4"] {
+            let reply = try await LocalBartenderAssistant().answer(question, in: library)
+            assertOnDevice(reply)
+            XCTAssertTrue(reply.text.contains("Negroni for 4 servings"))
+            XCTAssertTrue(reply.text.contains("4 oz Gin"))
+            XCTAssertTrue(reply.text.contains(negroni.instructions))
+        }
+        let capped = try await LocalBartenderAssistant().answer("How do I make a Negroni for 40?", in: library)
+        XCTAssertTrue(capped.text.contains("\(RecipeScaling.maximumServings) oz Gin"))
+        XCTAssertTrue(capped.text.contains("stops there"))
+    }
+
+    func testDuplicateRecipeNamesRequireRenamingInsteadOfChoosingFirst() async throws {
+        let first = recipe(name: "Negroni", lines: [("Gin", 1, "oz", false)])
+        let second = recipe(name: "Négroni", lines: [("Vodka", 2, "oz", false)])
+        let library = AssistantLibrary(recipes: [first, second], inventory: stock(["Gin"]), preferredUnit: .oz)
+        for question in ["Scale Negroni for 4", "How do I make a Negroni?", "What am I missing for a Negroni?", "What can I substitute for gin in a Negroni?"] {
+            let reply = try await LocalBartenderAssistant().answer(question, in: library)
+            assertOnDevice(reply)
+            XCTAssertTrue(reply.text.contains("distinct names"), question)
+            XCTAssertTrue(reply.text.contains("haven't selected a recipe"), question)
+            XCTAssertFalse(reply.text.contains("oz Gin"), question)
+            XCTAssertFalse(reply.text.contains("oz Vodka"), question)
+            XCTAssertEqual(Set(reply.followUps).count, reply.followUps.count)
+        }
+    }
+
     func testScalingUnknownDrinkDoesNotInventASpec() async throws {
         let library = AssistantLibrary(recipes: [], inventory: [], preferredUnit: .oz)
         let reply = try await LocalBartenderAssistant().answer("Scale the Unicorn for 2", in: library)
@@ -302,6 +400,42 @@ final class BartenderAssistantTests: XCTestCase {
         }
     }
 
+    func testOverflowingScaledMeasureFailsClosed() async {
+        for (amount, unit, question) in [
+            (Double.greatestFiniteMagnitude, UnitPreference.oz, "Scale Broken for 2"),
+            (1e308, UnitPreference.ml, "How do I make Broken?"),
+            (Double.greatestFiniteMagnitude, UnitPreference.oz, "How do I make Broken?"),
+        ] {
+            let broken = recipe(name: "Broken", lines: [("Gin", amount, "oz", false)])
+            let library = AssistantLibrary(recipes: [broken], inventory: [], preferredUnit: unit)
+            do {
+                _ = try await LocalBartenderAssistant().answer(question, in: library)
+                XCTFail("Expected scaling, conversion, and display overflow to fail closed")
+            } catch AssistantAnswerError.couldNotAnswer {
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testAllergyAndDietaryRequestsDoNotRecommendUncheckedStandIns() async throws {
+        let library = AssistantLibrary(recipes: [], inventory: stock(["Milk", "Cream"]), preferredUnit: .oz)
+        let questions = [
+            "I'm allergic to milk, what can I substitute for cream?",
+            "What can I substitute for cream? I need it dairy-free.",
+            "What can I make that's vegan?",
+            "What can I make that's alcohol-free?",
+            "I can't have milk. What can I substitute for cream?",
+        ]
+        for question in questions {
+            let reply = try await LocalBartenderAssistant().answer(question, in: library)
+            XCTAssertEqual(AssistantQuestionParser.intent(for: question), .unsupportedDietaryRequest)
+            XCTAssertTrue(reply.text.contains("can't verify allergies"), question)
+            XCTAssertFalse(reply.text.contains("• Milk"), question)
+            XCTAssertTrue(reply.followUps.isEmpty, question)
+        }
+    }
+
     // MARK: - Privacy and empty
 
     func testPrivacyQuestionStaysOnDevice() async throws {
@@ -309,8 +443,9 @@ final class BartenderAssistantTests: XCTestCase {
         let reply = try await LocalBartenderAssistant().answer("Do you upload my bar?", in: library)
         assertOnDevice(reply)
         XCTAssertTrue(reply.text.localizedCaseInsensitiveContains("on this device"))
-        XCTAssertTrue(reply.text.localizedCaseInsensitiveContains("nothing is sent"))
-        XCTAssertTrue(reply.text.localizedCaseInsensitiveContains("remote model"))
+        XCTAssertTrue(reply.text.localizedCaseInsensitiveContains("does not use an AI model"))
+        XCTAssertTrue(reply.text.localizedCaseInsensitiveContains("send questions anywhere"))
+        XCTAssertTrue(reply.text.localizedCaseInsensitiveContains("cleared when you close"))
     }
 
     func testEmptyQuestionAsksForABarQuestion() async throws {

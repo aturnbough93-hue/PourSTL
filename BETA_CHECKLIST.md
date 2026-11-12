@@ -1,18 +1,20 @@
 # Pour Beta / TestFlight Checklist
 
-Follow before every beta build. Updated 2026-11-05. See REVIEW.md for the current
-review and release limitations. Unchecked native items have not been verified in
-the Linux cloud environment.
+Follow before an iPhone/TestFlight beta release. Updated 2026-11-12. See
+REVIEW.md and docs/PERSONAL_TESTING.md for current review evidence, simulator
+artifacts and installation instructions. Mark items only with evidence from the
+specific build being distributed; an unchecked item is not established by a
+source review or a historical simulator run.
 
 ## Build & Quality
-- [ ] `xcodebuild test` passes 100% on iPhone 17 Simulator
+- [ ] Unit and UI tests pass on an available iOS 17+ iPhone simulator; record workflow and commit
 - [ ] Clean build (no warnings treated as errors)
-- [ ] Bundle ID set to final (com.yourteam.pour)
+- [ ] Bundle ID and signing team match the owner’s Apple provisioning (current development ID: com.devin.pour)
 - [ ] Version/Build incremented
 - [ ] Icons and launch screen present
 
 ## Functionality
-- [ ] Onboarding seeds demo inventory
+- [ ] Onboarding seeds classic recipes; new users start with an empty bar (demo stock is a Debug-only QA flag)
 - [ ] Search + filter chips work offline
 - [ ] What can I make matches correctly (normalized ingredients)
 - [ ] Scaling (1-24) + oz/ml conversion accurate
@@ -48,9 +50,11 @@ the Linux cloud environment.
 - [ ] Save failures preserve editor input and never show false success
 - [ ] Store initialization failures preserve existing data
 
-## Devin macOS Verification
-- Boot Simulator, full user flow, record session
-- Computer Use taps for edge cases
-- Push fixes and re-test in same session
+## Native verification
+- Use the GitHub-hosted macOS workflows for repeatable unit/UI tests and screenshots
+- Boot the simulator, complete the personal testing checklist, and record the tested commit
+- Verify physical camera, lifecycle and accessibility behavior on an iPhone
+- If another coding assistant is available, keep its review evidence separate from executed tests
+- Push fixes and re-test the changed behavior
 
 Log all completions in COORDINATION.md and GitHub commits.

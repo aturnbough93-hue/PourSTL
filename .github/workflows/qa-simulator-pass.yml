@@ -2,7 +2,7 @@ name: Simulator QA pass
 
 on:
   push:
-    branches: [qa/pr10-simulator-pass]
+    branches: [main, 'codex/**']
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Unit tests, UI tests, and App Store screenshots
+      - name: Unit tests, UI tests, and testing screenshots
+        id: qa
         run: bash scripts/qa_simulator_pass.sh
       - name: Upload xcresult, results, and screenshots
         if: always()
@@ -29,9 +30,10 @@ jobs:
         with:
           name: qa-simulator-pass
           path: |
-            ${{ runner.temp }}/qa-artifacts/PourQA.xcresult
-            ${{ runner.temp }}/qa-artifacts/qa-results.md
-            ${{ runner.temp }}/qa-artifacts/pour-xcodebuild.log
-            ${{ runner.temp }}/qa-artifacts/screenshots
+            ${{ steps.qa.outputs.artifacts_directory }}/PourQA.xcresult
+            ${{ steps.qa.outputs.artifacts_directory }}/qa-results.md
+            ${{ steps.qa.outputs.artifacts_directory }}/pour-test-summary.json
+            ${{ steps.qa.outputs.artifacts_directory }}/pour-xcodebuild.log
+            ${{ steps.qa.outputs.artifacts_directory }}/screenshots
           retention-days: 14
           if-no-files-found: warn

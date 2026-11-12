@@ -1,10 +1,11 @@
 import XCTest
 
-/// Simulator QA for the barcode branch. Demo bottles come from the existing
-/// `-demoInventory` argument. `-uiTesting` only skips onboarding and, when a
-/// `-cameraStatus=` argument is present, asks the camera policy for that state.
+/// Current-commit simulator QA. The DEBUG-only `-uiTesting` flag skips
+/// onboarding, isolates SwiftData, and enables simulated camera policy states.
+/// These tests do not exercise a physical camera or real StoreKit billing.
 final class QAPassTests: XCTestCase {
     private var app = XCUIApplication()
+    private static let screenshotRunID = UUID().uuidString
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -237,6 +238,12 @@ final class QAPassTests: XCTestCase {
 
     func testScalingUpdatesTheMeasure() throws {
         launch()
+        // Preferences intentionally survive relaunch, including a previous QA run.
+        app.buttons["Settings"].tap()
+        let preferred = preferredUnits()
+        XCTAssertTrue(preferred.waitForExistence(timeout: 5))
+        preferred.buttons["oz"].tap()
+        app.buttons["Done"].tap()
         openNegroni()
         XCTAssertTrue(labeled("1 oz Gin").exists)
         app.buttons["Increase servings"].tap()
@@ -306,7 +313,60 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(again.label.contains("ml") || again.buttons["ml"].isSelected)
     }
 
-    func testCaptureAppStoreScreenshots() throws {
+    func testClassicVariationCanBeCancelledWithoutChangingTheOriginal() throws {
+        launch()
+        openNegroni()
+        let variation = app.buttons["Make a variation"]
+        for _ in 0..<5 where !variation.isHittable { app.swipeUp() }
+        XCTAssertTrue(variation.isHittable)
+        variation.tap()
+        let editor = app.navigationBars["Make a variation"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["Recipe name"].value as? String, "Negroni variation")
+        XCTAssertTrue(app.buttons["Save variation to your library"].exists)
+        editor.buttons["Cancel"].tap()
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Edit recipe"].exists, "A classic must remain read-only")
+        XCTAssertTrue(app.staticTexts["Negroni"].exists)
+    }
+
+    func testAssistantAnswersFromTheDemoBar() throws {
+        launch()
+        app.buttons["More features"].tap()
+        app.buttons["Bar Assistant"].tap()
+        XCTAssertTrue(app.navigationBars["Bar Assistant"].waitForExistence(timeout: 5))
+        let question = app.buttons["What can I make?"]
+        XCTAssertTrue(question.waitForExistence(timeout: 5))
+        question.tap()
+        let answer = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Assistant:", "Negroni")
+        ).firstMatch
+        XCTAssertTrue(answer.waitForExistence(timeout: 10), "The local helper should use seeded inventory and recipes")
+        app.navigationBars["Bar Assistant"].buttons["Done"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Home"].exists)
+    }
+
+    func testProSheetCanBeDismissedWithoutPurchasing() throws {
+        launch()
+        app.buttons["Settings"].tap()
+        let upgrade = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Pour Pro")).firstMatch
+        XCTAssertTrue(upgrade.waitForExistence(timeout: 8))
+        upgrade.tap()
+        let pro = app.navigationBars["Pour Pro"]
+        XCTAssertTrue(pro.waitForExistence(timeout: 8))
+        let restore = app.buttons["Restore purchases"]
+        for _ in 0..<4 where !restore.isHittable { app.swipeUp() }
+        XCTAssertTrue(restore.exists)
+        // Navigation only. Never tap a purchase or restore button here.
+        pro.buttons["Done"].tap()
+        XCTAssertTrue(pro.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(preferredUnits().exists)
+        app.buttons["Done"].tap()
+        openNegroni()
+        XCTAssertTrue(app.buttons["Increase servings"].exists, "Core recipes must remain accessible for free")
+    }
+
+    func testCaptureTestingScreenshots() throws {
         launch()
         XCTAssertTrue(labeled("What can I make, 7 drinks").waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["Negroni, can make"].exists)
@@ -315,7 +375,7 @@ final class QAPassTests: XCTestCase {
         app.buttons["Settings"].tap()
         XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
         XCTAssertFalse(app.navigationBars["Pour Pro"].exists)
-        XCTAssertFalse(app.navigationBars["AI Assistant"].exists)
+        XCTAssertFalse(app.navigationBars["Bar Assistant"].exists)
         XCTAssertFalse(app.navigationBars["Voice Search"].exists)
         capture("08-settings")
         app.buttons["Done"].tap()
@@ -520,9 +580,9 @@ final class QAPassTests: XCTestCase {
 
     private func screenshotDirectory() -> URL {
         if let shared = ProcessInfo.processInfo.environment["SIMULATOR_SHARED_RESOURCES_DIRECTORY"], !shared.isEmpty {
-            return URL(fileURLWithPath: shared, isDirectory: true).appendingPathComponent("pour-screenshots", isDirectory: true)
+            return URL(fileURLWithPath: shared, isDirectory: true).appendingPathComponent("pour-screenshots-\(Self.screenshotRunID)", isDirectory: true)
         }
-        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent("pour-screenshots", isDirectory: true)
+        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent("pour-screenshots-\(Self.screenshotRunID)", isDirectory: true)
     }
 
     private func note(_ key: String, _ value: String) {

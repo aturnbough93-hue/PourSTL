@@ -69,7 +69,11 @@ struct ProUpsellView: View {
                         .accessibilityAddTraits(.isButton)
                 }
             }
-            .task { await store.loadProducts() }
+            .task {
+                store.resetTransientStatus()
+                await store.refreshEntitlements()
+                await store.loadProducts()
+            }
             .onChange(of: store.purchaseStatus.announcement) { _, message in
                 announce(message)
             }

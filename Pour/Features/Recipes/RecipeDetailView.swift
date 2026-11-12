@@ -13,6 +13,7 @@ struct RecipeDetailView: View {
     @State private var showTimer = false
     @State private var showEdit = false
     @State private var addedToList = false
+    @State private var shoppingConfirmationTask: Task<Void, Never>?
     @State private var showSaveError = false
     @State private var saveErrorTitle = "Changes weren’t saved"
 
@@ -61,6 +62,11 @@ struct RecipeDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Check available device storage and try again.")
+        }
+        .onDisappear {
+            shoppingConfirmationTask?.cancel()
+            shoppingConfirmationTask = nil
+            addedToList = false
         }
     }
 
@@ -319,7 +325,17 @@ struct RecipeDetailView: View {
             try modelContext.save()
             Haptics.success()
             withAnimation { addedToList = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { addedToList = false }
+            shoppingConfirmationTask?.cancel()
+            shoppingConfirmationTask = Task { @MainActor in
+                do {
+                    try await Task.sleep(for: .milliseconds(2500))
+                    addedToList = false
+                } catch is CancellationError {
+                    // The screen disappeared or a new confirmation replaced it.
+                } catch {
+                    addedToList = false
+                }
+            }
         } catch {
             modelContext.rollback()
             saveErrorTitle = "Shopping list wasn’t updated"

@@ -1,3 +1,24 @@
+# Current integration — November 12, 2026
+
+The owner authorized completing all open PRs, reconciling all branches, publishing
+the Cloudflare website, and preparing personal app testing. Work is collected in
+`codex/pour-testing-release`; see docs/BRANCH_RECONCILIATION.md for the full audit.
+PRs #12–15 are included with integration fixes. The former PR10-specific QA
+harness is updated for the current app and normal main/codex CI triggers.
+
+Cloudflare production is already reachable at https://barpour.pages.dev. Website
+copy now matches the offline Bar Assistant and local StoreKit testing. The
+approved app icon is preserved. Local website/build/demo tests pass; native unit,
+UI and Release simulator build results must be taken from the new workflow runs.
+See docs/PERSONAL_TESTING.md for artifacts, installation and device requirements.
+
+Existing Devin/Cursor/Copilot review history informed the fixes. New Devin or
+Claude sessions were not invoked through an unavailable integration. The log
+below is historical and includes third-party coordination claims that this
+integration does not independently establish.
+
+---
+
 # Pour App Coordination Log
 
 **Date:** 2026-11-12
