@@ -25,6 +25,7 @@ OLD_ORIGIN = "https://pourstl.com"
 EXTENSIONLESS_PAGES = ("privacy", "try", "support")
 MARKER = ".pourstl-generated-site"
 MARKER_CONTENT = "PourSTL static website build v1\n"
+LEGACY_MARKER_CONTENT = "Pour static website build v1\n"
 DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 TAG = re.compile(r"<(?:link|meta)\b[^>]*>", re.IGNORECASE)
 ATTRIBUTE = re.compile(r'''([\w:-]+)\s*=\s*(["'])(.*?)\2''', re.DOTALL)
@@ -109,7 +110,7 @@ def build_site(source, output, origin, preview=False):
     if output.exists():
         marker = output / MARKER
         if (not output.is_dir() or not marker.is_file() or marker.is_symlink()
-                or marker.read_text() != MARKER_CONTENT):
+                or marker.read_text() not in {MARKER_CONTENT, LEGACY_MARKER_CONTENT}):
             raise ValueError(f"Refusing to replace an unrecognized existing output directory: {output}")
     if any(path.is_symlink() for path in source.rglob("*")):
         raise ValueError("Website source must not contain symlinks")

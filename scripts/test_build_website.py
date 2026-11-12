@@ -87,6 +87,14 @@ class CloudflareBuildTests(unittest.TestCase):
         self.assertFalse((self.output / "stale.html").exists())
         self.assertIn("https://second.example.com", (self.output / "index.html").read_text())
 
+    def test_rebuild_recognizes_the_previous_brand_generated_marker(self):
+        build_site(self.source, self.output, "https://first.example.com")
+        (self.output / MARKER).write_text("Pour static website build v1\n")
+        (self.output / "stale.html").write_text("old generated content")
+        build_site(self.source, self.output, "https://pourstl.com")
+        self.assertFalse((self.output / "stale.html").exists())
+        self.assertIn('href="https://pourstl.com/"', (self.output / "index.html").read_text())
+
     def test_refuses_unrecognized_output_source_or_symlink_without_deleting_data(self):
         self.output.mkdir()
         keep = self.output / "keep.txt"
