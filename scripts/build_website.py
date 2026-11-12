@@ -7,7 +7,7 @@ Local: SITE_URL=https://your-confirmed-domain.example python3 scripts/build_webs
 SITE_URL is an optional production-origin override, normally a confirmed custom
 domain. Otherwise CF_PAGES_URL identifies the Pages project; deployment hashes
 and branch prefixes are removed from its *.pages.dev hostname. Source metadata
-uses https://barpour-7hb.pages.dev; the build rewrites that origin to the production
+uses https://pourstl.com; the build rewrites that origin to the production
 origin above.
 """
 
@@ -21,10 +21,10 @@ from urllib.parse import urlsplit
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-OLD_ORIGIN = "https://barpour-7hb.pages.dev"
+OLD_ORIGIN = "https://pourstl.com"
 EXTENSIONLESS_PAGES = ("privacy", "try", "support")
-MARKER = ".pour-generated-site"
-MARKER_CONTENT = "Pour static website build v1\n"
+MARKER = ".pourstl-generated-site"
+MARKER_CONTENT = "PourSTL static website build v1\n"
 DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 TAG = re.compile(r"<(?:link|meta)\b[^>]*>", re.IGNORECASE)
 ATTRIBUTE = re.compile(r'''([\w:-]+)\s*=\s*(["'])(.*?)\2''', re.DOTALL)

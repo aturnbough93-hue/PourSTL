@@ -30,10 +30,10 @@ jobs:
         with:
           name: qa-simulator-pass
           path: |
-            ${{ steps.qa.outputs.artifacts_directory }}/PourQA.xcresult
+            ${{ steps.qa.outputs.artifacts_directory }}/PourSTLQA.xcresult
             ${{ steps.qa.outputs.artifacts_directory }}/qa-results.md
-            ${{ steps.qa.outputs.artifacts_directory }}/pour-test-summary.json
-            ${{ steps.qa.outputs.artifacts_directory }}/pour-xcodebuild.log
+            ${{ steps.qa.outputs.artifacts_directory }}/pourstl-test-summary.json
+            ${{ steps.qa.outputs.artifacts_directory }}/pourstl-xcodebuild.log
             ${{ steps.qa.outputs.artifacts_directory }}/screenshots
           retention-days: 14
           if-no-files-found: warn

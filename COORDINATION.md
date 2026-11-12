@@ -1,3 +1,30 @@
+# PourSTL delivery — November 12, 2026
+
+Owner steering: rename the app/project to **PourSTL**, use **pourstl.com**, and
+save everything in GitHub for continuation. Current work is on
+`codex/pour-testing-release` (PR #16). See **docs/HANDOFF.md** for the current
+project names, validation, hosting and account steps.
+
+The native source, Xcode project/targets/schemes, tests, StoreKit configuration,
+website and social preview now use PourSTL. The approved icon art is unchanged.
+Bundle ID is `com.pourstl.app`; local-only product IDs are
+`com.pourstl.app.pro.monthly` and `.yearly`. No live App Store products or signed
+builds exist. Legacy settings/storage keys and `pour://` links are preserved.
+
+Cloudflare project `pourstl` is in the owner's authorized account and has the
+assigned hostname `pourstl.pages.dev`. The purchased domain `pourstl.com` is at
+IONOS; Cloudflare zone creation and IONOS nameserver changes still require the
+owner's dashboard action because the Wrangler grant lacks zone-create/DNS
+permissions. Repository settings calls return 403 even after GitHub CLI login;
+repository rename/metadata may need the owner's Settings page. These are account
+steps, not completed operations.
+
+The pre-rename app passed 158 unit tests and its universal Release archive was
+verified. Renamed source and the corrected SDK/runtime selection need new macOS
+CI evidence before release. Earlier entries below are historical status.
+
+---
+
 # Current integration — November 12, 2026
 
 The owner authorized completing all open PRs, reconciling all branches, publishing

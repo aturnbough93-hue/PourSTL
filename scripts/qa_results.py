@@ -67,6 +67,8 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--sha", required=True)
     parser.add_argument("--device", required=True)
+    parser.add_argument("--runtime", required=True)
+    parser.add_argument("--sdk", required=True)
     parser.add_argument("--xcode", required=True)
     parser.add_argument("--summary", required=True)
     args = parser.parse_args()
@@ -124,7 +126,7 @@ def main():
         ("S3", "Scaling and oz/ml", outcome(found, ["testScalingUpdatesTheMeasure"]), "Negroni 1 oz Gin becomes 2 oz, then 59 ml."),
         ("S4", "Shopping list add and delete", outcome(found, ["testShoppingListAddAndDelete"]), "Orange peel is added, then swiped away."),
         ("S5", "Custom recipe save", outcome(found, ["testCustomRecipeSaves"]), "Shift Special with Bourbon appears in search."),
-        ("S6", "pour:// deep link", outcome(found, ["testRecipeDeepLinkOpensTheDrink", "testShoppingDeepLinkSelectsTheTab"]), "pour://recipe?name=Negroni and pour://tab/shopping."),
+        ("S6", "pourstl:// deep link", outcome(found, ["testRecipeDeepLinkOpensTheDrink", "testShoppingDeepLinkSelectsTheTab"]), "pourstl://recipe?name=Negroni and pourstl://tab/shopping."),
         ("S7", "Settings persist", outcome(found, ["testSettingsUnitsPersistAcrossLaunch"]), "Preferred units stay on ml after relaunch."),
         ("S8", "Current testing screenshots", "pass" if shot_ok and outcome(found, ["testCaptureTestingScreenshots"]) == "pass" else "fail", "Eight portrait PNGs captured by this run. The barcode image follows manual entry. These are testing evidence, not App Store approval."),
         ("S9", "Classic variation can be cancelled", outcome(found, ["testClassicVariationCanBeCancelledWithoutChangingTheOriginal"]), "Pre-filled Negroni variation editor is dismissed; the original remains read-only."),
@@ -161,8 +163,9 @@ def main():
         "",
         f"- Tested SHA: `{args.sha}`",
         f"- Device: {args.device}",
+        f"- iOS Simulator runtime: {args.runtime}; selected Xcode SDK: {args.sdk}",
         f"- Xcode: {args.xcode}",
-        "- Bundle ID: `com.devin.pour`",
+        "- Bundle ID: `com.pourstl.app`",
         f"- XCTest summary: {'pass' if summary_ok else 'fail'}",
         "",
         "This report covers the simulator at the exact commit above. Physical camera, torch, real device lifecycle, and signed distribution still need iPhone testing before launch.",

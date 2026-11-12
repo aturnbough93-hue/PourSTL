@@ -1,4 +1,14 @@
-# Pour product, code, UI, and security review
+# PourSTL product, code, UI, and security review
+
+## PourSTL rebrand and domain setup
+
+The active app, project, test targets and website are now named **PourSTL**.
+Approved icon artwork is preserved; the social preview carries the new name.
+The primary domain is `pourstl.com`, with `pourstl.pages.dev` as the Cloudflare
+fallback. Domain activation and current native CI results are tracked in
+[the handoff](docs/HANDOFF.md). The earlier reviews below describe their original
+commits and pre-rename names; their test counts are not evidence that the
+renamed app has passed CI.
 
 ## November 12 integration review
 

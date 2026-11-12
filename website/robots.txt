@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://barpour-7hb.pages.dev/sitemap.xml
+Sitemap: https://pourstl.com/sitemap.xml

@@ -1,4 +1,4 @@
-# Pour Beta / TestFlight Checklist
+# PourSTL Beta / TestFlight Checklist
 
 Follow before an iPhone/TestFlight beta release. Updated 2026-11-12. See
 REVIEW.md and docs/PERSONAL_TESTING.md for current review evidence, simulator
@@ -9,7 +9,7 @@ source review or a historical simulator run.
 ## Build & Quality
 - [ ] Unit and UI tests pass on an available iOS 17+ iPhone simulator; record workflow and commit
 - [ ] Clean build (no warnings treated as errors)
-- [ ] Bundle ID and signing team match the owner’s Apple provisioning (current development ID: com.devin.pour)
+- [ ] Bundle ID and signing team match the owner’s Apple provisioning (current development ID: com.pourstl.app)
 - [ ] Version/Build incremented
 - [ ] Icons and launch screen present
 
@@ -21,7 +21,7 @@ source review or a historical simulator run.
 - [ ] Timer haptics + Reduce Motion
 - [ ] Shopping list add/delete/clear
 - [ ] Custom recipe save/edit
-- [ ] Deep links `pour://`
+- [ ] Deep links `pourstl://` (legacy `pour://` remains supported)
 - [ ] Settings persist (appearance, units)
 
 ## Accessibility (required for App Store)

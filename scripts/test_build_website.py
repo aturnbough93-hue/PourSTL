@@ -23,7 +23,7 @@ class CloudflareBuildTests(unittest.TestCase):
 
     def test_production_build_rewrites_metadata_and_preserves_source_assets_headers(self):
         before = fingerprints(self.source)
-        origin = "https://confirmed-pour.pages.dev"
+        origin = "https://confirmed-pourstl.pages.dev"
         build_site(self.source, self.output, origin)
         self.assertEqual(fingerprints(self.source), before)
         for name in ["index.html", "privacy.html", "try.html", "support.html", "sitemap.xml", "robots.txt"]:
@@ -55,21 +55,21 @@ class CloudflareBuildTests(unittest.TestCase):
         self.assertEqual(rewrite_metadata(html, "https://different.example.com"), html)
 
     def test_infers_stable_project_origin_and_explicit_custom_domain_takes_precedence(self):
-        for deployment in ["https://abc123.confirmed-pour.pages.dev", "https://feature.confirmed-pour.pages.dev/", "https://confirmed-pour.pages.dev"]:
+        for deployment in ["https://abc123.confirmed-pourstl.pages.dev", "https://feature.confirmed-pourstl.pages.dev/", "https://confirmed-pourstl.pages.dev"]:
             self.assertEqual(deployment_settings({"CF_PAGES_URL": deployment, "CF_PAGES_BRANCH": "main"}),
-                             ("https://confirmed-pour.pages.dev", False))
-        self.assertEqual(deployment_settings({"SITE_URL": "https://pour.example.com/", "CF_PAGES_URL": "https://hash.project.pages.dev"}),
-                         ("https://pour.example.com", False))
+                             ("https://confirmed-pourstl.pages.dev", False))
+        self.assertEqual(deployment_settings({"SITE_URL": "https://pourstl.example.com/", "CF_PAGES_URL": "https://hash.project.pages.dev"}),
+                         ("https://pourstl.example.com", False))
 
     def test_preview_is_noindex_with_production_canonical_and_preserved_security(self):
-        origin, preview = deployment_settings({"CF_PAGES_URL": "https://hash.confirmed-pour.pages.dev", "CF_PAGES_BRANCH": "feature/review"})
+        origin, preview = deployment_settings({"CF_PAGES_URL": "https://hash.confirmed-pourstl.pages.dev", "CF_PAGES_BRANCH": "feature/review"})
         self.assertTrue(preview)
         build_site(self.source, self.output, origin, preview)
         headers = (self.output / "_headers").read_text()
         self.assertIn("X-Robots-Tag: noindex, nofollow", headers)
         self.assertIn("Content-Security-Policy:", headers)
         self.assertEqual((self.output / "robots.txt").read_text(), "User-agent: *\nDisallow: /\n")
-        self.assertIn('href="https://confirmed-pour.pages.dev/"', (self.output / "index.html").read_text())
+        self.assertIn('href="https://confirmed-pourstl.pages.dev/"', (self.output / "index.html").read_text())
         self.assertFalse(deployment_settings({"SITE_URL": origin, "CF_PAGES_BRANCH": "release", "SITE_PRODUCTION_BRANCH": "release"})[1])
 
     def test_rejects_invalid_or_missing_origins(self):

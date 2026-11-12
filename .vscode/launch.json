@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Pour website: local server",
+            "name": "PourSTL website: local server",
             "type": "node-terminal",
             "request": "launch",
             "command": "python3 -m http.server 8080 --bind 127.0.0.1",

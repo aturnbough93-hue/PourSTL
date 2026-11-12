@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pour — The Bartender's Assistant</title>
-<meta name="description" content="Pour is a native iOS bartender's assistant: offline-first recipes, intelligent 'what can I make' inventory matching, scaling, timers, and a shopping list — built for speed during service.">
+<title>PourSTL — The Bartender's Assistant</title>
+<meta name="description" content="PourSTL is a native iOS bartender's assistant: offline-first recipes, intelligent 'what can I make' inventory matching, scaling, timers, and a shopping list — built for speed during service.">
 <meta name="theme-color" content="#0A0A0C">
-<link rel="canonical" href="https://barpour-7hb.pages.dev/">
-<meta property="og:title" content="Pour — The Bartender's Assistant">
+<link rel="canonical" href="https://pourstl.com/">
+<meta property="og:title" content="PourSTL — The Bartender's Assistant">
 <meta property="og:description" content="Offline-first iOS bartender tool: recipes, what-can-I-make matching, scaling, timers, and shopping list.">
-<meta property="og:image" content="https://barpour-7hb.pages.dev/assets/og-image.jpg">
+<meta property="og:image" content="https://pourstl.com/assets/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Pour app logo with copper coupe glass on dark background">
-<meta property="og:url" content="https://barpour-7hb.pages.dev/">
+<meta property="og:image:alt" content="PourSTL — The Bartender’s Assistant">
+<meta property="og:url" content="https://pourstl.com/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Pour — The Bartender's Assistant">
+<meta name="twitter:title" content="PourSTL — The Bartender's Assistant">
 <meta name="twitter:description" content="Offline-first iOS bartender tool: recipes, what-can-I-make matching, scaling, timers, and shopping list.">
-<meta name="twitter:image" content="https://barpour-7hb.pages.dev/assets/og-image.jpg">
+<meta name="twitter:image" content="https://pourstl.com/assets/og-image.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
@@ -66,7 +66,7 @@
   .nav-inner { display: flex; align-items: center; gap: 28px; height: 60px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
   .brand svg { color: var(--accent); }
-  .brand img { border-radius: 7px; }
+  .brand img { border-radius: 7px; flex-shrink: 0; }
   .nav-links { display: flex; gap: 22px; margin-left: auto; }
   @media (max-width: 860px) {
     .nav-inner { gap: 16px; }
@@ -380,6 +380,8 @@
     .wrap { padding: 0 18px; }
     .phone { width: 268px; }
     .nav-inner { gap: 8px; }
+    .nav-inner .brand { font-size: 17px; }
+    .nav-status { font-size: 13px; }
     .btn-sm { padding: 0 12px; }
   }
 </style>
@@ -395,16 +397,16 @@
 
 <nav aria-label="Main navigation">
   <div class="wrap nav-inner">
-    <a class="brand" href="#top" aria-label="Pour home">
+    <a class="brand" href="#top" aria-label="PourSTL home">
       <img src="assets/brand-icon.png" alt="" width="32" height="32">
-      Pour
+      PourSTL
     </a>
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#screens">Screens</a>
       <a href="#bar">Bar</a>
       <a href="#history">History</a>
-      <a href="try.html">Try Pour</a>
+      <a href="try.html">Try PourSTL</a>
     </div>
     <a href="#get" class="nav-status">iPhone app status</a>
     <button class="nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-menu">
@@ -414,7 +416,7 @@
     </button>
   </div>
   <div class="nav-menu" id="nav-menu">
-    <a href="try.html">Try Pour in your browser</a>
+    <a href="try.html">Try PourSTL in your browser</a>
     <a href="#features">Features</a>
     <a href="#screens">Screens</a>
     <a href="#bar">Bar</a>
@@ -429,9 +431,9 @@
     <div>
       <span class="eyebrow">iOS 17+&nbsp;· Offline-first&nbsp;· Private by default</span>
       <h1>The bar tool that keeps up with <em>service</em>.</h1>
-      <p class="hero-sub">Pour is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
+      <p class="hero-sub">PourSTL is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
       <div class="hero-ctas">
-        <a href="try.html" class="btn btn-primary">Try Pour in your browser</a>
+        <a href="try.html" class="btn btn-primary">Try PourSTL in your browser</a>
         <a href="#get" class="btn btn-ghost">iPhone app status</a>
       </div>
       <div class="hero-badges">
@@ -443,11 +445,11 @@
 
     <div class="hero-visual">
       <!-- iPhone mockup: Home screen -->
-      <div class="phone" role="img" aria-label="Pour Home screen showing recipe search, filter chips, a What can I make module, and drink cards">
+      <div class="phone" role="img" aria-label="PourSTL Home screen showing recipe search, filter chips, a What can I make module, and drink cards">
         <div class="phone-screen">
           <div class="notch"></div>
           <div class="ps-status"><span>9:41</span><span>•••</span></div>
-          <div class="ps-title">Pour</div>
+          <div class="ps-title">PourSTL</div>
           <div class="ps-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
             Search recipes
@@ -541,7 +543,7 @@
       <div class="feat">
         <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15a4 4 0 014-4h10a4 4 0 010 8H7a4 4 0 01-4-4z"/><path d="M9 11V7a3 3 0 016 0v4"/></svg></div>
         <h3>Favorites &amp; sharing</h3>
-        <p>Save favorites and share a recipe as text. Open recipe and tab links directly in Pour.</p>
+        <p>Save favorites and share a recipe as text. Open recipe and tab links directly in PourSTL.</p>
       </div>
       <div class="feat">
         <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1 9l5-5 5 5"/><path d="M11 4v9a5 5 0 005 5h7"/><path d="M18 23l5-5"/></svg></div>
@@ -562,7 +564,7 @@
     <div class="shots-row">
 
       <div>
-        <div class="phone sm" role="img" aria-label="Pour recipe detail screen for a Negroni showing metadata pills, ingredient measures, and the action bar">
+        <div class="phone sm" role="img" aria-label="PourSTL recipe detail screen for a Negroni showing metadata pills, ingredient measures, and the action bar">
           <div class="phone-screen">
             <div class="notch"></div>
             <div class="rd-hero">
@@ -592,7 +594,7 @@
       </div>
 
       <div>
-        <div class="phone sm" role="img" aria-label="Pour timer screen showing a large circular progress ring">
+        <div class="phone sm" role="img" aria-label="PourSTL timer screen showing a large circular progress ring">
           <div class="phone-screen">
             <div class="notch"></div>
             <div class="ps-status"><span>9:41</span><span>•••</span></div>
@@ -616,7 +618,7 @@
       </div>
 
       <div>
-        <div class="phone sm" role="img" aria-label="Pour My Bar inventory screen showing categorized stock with in-stock and low-stock indicators">
+        <div class="phone sm" role="img" aria-label="PourSTL My Bar inventory screen showing categorized stock with in-stock and low-stock indicators">
           <div class="phone-screen">
             <div class="notch"></div>
             <div class="ps-status"><span>9:41</span><span>•••</span></div>
@@ -805,7 +807,7 @@
       <h2>A few useful answers.</h2>
     </div>
     <details>
-      <summary>Can I download Pour today?</summary>
+      <summary>Can I download PourSTL today?</summary>
       <p>You can <a href="try.html">try six recipes in your browser</a> now, with inventory matching, scaling, and a shopping list. This browser demo is separate from the iPhone app, which is in development for iOS 17 and later. A public App Store or TestFlight link has not been announced. <a href="https://github.com/aturnbough93-hue/pour">Follow the project on GitHub</a> for release updates.</p>
     </details>
     <details>
@@ -817,7 +819,7 @@
       <p>In the iPhone development build, ask what you can make, which ingredients a recipe is missing, how to scale a recipe, or about supported substitutions. Answers follow rules using recipes and inventory on your phone. It does not contact an AI service or search the web, and it cannot check allergies or guarantee that a substitution suits your guest.</p>
     </details>
     <details>
-      <summary>Is Pour Pro available to purchase?</summary>
+      <summary>Is PourSTL Pro available to purchase?</summary>
       <p>Pro purchase and restore flows are being tested with Apple’s local StoreKit configuration. A public subscription is not available yet. Recipes, inventory, shopping lists, timers, barcode scanning, and venue check-in remain free. The browser demo has no purchases.</p>
     </details>
     <details>
@@ -834,7 +836,7 @@
 <section class="cta-final" id="get">
   <div class="wrap">
     <h2>Ready when the rush hits.</h2>
-    <p>Pour is in active development for iPhone (iOS 17+). The repo is where it happens.</p>
+    <p>PourSTL is in active development for iPhone (iOS 17+). The repo is where it happens.</p>
     <a class="appstore-btn" href="https://github.com/aturnbough93-hue/pour">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5L2 12l6 7M16 5l6 7-6 7M14 3l-4 18"/></svg>
       <span style="text-align:left"><span class="as-small">Currently in development</span><br><span class="as-big">View on GitHub</span></span>
@@ -850,10 +852,10 @@
     <div class="foot-inner">
       <span class="brand">
         <img src="assets/brand-icon.png" alt="" width="26" height="26">
-        Pour
+        PourSTL
       </span>
       <div class="foot-links">
-        <a href="try.html">Try Pour</a>
+        <a href="try.html">Try PourSTL</a>
         <a href="#features">Features</a>
         <a href="#screens">Screens</a>
         <a href="#bar">Bar</a>
@@ -864,7 +866,7 @@
         <a href="https://github.com/aturnbough93-hue/pour">GitHub</a>
       </div>
     </div>
-    <p class="foot-note">© 2026 Pour. Free features work fully offline — no account, no tracking. Drink responsibly.</p>
+    <p class="foot-note">© 2026 PourSTL. Free features work fully offline — no account, no tracking. Drink responsibly.</p>
   </div>
 </footer>
 

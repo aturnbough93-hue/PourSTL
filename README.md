@@ -1,6 +1,6 @@
-# Pour
+# PourSTL
 
-**Pour** is a native iOS bartender's assistant — a fast, offline-first recipe, inventory, and service tool for working bartenders.
+**PourSTL** is a native iOS bartender's assistant — a fast, offline-first recipe, inventory, and service tool for working bartenders.
 
 Dark-mode-first SwiftUI app with a copper-accented design system, seeded with ~30 classic cocktails, intelligent "what can I make" inventory matching, professional scaling/batch mode, shopping list, timers, and custom recipes.
 
@@ -13,11 +13,11 @@ Dark-mode-first SwiftUI app with a copper-accented design system, seeded with ~3
 ## Run it
 
 ```bash
-open Pour.xcodeproj
+open PourSTL.xcodeproj
 # or build for the simulator:
-xcodebuild -scheme Pour -destination 'platform=iOS Simulator,name=iPhone 17' build
+xcodebuild -scheme PourSTL -destination 'generic/platform=iOS Simulator' build
 # run tests:
-xcodebuild -scheme Pour -destination 'platform=iOS Simulator,name=iPhone 17' test
+bash scripts/test_ios.sh
 ```
 
 Then choose a simulator/device in Xcode and press ⌘R.
@@ -26,10 +26,12 @@ The dependency-free marketing site runs on Linux or macOS with
 `python3 -m http.server 8080 --directory website`. It is separate from the native
 app. VS Code includes a local website-server launch configuration.
 
-Cloudflare Pages is the production host. The project name is **barpour** and the
-public address is **https://barpour-7hb.pages.dev**. See
+Cloudflare Pages hosts project **pourstl** at **https://pourstl.pages.dev**.
+The selected custom domain is **https://pourstl.com**, pending IONOS nameserver
+and Cloudflare DNS activation. See
 [website/README.md](website/README.md) for the project settings and build.
 
+See [docs/HANDOFF.md](docs/HANDOFF.md) for current delivery status and resuming work.
 See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,
 and prioritized release/product roadmap. Native changes must pass simulator and
 device validation before distributing a build.
@@ -46,7 +48,7 @@ bash scripts/test_ios.sh
 
 GitHub Actions runs the website checks and native unit tests on pushes to `main`
 and `codex/**`, and on pull requests. A successful run includes a downloadable
-**Pour-Simulator** artifact: a universal Release simulator app, commit/build
+**PourSTL-Simulator** artifact: a universal Release simulator app, commit/build
 manifest, checksum, and installation guide. A separate **Simulator QA pass**
 workflow records current UI tests and screenshots. See
 [docs/PERSONAL_TESTING.md](docs/PERSONAL_TESTING.md) for installation and the
@@ -71,9 +73,9 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - Ingredient normalization: local alias map ("London Dry Gin", "Beefeater" → gin) powering matching, "What can I make", and search
 - Empty / error states throughout; everything works fully offline
 - XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
-- `pour://` deep links (`pour://recipe?name=Negroni`, `pour://tab/bar`) as seams for future App Intents
+- `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
 - Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
-- Pour Pro upsell using StoreKit 2. The shared Pour scheme loads `Pour.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `Pour/Services/ProProductID.swift`: `com.devin.pour.pro.monthly` and `com.devin.pour.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
+- PourSTL Pro upsell using StoreKit 2. The shared PourSTL scheme loads `PourSTL.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `PourSTL/Services/ProProductID.swift`: `com.pourstl.app.pro.monthly` and `com.pourstl.app.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
 
 ### Planned (out of scope for this build)
 
@@ -93,13 +95,13 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 ## Project layout
 
 ```
-Pour/
+PourSTL/
   App/            entry point, root tab view, deep-link router
   Design/         palette, typography, glass→SF Symbol mapping
   Models/         SwiftData models
   Services/       conversion, normalization, matching, seeding, haptics, settings
   Features/       Home, Recipes, MyBar, Shopping, Timer, Assistant, Settings, stubs
-PourTests/        XCTest unit tests
+PourSTLTests/        XCTest unit tests
 project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 ```
 

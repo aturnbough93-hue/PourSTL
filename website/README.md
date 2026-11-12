@@ -1,6 +1,6 @@
-# Pour website
+# PourSTL website
 
-Static marketing/landing page for the Pour iOS app. Local preview needs no install.
+Static marketing/landing page for the PourSTL iOS app. Local preview needs no install.
 Production is built by `scripts/build_website.py` and hosted on Cloudflare Pages.
 
 ## Run it
@@ -16,22 +16,24 @@ package installation is required; images and scripts are served locally.
 
 ## Cloudflare Pages
 
-Cloudflare Pages is the production host. The project is **barpour** and its
-assigned public address is **https://barpour-7hb.pages.dev**. The preferred
-`barpour.pages.dev` name was already registered outside the authorized account;
-it is not the deployment managed here. The site uses HTTPS and the security
-headers in `website/_headers`.
+Cloudflare Pages hosts the website in the **pourstl** project. The chosen
+production domain is **https://pourstl.com**; custom-domain setup is pending.
+The assigned Cloudflare address is **https://pourstl.pages.dev**. Publish and
+verify the reviewed build there while DNS, Cloudflare activation, and HTTPS for
+the custom domain are pending. The site uses the security headers in
+`website/_headers`.
 
 ### Production project
 
 | Setting | Value |
 | --- | --- |
-| Project name | `barpour` |
-| Assigned hostname | `barpour-7hb.pages.dev` |
+| Project name | `pourstl` |
+| Chosen custom domain | `pourstl.com` (activation pending) |
+| Assigned hostname | `pourstl.pages.dev` |
 | Source repository | `aturnbough93-hue/pour` |
 | Deployment method | Wrangler direct upload |
 | Production branch | `main` |
-| Local build command | `SITE_URL=https://barpour-7hb.pages.dev python3 scripts/build_website.py` |
+| Local build command | `SITE_URL=https://pourstl.com python3 scripts/build_website.py` |
 | Upload directory | `dist` |
 
 GitHub pushes run quality checks. This Pages project currently uses direct
@@ -41,14 +43,20 @@ your own environment, build the reviewed commit, and deploy:
 
 ```bash
 npx --yes wrangler@4.158.0 login --device --browser=false --scopes account:read user:read pages:write
-SITE_URL=https://barpour-7hb.pages.dev CF_PAGES_BRANCH=main python3 scripts/build_website.py
-npx --yes wrangler@4.158.0 pages deploy dist --project-name barpour --branch main --force
+SITE_URL=https://pourstl.com CF_PAGES_BRANCH=main python3 scripts/build_website.py
+npx --yes wrangler@4.158.0 pages deploy dist --project-name pourstl --branch main --force
 ```
 
 In Wrangler 4.158, `--force` keeps this command on the existing Pages API rather
 than delegating to the newer Workers deployment path. It does not remove the
 project. Confirm the assigned hostname and account before deploying. Wrangler
 records the commit and reports if the working tree is dirty.
+
+Use the production-domain command after `pourstl.com` is active. To publish a
+temporary build whose public metadata points to the assigned Cloudflare address,
+set `SITE_URL=https://pourstl.pages.dev` instead. This changes generated
+metadata without changing the source pages. A build does not configure DNS,
+attach a custom domain, or provision its HTTPS certificate.
 
 `wrangler.toml` records the project name and generated output directory. The
 build is dependency-free Python; it copies public files and sets canonical,
@@ -63,23 +71,26 @@ noindex headers and robots rules. These build variables are not secrets.
 
 ### Check a deployment
 
-1. Confirm production is `https://barpour-7hb.pages.dev`.
+1. Confirm `https://pourstl.com` resolves to the owned Pages project and has a
+   valid HTTPS certificate before announcing the custom domain. The fallback is
+   `https://pourstl.pages.dev` while custom-domain activation is pending.
 2. Check the homepage, privacy page, images, JavaScript, navigation, and an unknown
    path (real 404 response). Confirm the response headers include CSP, nosniff,
    frame restrictions, and the permissions policy.
-3. Check canonical/social URLs, `robots.txt`, and `sitemap.xml` use
-   `https://barpour-7hb.pages.dev`. Cloudflare serves `.html` files at extensionless
+3. Check canonical/social URLs, `robots.txt`, and `sitemap.xml` use the origin
+   passed as `SITE_URL` (`https://pourstl.com` for the custom-domain release).
+   Cloudflare serves `.html` files at extensionless
    paths (for example `/privacy.html` redirects to `/privacy`), so the generated
    canonical and sitemap use `/privacy`, `/try`, and `/support`.
 
 There is no `website/_redirects` file. Cloudflare's own HTML routing already
 covers those extensionless paths, so the repo does not add a second redirect
-list. Do not add a site-wide redirect to `https://barpour-7hb.pages.dev` in a shared
+list. Do not add a site-wide redirect to `https://pourstl.com` in a shared
 `_redirects` file: Pages publishes that file, and redirecting every path would
 loop on the production host.
 
 Cloudflare publishes `dist`. Source pages in `website/` already use
-`https://barpour-7hb.pages.dev`; the build rewrites that origin only when the
+`https://pourstl.com`; the build rewrites that origin only when the
 deployed origin differs.
 
 ### Local build checks
@@ -87,11 +98,11 @@ deployed origin differs.
 ```bash
 python3 scripts/check_website.py
 python3 -m unittest discover -s scripts -p 'test_build_website.py' -v
-SITE_URL=https://barpour-7hb.pages.dev python3 scripts/build_website.py
+SITE_URL=https://pourstl.com python3 scripts/build_website.py
 python3 -m http.server 8080 --directory dist
 ```
 
-This local build writes `https://barpour-7hb.pages.dev` into generated metadata; it
+This local build writes `https://pourstl.com` into generated metadata; it
 does not deploy a site. Generated `dist/` is ignored by
 Git. Existing directories without the generator marker are never overwritten.
 
@@ -121,5 +132,5 @@ show selectable recipe text instead of claiming a successful copy. The current
 CSP still permits no remote API connections.
 
 Run its logic regression suite with `node scripts/test_demo.cjs`. On production,
-test `/try` at `https://barpour-7hb.pages.dev/try`. Opening a browser demo does not
+test `/try` at `https://pourstl.com/try`. Opening a browser demo does not
 validate native persistence, haptics, iOS sharing, or StoreKit.
