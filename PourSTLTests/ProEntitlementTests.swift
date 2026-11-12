@@ -11,7 +11,7 @@ final class ProEntitlementLogicTests: XCTestCase {
             "com.pourstl.app.pro.yearly",
         ])
         XCTAssertEqual(ProProductID.all, Set(ProProductID.ordered))
-        XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://pourstl.com/privacy")
+        XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://pourstl.pages.dev/privacy")
         XCTAssertEqual(
             ProProductID.termsOfUseURL.absoluteString,
             "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
@@ -177,8 +177,16 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     override func tearDown() async throws {
         store?.stop()
-        session?.clearTransactions()
         session?.resetToDefaultState()
+        session?.clearTransactions()
+        // clearTransactions() updates the StoreKit service synchronously, but
+        // the app's entitlement view may lag. Do not leak the previous fixture
+        // into the next test or the separate UI-test app process.
+        let cleared = await waitUntil {
+            let ids = await self.currentStoreKitProductIDs()
+            return ids.isEmpty
+        }
+        XCTAssertTrue(cleared, "The local StoreKit fixture did not clear its entitlements")
         store = nil
         session = nil
     }
@@ -186,6 +194,7 @@ final class ProEntitlementStoreTests: XCTestCase {
     func testLaunchWithoutPurchaseIsNotPro() {
         XCTAssertTrue(ProRuntime.isUnitTestHost)
         XCTAssertTrue(store.hasResolvedEntitlements)
+        XCTAssertTrue(store.isObservingTransactions)
         XCTAssertFalse(store.isPro)
         XCTAssertTrue(store.activeProductIDs.isEmpty)
     }
@@ -202,10 +211,36 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testTransactionUpdatesGrantEntitlement() async throws {
         XCTAssertFalse(store.isPro)
+        XCTAssertTrue(store.isObservingTransactions, "start() must wait for the StoreKit listener")
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
         let unlocked = await waitUntil { self.store.isPro }
-        XCTAssertTrue(unlocked)
+        let frameworkIDs = await currentStoreKitProductIDs()
+        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs); listener active: \(store.isObservingTransactions)")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
+    }
+
+    func testUITestingStoreDoesNotInheritStoreKitTransactions() async throws {
+        _ = try await session.buyProduct(identifier: ProProductID.yearly)
+        let purchased = await waitUntil {
+            await self.store.refreshEntitlements()
+            return self.store.isPro
+        }
+        XCTAssertTrue(purchased, "The real StoreKit fixture must contain a verified subscription")
+
+        let uiStore = ProEntitlementStore.forAppLaunch(uiTesting: true)
+        defer { uiStore.stop() }
+        await uiStore.start()
+        #if DEBUG
+        XCTAssertTrue(uiStore.hasResolvedEntitlements)
+        XCTAssertFalse(uiStore.isObservingTransactions)
+        XCTAssertFalse(uiStore.isPro)
+        await uiStore.refreshEntitlements()
+        XCTAssertFalse(uiStore.isPro)
+        #else
+        // An explicit test argument cannot select a fake account in Release.
+        XCTAssertTrue(uiStore.isObservingTransactions)
+        XCTAssertTrue(uiStore.isPro)
+        #endif
     }
 
     func testCurrentEntitlementsOnLaunch() async throws {
@@ -271,6 +306,16 @@ final class ProEntitlementStoreTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
         return await condition()
+    }
+
+    private func currentStoreKitProductIDs() async -> Set<String> {
+        var ids: Set<String> = []
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result,
+                  ProProductID.all.contains(transaction.productID) else { continue }
+            ids.insert(transaction.productID)
+        }
+        return ids
     }
 }
 

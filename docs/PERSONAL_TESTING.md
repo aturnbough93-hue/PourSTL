@@ -6,7 +6,7 @@ The requested custom website address is **https://pourstl.com**; its DNS setup i
 
 A Mac with Xcode and an installed iOS Simulator runtime is required. This is an unsigned **iOS Simulator** app, not an iPhone installation or TestFlight build.
 
-1. Download **PourSTL-Personal-Testing.zip** from the [personal testing prerelease](https://github.com/aturnbough93-hue/pour/releases/tag/personal-testing-2026-11-12). For a newer successful CI build, open [Quality checks in GitHub Actions](https://github.com/aturnbough93-hue/pour/actions/workflows/ci.yml), choose the desired commit, and download **PourSTL-Simulator** from Artifacts. Actions downloads may require GitHub sign-in and repository access.
+1. Download **PourSTL-Personal-Testing.zip** from the [personal testing prerelease](https://github.com/aturnbough93-hue/PourSTL/releases/tag/personal-testing-2026-11-12). For a newer successful CI build, open [Quality checks in GitHub Actions](https://github.com/aturnbough93-hue/PourSTL/actions/workflows/ci.yml), choose the desired commit, and download **PourSTL-Simulator** from Artifacts. Actions downloads may require GitHub sign-in and repository access.
 2. Extract the artifact. It contains `PourSTL-Simulator.zip`, `build-manifest.json`, and this guide. The manifest records the source commit, Release configuration, native platform, minimum OS, SDK, Xcode version, test counts, archive SHA-256, and actual architectures. The archive supports Apple Silicon (`arm64`) and Intel (`x86_64`) simulators.
 3. On the Mac, open Xcode → Settings → Components and install an iOS runtime at least as new as `minimumOSVersion` in the manifest. Prefer the runtime used by that run's Xcode. Open Simulator and boot an iPhone.
 4. In Terminal, change to the extracted artifact directory, verify and extract the app, then install it:
@@ -52,7 +52,7 @@ bash scripts/qa_simulator_pass.sh
 
 The first script runs unit tests and builds a universal Release simulator archive, with a manifest and checksum. The second runs unit and UI tests serially on an available iPhone 16 Pro Max or iPhone 17 Pro Max simulator and produces eight 1320×2868 testing screenshots plus a checklist. Both choose an iOS 17+ runtime compatible with the selected Xcode's simulator SDK, prefer its matching major/minor version, and print the actual SDK/runtime. A newer runtime installed by another Xcode is not silently selected. Both fail when tests are missing or failing. They print artifact locations; repeated runs keep separate output folders.
 
-Download **qa-simulator-pass** from the [Simulator QA pass workflow](https://github.com/aturnbough93-hue/pour/actions/workflows/qa-simulator-pass.yml) for the **same commit** as the app artifact. Its `qa-results.md`, `PourSTLQA.xcresult`, test summary, build log, and screenshots show the checks actually performed. CI artifact retention is 14 days for the app and QA package. Images checked into `qa/screenshots` came from an older barcode QA run; use current run artifacts as evidence for the current app.
+Download **qa-simulator-pass** from the [Simulator QA pass workflow](https://github.com/aturnbough93-hue/PourSTL/actions/workflows/qa-simulator-pass.yml) for the **same commit** as the app artifact. Its `qa-results.md`, `PourSTLQA.xcresult`, test summary, build log, and screenshots show the checks actually performed. CI artifact retention is 14 days for the app and QA package. Images checked into `qa/screenshots` came from an older barcode QA run; use current run artifacts as evidence for the current app.
 
 ## Test on a physical iPhone
 

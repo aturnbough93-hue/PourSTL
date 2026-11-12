@@ -1,6 +1,6 @@
 # PourSTL
 
-**PourSTL** is a native iOS bartender's assistant — a fast, offline-first recipe, inventory, and service tool for working bartenders.
+**PourSTL** is a bartending app with recipes, inventory, and service tools for working bartenders. The current native client is built for iOS.
 
 Dark-mode-first SwiftUI app with a copper-accented design system, seeded with ~30 classic cocktails, intelligent "what can I make" inventory matching, professional scaling/batch mode, shopping list, timers, and custom recipes.
 
@@ -27,8 +27,8 @@ The dependency-free marketing site runs on Linux or macOS with
 app. VS Code includes a local website-server launch configuration.
 
 Cloudflare Pages hosts project **pourstl** at **https://pourstl.pages.dev**.
-The selected custom domain is **https://pourstl.com**, pending IONOS nameserver
-and Cloudflare DNS activation. See
+The owner is connecting **pourstl.com** separately; the live Pages address stays
+primary until the domain is ready. See
 [website/README.md](website/README.md) for the project settings and build.
 
 See [docs/HANDOFF.md](docs/HANDOFF.md) for current delivery status and resuming work.

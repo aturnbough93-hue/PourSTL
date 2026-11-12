@@ -16,11 +16,11 @@ package installation is required; images and scripts are served locally.
 
 ## Cloudflare Pages
 
-Cloudflare Pages hosts the website in the **pourstl** project. The chosen
-production domain is **https://pourstl.com**; custom-domain setup is pending.
-The assigned Cloudflare address is **https://pourstl.pages.dev**. Publish and
-verify the reviewed build there while DNS, Cloudflare activation, and HTTPS for
-the custom domain are pending. The site uses the security headers in
+Cloudflare Pages hosts the website in the **pourstl** project. The current
+production address is **https://pourstl.pages.dev**. The owner is handling the
+future custom domain **pourstl.com** separately and deferred its activation.
+Publish the reviewed build to the current Pages address until that switch is
+explicitly requested. The site uses the security headers in
 `website/_headers`.
 
 ### Production project
@@ -30,10 +30,10 @@ the custom domain are pending. The site uses the security headers in
 | Project name | `pourstl` |
 | Chosen custom domain | `pourstl.com` (activation pending) |
 | Assigned hostname | `pourstl.pages.dev` |
-| Source repository | `aturnbough93-hue/pour` |
+| Source repository | `aturnbough93-hue/PourSTL` |
 | Deployment method | Wrangler direct upload |
 | Production branch | `main` |
-| Local build command | `SITE_URL=https://pourstl.com python3 scripts/build_website.py` |
+| Local build command | `SITE_URL=https://pourstl.pages.dev python3 scripts/build_website.py` |
 | Upload directory | `dist` |
 
 GitHub pushes run quality checks. This Pages project currently uses direct
@@ -43,7 +43,7 @@ your own environment, build the reviewed commit, and deploy:
 
 ```bash
 npx --yes wrangler@4.158.0 login --device --browser=false --scopes account:read user:read pages:write
-SITE_URL=https://pourstl.com CF_PAGES_BRANCH=main python3 scripts/build_website.py
+SITE_URL=https://pourstl.pages.dev CF_PAGES_BRANCH=main python3 scripts/build_website.py
 npx --yes wrangler@4.158.0 pages deploy dist --project-name pourstl --branch main --force
 ```
 
@@ -52,9 +52,9 @@ than delegating to the newer Workers deployment path. It does not remove the
 project. Confirm the assigned hostname and account before deploying. Wrangler
 records the commit and reports if the working tree is dirty.
 
-Use the production-domain command after `pourstl.com` is active. To publish a
-temporary build whose public metadata points to the assigned Cloudflare address,
-set `SITE_URL=https://pourstl.pages.dev` instead. This changes generated
+The commands above keep the live Pages address in public metadata. After the
+owner confirms `pourstl.com` is active, use `SITE_URL=https://pourstl.com` for
+the custom-domain deployment instead. This changes generated
 metadata without changing the source pages. A build does not configure DNS,
 attach a custom domain, or provision its HTTPS certificate.
 
@@ -68,6 +68,8 @@ the build also supports those variables.
 Use `SITE_URL` for the confirmed public origin. The default production branch is
 `main`; `SITE_PRODUCTION_BRANCH` overrides it if needed. Preview builds emit
 noindex headers and robots rules. These build variables are not secrets.
+
+Custom-domain connection steps are in [docs/DOMAIN_SETUP.md](../docs/DOMAIN_SETUP.md).
 
 ### Check a deployment
 
@@ -90,7 +92,7 @@ list. Do not add a site-wide redirect to `https://pourstl.com` in a shared
 loop on the production host.
 
 Cloudflare publishes `dist`. Source pages in `website/` already use
-`https://pourstl.com`; the build rewrites that origin only when the
+`https://pourstl.pages.dev`; the build rewrites that origin only when the
 deployed origin differs.
 
 ### Local build checks
@@ -98,7 +100,7 @@ deployed origin differs.
 ```bash
 python3 scripts/check_website.py
 python3 -m unittest discover -s scripts -p 'test_build_website.py' -v
-SITE_URL=https://pourstl.com python3 scripts/build_website.py
+SITE_URL=https://pourstl.pages.dev python3 scripts/build_website.py
 python3 -m http.server 8080 --directory dist
 ```
 

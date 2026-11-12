@@ -444,9 +444,24 @@ final class QAPassTests: XCTestCase {
     }
 
     private func openNegroni() {
-        let chip = app.buttons["Negroni, can make"]
-        XCTAssertTrue(chip.waitForExistence(timeout: 15))
-        chip.tap()
+        // The horizontal availability chips can exist outside the viewport.
+        // Filter to a visible library card instead of relying on AX scrolling.
+        let search = app.searchFields["Search drinks, ingredients, tags"]
+        XCTAssertTrue(search.waitForExistence(timeout: 15))
+        search.tap()
+        let current = (search.value as? String) ?? ""
+        if !current.isEmpty && current != "Search drinks, ingredients, tags" {
+            search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        }
+        search.typeText("Negroni")
+        if app.keyboards.buttons["Search"].exists {
+            app.keyboards.buttons["Search"].tap()
+        }
+        let card = app.buttons["Negroni, Rocks, can make"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        for _ in 0..<3 where !card.isHittable { app.swipeUp() }
+        XCTAssertTrue(card.isHittable, "The filtered Negroni card must be visible before opening it")
+        card.tap()
         XCTAssertTrue(app.buttons["Increase servings"].waitForExistence(timeout: 8))
     }
 

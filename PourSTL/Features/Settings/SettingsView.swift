@@ -89,7 +89,7 @@ struct SettingsView: View {
                 }
 
                 Section("Support") {
-                    Link(destination: URL(string: "https://github.com/aturnbough93-hue/pour/issues")!) {
+                    Link(destination: URL(string: "https://github.com/aturnbough93-hue/PourSTL/issues")!) {
                         Label("Send feedback", systemImage: "bubble.left")
                             .foregroundStyle(PourColor.textPrimary)
                     }

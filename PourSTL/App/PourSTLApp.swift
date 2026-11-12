@@ -92,7 +92,7 @@ struct PourSTLApp: App {
     @State private var settings: AppSettings
     @State private var router: DeepLinkRouter
 
-    @State private var pro = ProEntitlementStore()
+    @State private var pro: ProEntitlementStore
 
     init() {
         let settings = AppSettings()
@@ -102,6 +102,7 @@ struct PourSTLApp: App {
         _store = State(initialValue: PersistentStoreController())
         _settings = State(initialValue: settings)
         _router = State(initialValue: DeepLinkRouter())
+        _pro = State(initialValue: ProEntitlementStore.forAppLaunch(uiTesting: LaunchConfiguration.isUITesting))
     }
 
     var body: some Scene {
@@ -159,7 +160,7 @@ private struct StoreRecoveryView: View {
                     .foregroundStyle(PourColor.textSecondary)
                 Button("Retry", action: retry)
                     .buttonStyle(PourPrimaryButtonStyle())
-                Link("Get help", destination: URL(string: "https://github.com/aturnbough93-hue/pour/issues")!)
+                Link("Get help", destination: URL(string: "https://github.com/aturnbough93-hue/PourSTL/issues")!)
                     .font(.body.weight(.semibold))
                     .frame(minHeight: 44)
             }

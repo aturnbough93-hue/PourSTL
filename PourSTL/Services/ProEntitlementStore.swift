@@ -11,6 +11,7 @@ final class ProEntitlementStore {
     private(set) var purchaseStatus: ProPurchaseStatus = .idle
     private(set) var restoreStatus: ProRestoreStatus = .idle
     private(set) var hasResolvedEntitlements = false
+    private(set) var isObservingTransactions = false
     private(set) var notice: String?
 
     var activeProductIDs: Set<String> {
@@ -36,34 +37,65 @@ final class ProEntitlementStore {
     private var updatesTask: Task<Void, Never>?
     private var expirationTask: Task<Void, Never>?
     private var hasStarted = false
+    private var listenerGeneration = 0
     private var refreshGeneration = 0
     private var operationInProgress = false
     private let now: () -> Date
     private let loadEntitlements: () async -> [ProTransactionSnapshot]
     private let restorePurchases: () async throws -> Void
+    private let observesTransactionUpdates: Bool
 
     init(
         now: @escaping () -> Date = Date.init,
         loadEntitlements: (() async -> [ProTransactionSnapshot])? = nil,
-        restorePurchases: (() async throws -> Void)? = nil
+        restorePurchases: (() async throws -> Void)? = nil,
+        observesTransactionUpdates: Bool = true
     ) {
         self.now = now
         self.loadEntitlements = loadEntitlements ?? { await Self.currentEntitlements() }
         self.restorePurchases = restorePurchases ?? { try await AppStore.sync() }
+        self.observesTransactionUpdates = observesTransactionUpdates
+    }
+
+    /// UI navigation tests use an explicitly free account. Their app process
+    /// must not inherit receipts from StoreKit unit tests on the same simulator.
+    /// Release always uses the real App Store, regardless of launch arguments.
+    static func forAppLaunch(uiTesting: Bool) -> ProEntitlementStore {
+        #if DEBUG
+        if uiTesting {
+            return ProEntitlementStore(
+                loadEntitlements: { [] }, restorePurchases: {},
+                observesTransactionUpdates: false
+            )
+        }
+        #endif
+        return ProEntitlementStore()
     }
 
     func start() async {
         guard !hasStarted else { return }
         hasStarted = true
-        updatesTask = Task { [weak self] in
-            await self?.observeTransactions()
+        if observesTransactionUpdates {
+            listenerGeneration += 1
+            let generation = listenerGeneration
+            // Do not return from start() while the listener task is merely
+            // scheduled: a purchase could otherwise precede its subscription.
+            await withCheckedContinuation { ready in
+                updatesTask = Task { [weak self] in
+                    guard let self else { ready.resume(); return }
+                    await self.observeTransactions(ready: ready, generation: generation)
+                }
+            }
         }
+        guard hasStarted else { return }
         await refreshEntitlements()
     }
 
     func stop() {
         updatesTask?.cancel()
         updatesTask = nil
+        listenerGeneration += 1
+        isObservingTransactions = false
         expirationTask?.cancel()
         expirationTask = nil
         refreshGeneration += 1
@@ -262,9 +294,19 @@ final class ProEntitlementStore {
         }
     }
 
-    private func observeTransactions() async {
-        for await update in Transaction.updates {
-            if Task.isCancelled { return }
+    private func observeTransactions(ready: CheckedContinuation<Void, Never>, generation: Int) async {
+        var iterator = Transaction.updates.makeAsyncIterator()
+        guard !Task.isCancelled, generation == listenerGeneration else {
+            ready.resume()
+            return
+        }
+        isObservingTransactions = true
+        ready.resume()
+        defer {
+            if generation == listenerGeneration { isObservingTransactions = false }
+        }
+        while let update = await iterator.next() {
+            guard !Task.isCancelled, generation == listenerGeneration else { return }
             guard let transaction = Self.verifiedTransaction(update) else { continue }
             applyVerifiedTransaction(Self.snapshot(transaction))
             await transaction.finish()

@@ -11,17 +11,23 @@ Bundle ID is `com.pourstl.app`; local-only product IDs are
 `com.pourstl.app.pro.monthly` and `.yearly`. No live App Store products or signed
 builds exist. Legacy settings/storage keys and `pour://` links are preserved.
 
-Cloudflare project `pourstl` is in the owner's authorized account and has the
-assigned hostname `pourstl.pages.dev`. The purchased domain `pourstl.com` is at
-IONOS; Cloudflare zone creation and IONOS nameserver changes still require the
-owner's dashboard action because the Wrangler grant lacks zone-create/DNS
-permissions. Repository settings calls return 403 even after GitHub CLI login;
-repository rename/metadata may need the owner's Settings page. These are account
-steps, not completed operations.
+Cloudflare project `pourstl` is live at https://pourstl.pages.dev. The purchased
+domain `pourstl.com` is at IONOS. The owner is handling its DNS and deferred the
+switch; pourstl.pages.dev remains the current primary address. The
+Wrangler grant cannot create zones or edit DNS. Repository settings calls
+returned 403 even after GitHub CLI login; the owner completed the rename and
+About metadata in GitHub. Confirmed repository:
+https://github.com/aturnbough93-hue/PourSTL. The owner's description is
+“PourSTL — iOS bartender assistant”, with homepage https://pourstl.com. The
+product is a bartending app; current local/offline behavior is a testing-build
+capability, not its overall identity.
 
-The pre-rename app passed 158 unit tests and its universal Release archive was
-verified. Renamed source and the corrected SDK/runtime selection need new macOS
-CI evidence before release. Earlier entries below are historical status.
+The renamed app passed 161 unit tests in both Quality workflows, and its
+universal Release archives were verified on a matched SDK/runtime 18.5 stack.
+Full QA run 43318655276 failed 5/184 due to one StoreKit observer timing issue,
+three offscreen recipe-chip interactions and purchase-fixture leakage into UI
+tests. These are corrected in the next source batch; new native CI is required
+before release. Earlier entries below are historical status.
 
 ---
 

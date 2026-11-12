@@ -30,7 +30,7 @@ logic tests. Rendered desktop/mobile checks covered navigation, demo storage,
 shopping, scaling, keyboard use, privacy/support copy, and error fallbacks.
 Live Cloudflare checks verified security headers and a real unknown-page 404.
 Native unit tests passed 158/158 with no failures or skips in
-[run 43312827329](https://github.com/aturnbough93-hue/pour/actions/runs/43312827329),
+[run 43312827329](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43312827329),
 and the universal Release simulator archive was verified against its checksum
 and actual executable architectures. The initial full QA run passed 180/181;
 a SwiftUI Menu/XCTest hit-point issue is corrected in the harness and awaits
@@ -160,7 +160,7 @@ Cloudflare activation still requires an authorized account/project connection;
 source publication alone does not establish a live deployment.
 
 The native polish revision passed 46 XCTest tests with zero failures in
-[macOS CI](https://github.com/aturnbough93-hue/pour/actions/runs/42034714391).
+[macOS CI](https://github.com/aturnbough93-hue/PourSTL/actions/runs/42034714391).
 The browser pass adds 10 logic tests to the 5 static and 7 migration tests;
 desktop/mobile interactions passed with and without the production CSP applied.
 
