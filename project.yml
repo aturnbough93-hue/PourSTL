@@ -70,6 +70,22 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.devin.pour.tests
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
+  PourUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PourUITests
+    dependencies:
+      - target: Pour
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.devin.pour.uitests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Pour
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
 schemes:
   Pour:
     build:
@@ -84,6 +100,27 @@ schemes:
     run:
       config: Debug
       storeKitConfiguration: Pour.storekit
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+  PourQA:
+    build:
+      targets:
+        Pour: all
+        PourTests:
+          - test
+        PourUITests:
+          - test
+    test:
+      gatherCoverageData: false
+      targets:
+        - PourTests
+        - PourUITests
+    run:
+      config: Debug
     profile:
       config: Release
     analyze:

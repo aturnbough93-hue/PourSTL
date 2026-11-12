@@ -1,0 +1,14 @@
+# App Store screenshots
+
+Portrait PNGs from the iPhone 17 Pro Max simulator, 1320×2868. Captured in GitHub Actions run [42824951196](https://github.com/aturnbough93-hue/pour/actions/runs/42824951196) with the demo bar. The barcode image is the confirm sheet after manual entry. AI, voice, and Pro sheets are not included.
+
+| File | Screen |
+| --- | --- |
+| `01-home.png` | Home, with the recipe list and What can I make |
+| `02-what-can-i-make.png` | What can I make, filtered to drinks that can be made |
+| `03-recipe-detail.png` | Negroni recipe detail |
+| `04-my-bar.png` | My Bar with the demo inventory |
+| `05-barcode-confirm.png` | Barcode confirm sheet for Tanqueray, reached by manual entry |
+| `06-shopping-list.png` | Shopping list |
+| `07-timer.png` | Cocktail timer |
+| `08-settings.png` | Settings |
