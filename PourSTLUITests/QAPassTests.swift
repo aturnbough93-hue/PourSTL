@@ -515,12 +515,35 @@ final class QAPassTests: XCTestCase {
     }
 
     private func setSwitch(prefix: String, on: Bool) {
-        let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
+        let identifier = prefix == "In stock" ? "inventory.inStock" : "inventory.lowStock"
+        let toggle = app.switches[identifier]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        let currentlyOn = toggle.label.hasSuffix("on")
-        if currentlyOn != on {
-            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+        let form = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.tables.firstMatch
+        if app.keyboards.element.exists {
+            XCTAssertTrue(form.exists, "Inventory controls must be inside the editor form")
+            form.swipeUp()
+            let keyboardDismissed = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "exists == false"), object: app.keyboards.element
+            )
+            XCTAssertEqual(XCTWaiter.wait(for: [keyboardDismissed], timeout: 5), .completed)
         }
+        let expectedLabel = "\(prefix), \(on ? "on" : "off")"
+        if toggle.label != expectedLabel {
+            for _ in 0..<3 where !toggle.isHittable {
+                if toggle.frame.midY < app.frame.midY { form.swipeDown() } else { form.swipeUp() }
+            }
+            XCTAssertTrue(toggle.isHittable, "\(prefix) must be visible before changing it")
+            // Use the switch's accessibility activation point. A point near
+            // the edge of its AX bounds can miss the native control.
+            toggle.tap()
+        }
+        let stateChanged = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", expectedLabel), object: toggle
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [stateChanged], timeout: 5), .completed,
+            "Expected \(expectedLabel) before saving; actual label: \(toggle.label), value: \(String(describing: toggle.value))"
+        )
     }
 
     private func addBottle(_ name: String, inStock: Bool, lowStock: Bool = false) {

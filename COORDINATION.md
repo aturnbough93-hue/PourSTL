@@ -22,12 +22,16 @@ https://github.com/aturnbough93-hue/PourSTL. The owner's description is
 product is a bartending app; current local/offline behavior is a testing-build
 capability, not its overall identity.
 
-The renamed app passed 161 unit tests in both Quality workflows, and its
-universal Release archives were verified on a matched SDK/runtime 18.5 stack.
-Full QA run 43318655276 failed 5/184 due to one StoreKit observer timing issue,
-three offscreen recipe-chip interactions and purchase-fixture leakage into UI
-tests. These are corrected in the next source batch; new native CI is required
-before release. Earlier entries below are historical status.
+At `6c709ab`, both Quality workflows pass **162/162 unit tests**, and universal
+Release archives are verified on matched Xcode 16.4 / SDK/runtime 18.5. Full QA
+43324406233 passed **184/185** (162 unit tests, 22/23 UI tests, zero skips).
+The remaining stock-toggle UI interaction is being corrected with an explicit
+pre-save state assertion; the persistence tests pass. All earlier StoreKit,
+recipe navigation, variation, scaling and Pro fixture failures now pass. Eight
+current screenshots were visually reviewed. The live site passes 108 browser
+checks; local checks pass 10 static, 9 build and 10 demo tests. The simulator
+prerelease remains a draft until the final QA pass. Earlier entries below are
+historical status, including retired names/domains and third-party claims.
 
 ---
 

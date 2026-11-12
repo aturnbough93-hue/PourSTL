@@ -1,6 +1,6 @@
 # Test PourSTL
 
-The requested custom website address is **https://pourstl.com**; its DNS setup is pending. Use the live Cloudflare address **https://pourstl.pages.dev**, with the browser demo at **https://pourstl.pages.dev/try.html**. The browser demo works on a phone or computer without a Mac, Apple Developer account, or native installation. It saves data in that browser; it does not sync with the native app.
+The live website is **https://pourstl.pages.dev**, with the browser demo at **https://pourstl.pages.dev/try**. The owner is handling **pourstl.com** separately and deferred that switch. The browser demo works on a phone or computer without a Mac, Apple Developer account, or native installation. It saves data in that browser; it does not sync with the native app.
 
 ## Download the native simulator app
 
@@ -41,7 +41,7 @@ The Release artifact does not carry Xcode's local StoreKit session. Subscription
 3. For local subscription testing, edit the scheme → Run → Options and confirm **StoreKit Configuration = PourSTL.storekit**. Use Debug. Local StoreKit transactions are simulated; they do not create App Store products or charge a payment method.
 4. Use Xcode's StoreKit transaction manager to clear transactions, test purchase/cancellation/restore/expiration, and confirm Pro status updates. Keep ordinary free workflows usable before any purchase. If testing outside a local StoreKit session, cancel unexpected payment/account prompts and establish the intended Apple sandbox configuration first.
 
-The **PourSTLQA** scheme uses the same local configuration for automated UI tests. Its smoke test opens and dismisses the Pro sheet without tapping purchase or restore. This validates navigation, not the complete billing lifecycle. StoreKit unit tests exercise local transactions separately.
+The **PourSTLQA** scheme uses the same local configuration. Automated UI tests use an explicit free account in Debug, isolated from StoreKit transaction history. The Pro smoke test requires the Upgrade state, opens and dismisses the sheet without purchase or restore, and confirms that free recipes remain usable. This validates navigation, not the complete billing lifecycle. StoreKit unit tests exercise simulated local transactions separately. Release builds use normal StoreKit entitlement checks and ignore the UI test fixture.
 
 Reproduce CI on a Mac with Xcode:
 

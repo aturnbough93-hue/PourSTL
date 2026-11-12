@@ -16,7 +16,7 @@ Product positioning: PourSTL is a bartending app, with connected features planne
 
 ## Hosting
 
-- Authorized Cloudflare account owns Pages project **pourstl**, live at **https://pourstl.pages.dev**. The PourSTL rebrand was deployed from commit `94f52f8` and passed 108 live browser checks. Deployment method: authenticated Wrangler direct upload; GitHub pushes run quality checks but do not automatically deploy this project.
+- Authorized Cloudflare account owns Pages project **pourstl**, live at **https://pourstl.pages.dev**. Commit `6c709ab` is deployed and passed 108 live browser checks. The final copy/build compatibility corrections still need deployment. Deployment method: authenticated Wrangler direct upload; GitHub pushes run quality checks but do not automatically deploy this project.
 - Future custom domain: **https://pourstl.com**, registered with **IONOS SE**. The owner is handling it separately and explicitly deferred switching the live site. **https://pourstl.pages.dev remains the current primary address**. It must be added to Cloudflare's Free plan, DNS configured, and IONOS nameservers changed before its HTTPS site is considered live.
 - Wrangler currently has account/user read and Pages write permissions. Creating the zone failed with missing `com.cloudflare.api.account.zone.create`; no nameserver or DNS record changes have been made by the agent.
 - Current IONOS nameservers from RDAP: `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, `ns1122.ui-dns.de`. These are the current registrar settings, **not** the Cloudflare nameservers to enter. Obtain the two assigned Cloudflare nameservers from that domain's dashboard.
@@ -34,22 +34,26 @@ not by itself evidence of a failure. Quality CI allows 45 minutes; QA allows 50.
 Inspect the actual test summary and logs before retrying or claiming success.
 
 
-The renamed app at `c6854e7` passed **161/161 unit tests** on both Quality
-runners, with verified universal Release archives and a matched Xcode 16.4 /
-SDK 18.5 / simulator iOS 18.5 stack. However, full QA run 43318655276 failed
-**5 of 184 checks**: one delayed StoreKit update, three tests trying to tap an
-offscreen horizontal recipe chip, and a free-tier UI check inheriting a local
-StoreKit purchase fixture. The earlier assistant Menu issue was fixed and its
-UI test passed in this run.
+The renamed app at `6c709ab` passed **162/162 unit tests** on both Quality
+runners ([push](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43324406322),
+[PR](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43324412991)),
+with verified universal Release archives and a matched Xcode 16.4 / SDK 18.5 /
+simulator iOS 18.5 stack. [Full QA 43324406233](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43324406233)
+passed **184/185**: all 162 unit tests and 22 of 23 UI tests, with zero skips.
+The remaining failure is the unknown-barcode stock-toggle UI interaction. Its
+coordinate tap did not establish the off state before saving. The persistence
+unit tests pass; the UI helper is being corrected with strict state assertions.
+All eight current 1320×2868 screenshots were checked visually without obvious
+clipping. Settings correctly shows the free account's Upgrade state.
 
-Current fixes wait for subscription listener startup, verify StoreKit fixture
-cleanup, isolate Debug UI navigation tests from real transaction history, and
-open a visible filtered recipe card. Release always uses real StoreKit. The
-new regression proves an actual purchased fixture cannot leak into the free UI
-scenario. Strict transaction verification and visible navigation assertions are
-retained. **New native CI must pass before release/merge.**
+Subscription listener readiness, StoreKit fixture cleanup, Debug-only free UI
+accounts, and visible recipe navigation now pass. Release always uses real
+StoreKit. The isolation regression purchases a real local fixture before proving
+it cannot leak into the free UI scenario. **The final UI rerun must pass before
+release/merge.** A draft simulator prerelease has verified assets attached but
+is not public yet.
 
-Local website checks pass: 10 static, 8 Cloudflare build and 10 demo logic tests.
+Local website checks pass: 10 static, 9 Cloudflare build and 10 demo logic tests.
 The PourSTL site and 1200×630 social image passed 108 live browser checks on the
 working Pages address, including desktop/mobile layouts, demo interactions,
 assets, security headers, unknown 404, and metadata.

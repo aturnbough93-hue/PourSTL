@@ -4,11 +4,21 @@
 
 The active app, project, test targets and website are now named **PourSTL**.
 Approved icon artwork is preserved; the social preview carries the new name.
-The primary domain is `pourstl.com`, with `pourstl.pages.dev` as the Cloudflare
-fallback. Domain activation and current native CI results are tracked in
+The current live address is **https://pourstl.pages.dev**. The owner is handling
+`pourstl.com` separately and deferred switching domains. Domain activation and current native CI results are tracked in
 [the handoff](docs/HANDOFF.md). The earlier reviews below describe their original
 commits and pre-rename names; their test counts are not evidence that the
 renamed app has passed CI.
+
+Current evidence at `6c709ab`: both Quality workflows pass all **162 unit tests**
+and produce verified universal Release simulator archives. Full QA passed
+**184/185** (162 units and 22/23 UI tests); one stock-toggle UI interaction is
+being corrected before the final rerun and merge. All eight current screenshots
+were visually checked. The live PourSTL site passed 108 browser checks; 10
+static, 9 build and 10 demo checks pass locally. The latest build fix recognizes
+the actual pre-rename generated-output marker filename while retaining exact
+content, symlink and unmarked-directory protections. These current results
+supersede the historical integration counts below.
 
 ## November 12 integration review
 

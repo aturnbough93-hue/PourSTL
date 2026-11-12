@@ -25,6 +25,7 @@ OLD_ORIGIN = "https://pourstl.pages.dev"
 EXTENSIONLESS_PAGES = ("privacy", "try", "support")
 MARKER = ".pourstl-generated-site"
 MARKER_CONTENT = "PourSTL static website build v1\n"
+LEGACY_MARKER = ".pour-generated-site"
 LEGACY_MARKER_CONTENT = "Pour static website build v1\n"
 DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 TAG = re.compile(r"<(?:link|meta)\b[^>]*>", re.IGNORECASE)
@@ -109,8 +110,12 @@ def build_site(source, output, origin, preview=False):
         raise ValueError("Output must be separate from the source directory and its ancestors")
     if output.exists():
         marker = output / MARKER
+        allowed_contents = {MARKER_CONTENT, LEGACY_MARKER_CONTENT}
+        if not marker.exists() and not marker.is_symlink():
+            marker = output / LEGACY_MARKER
+            allowed_contents = {LEGACY_MARKER_CONTENT}
         if (not output.is_dir() or not marker.is_file() or marker.is_symlink()
-                or marker.read_text() not in {MARKER_CONTENT, LEGACY_MARKER_CONTENT}):
+                or marker.read_text() not in allowed_contents):
             raise ValueError(f"Refusing to replace an unrecognized existing output directory: {output}")
     if any(path.is_symlink() for path in source.rglob("*")):
         raise ValueError("Website source must not contain symlinks")

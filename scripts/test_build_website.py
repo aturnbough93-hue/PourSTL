@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from build_website import (MARKER, OLD_ORIGIN, REPOSITORY, build_site,
+from build_website import (MARKER, MARKER_CONTENT, OLD_ORIGIN, REPOSITORY, build_site,
                            deployment_settings, rewrite_metadata, validate_origin)
 
 
@@ -89,11 +89,34 @@ class CloudflareBuildTests(unittest.TestCase):
 
     def test_rebuild_recognizes_the_previous_brand_generated_marker(self):
         build_site(self.source, self.output, "https://first.example.com")
-        (self.output / MARKER).write_text("Pour static website build v1\n")
+        (self.output / MARKER).unlink()
+        legacy_marker = self.output / ".pour-generated-site"
+        legacy_marker.write_text("Pour static website build v1\n")
         (self.output / "stale.html").write_text("old generated content")
         build_site(self.source, self.output, "https://pourstl.com")
         self.assertFalse((self.output / "stale.html").exists())
+        self.assertFalse(legacy_marker.exists())
+        self.assertEqual((self.output / MARKER).read_text(), MARKER_CONTENT)
         self.assertIn('href="https://pourstl.com/"', (self.output / "index.html").read_text())
+
+    def test_refuses_invalid_or_symlinked_legacy_marker_without_deleting_data(self):
+        self.output.mkdir()
+        keep = self.output / "keep.txt"
+        keep.write_text("user work")
+        legacy_marker = self.output / ".pour-generated-site"
+        legacy_marker.write_text(MARKER_CONTENT)
+        with self.assertRaises(ValueError):
+            build_site(self.source, self.output, "https://example.com")
+        self.assertEqual(keep.read_text(), "user work")
+
+        legacy_marker.unlink()
+        outside_marker = Path(self.temporary.name) / "outside-marker"
+        outside_marker.write_text("Pour static website build v1\n")
+        legacy_marker.symlink_to(outside_marker)
+        with self.assertRaises(ValueError):
+            build_site(self.source, self.output, "https://example.com")
+        self.assertEqual(keep.read_text(), "user work")
+        self.assertEqual(outside_marker.read_text(), "Pour static website build v1\n")
 
     def test_refuses_unrecognized_output_source_or_symlink_without_deleting_data(self):
         self.output.mkdir()

@@ -104,7 +104,7 @@ SITE_URL=https://pourstl.pages.dev python3 scripts/build_website.py
 python3 -m http.server 8080 --directory dist
 ```
 
-This local build writes `https://pourstl.com` into generated metadata; it
+This local build writes `https://pourstl.pages.dev` into generated metadata; it
 does not deploy a site. Generated `dist/` is ignored by
 Git. Existing directories without the generator marker are never overwritten.
 

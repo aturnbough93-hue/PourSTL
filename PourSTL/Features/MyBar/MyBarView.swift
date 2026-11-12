@@ -300,8 +300,10 @@ struct InventoryEditSheet: View {
                     .accessibilityLabel("Category")
                     Toggle("In stock", isOn: $isInStock)
                         .accessibilityLabel("In stock, \(isInStock ? "on" : "off")")
+                        .accessibilityIdentifier("inventory.inStock")
                     Toggle("Low stock", isOn: $isLowStock)
                         .accessibilityLabel("Low stock, \(isLowStock ? "on" : "off")")
+                        .accessibilityIdentifier("inventory.lowStock")
                 }
                 Section {
                     TextField("Canonical ingredient (optional)", text: $canonicalOverride)
@@ -344,6 +346,7 @@ struct InventoryEditSheet: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.immediately)
             .scrollContentBackground(.hidden)
             .background(PourColor.background)
             .alert("Item wasn’t saved", isPresented: $showSaveError) {
