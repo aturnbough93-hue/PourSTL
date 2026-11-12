@@ -52,7 +52,7 @@ class CloudflareBuildTests(unittest.TestCase):
 
     def test_metadata_rewriting_preserves_copy_and_regular_links(self):
         html = f'<p>{OLD_ORIGIN}/privacy.html</p><a href="{OLD_ORIGIN}/privacy.html">Old site</a>'
-        self.assertEqual(rewrite_metadata(html, "https://barpour.pages.dev"), html)
+        self.assertEqual(rewrite_metadata(html, "https://different.example.com"), html)
 
     def test_infers_stable_project_origin_and_explicit_custom_domain_takes_precedence(self):
         for deployment in ["https://abc123.confirmed-pour.pages.dev", "https://feature.confirmed-pour.pages.dev/", "https://confirmed-pour.pages.dev"]:

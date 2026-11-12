@@ -5,7 +5,7 @@
 The current release integrates the root Apple touch icon, StoreKit purchase and
 restore flow, offline Bar Assistant, and simulator QA pull requests. The approved
 production icon is preserved. Cloudflare is already hosting the public website
-at **https://barpour.pages.dev**; the browser demo remains at `/try.html`.
+at **https://barpour-7hb.pages.dev**; the browser demo remains at `/try.html`.
 
 Additional fixes address SwiftData actor isolation, negative/decimal and invalid
 scaled measures, recipe-name ambiguity, ingredient matching, stock-question
@@ -19,8 +19,12 @@ Local validation passed 10 website checks, 7 Cloudflare build tests and 10 demo
 logic tests. Rendered desktop/mobile checks covered navigation, demo storage,
 shopping, scaling, keyboard use, privacy/support copy, and error fallbacks.
 Live Cloudflare checks verified security headers and a real unknown-page 404.
-Final native XCTest/UI results and the exact tested commit are recorded in
-GitHub Actions; do not treat source inspection as an executed native test.
+Native unit tests passed 158/158 with no failures or skips in
+[run 43312827329](https://github.com/aturnbough93-hue/pour/actions/runs/43312827329),
+and the universal Release simulator archive was verified against its checksum
+and actual executable architectures. The initial full QA run passed 180/181;
+a SwiftUI Menu/XCTest hit-point issue is corrected in the harness and awaits
+a repeat run. Final results and exact tested commits are recorded in Actions.
 
 The new CI artifact supplies a universal **Release simulator app**, provenance
 manifest and checksum. [Personal testing instructions](docs/PERSONAL_TESTING.md)

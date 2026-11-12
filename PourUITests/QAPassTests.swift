@@ -332,8 +332,17 @@ final class QAPassTests: XCTestCase {
 
     func testAssistantAnswersFromTheDemoBar() throws {
         launch()
-        app.buttons["More features"].tap()
-        app.buttons["Bar Assistant"].tap()
+        let more = app.buttons["More features"]
+        XCTAssertTrue(more.waitForExistence(timeout: 5))
+        XCTAssertFalse(more.frame.isEmpty)
+        XCTAssertTrue(app.frame.contains(more.frame))
+        // SwiftUI Menu exposes a visible toolbar frame but XCTest cannot compute
+        // its AX hit point on iOS 26 with Xcode 16.4. Tap that element's center;
+        // the menu, sheet, and actual inventory response must still appear.
+        more.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let assistant = app.buttons["Bar Assistant"]
+        XCTAssertTrue(assistant.waitForExistence(timeout: 5))
+        assistant.tap()
         XCTAssertTrue(app.navigationBars["Bar Assistant"].waitForExistence(timeout: 5))
         let question = app.buttons["What can I make?"]
         XCTAssertTrue(question.waitForExistence(timeout: 5))
@@ -351,6 +360,7 @@ final class QAPassTests: XCTestCase {
         app.buttons["Settings"].tap()
         let upgrade = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Pour Pro")).firstMatch
         XCTAssertTrue(upgrade.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Pour Pro upgrade"].waitForExistence(timeout: 10), "Local StoreKit transactions must be cleared so this test starts on the free tier")
         upgrade.tap()
         let pro = app.navigationBars["Pour Pro"]
         XCTAssertTrue(pro.waitForExistence(timeout: 8))
@@ -361,6 +371,7 @@ final class QAPassTests: XCTestCase {
         pro.buttons["Done"].tap()
         XCTAssertTrue(pro.waitForNonExistence(timeout: 5))
         XCTAssertTrue(preferredUnits().exists)
+        XCTAssertTrue(app.buttons["Pour Pro upgrade"].exists, "Opening and dismissing the sheet must not activate Pro")
         app.buttons["Done"].tap()
         openNegroni()
         XCTAssertTrue(app.buttons["Increase servings"].exists, "Core recipes must remain accessible for free")

@@ -6,10 +6,16 @@ the Cloudflare website, and preparing personal app testing. Work is collected in
 PRs #12–15 are included with integration fixes. The former PR10-specific QA
 harness is updated for the current app and normal main/codex CI triggers.
 
-Cloudflare production is already reachable at https://barpour.pages.dev. Website
+The authorized Cloudflare account now owns the `barpour` Pages project at
+`barpour-7hb.pages.dev`; the preferred `barpour.pages.dev` is registered outside
+that account. Production was published by direct upload and is reachable at https://barpour-7hb.pages.dev. Website
 copy now matches the offline Bar Assistant and local StoreKit testing. The
-approved app icon is preserved. Local website/build/demo tests pass; native unit,
-UI and Release simulator build results must be taken from the new workflow runs.
+approved app icon is preserved. Local website/build/demo tests pass. Native unit tests passed 158/158 and
+a universal Release simulator app was built in run 43312827329. The first full
+QA run passed 180/181 (one XCTest SwiftUI Menu hit-point failure); the test now
+taps the verified visible frame and retains strict result assertions. StoreKit
+fixtures now clear transactions before UI tests. Re-run evidence is required
+before merging the release.
 See docs/PERSONAL_TESTING.md for artifacts, installation and device requirements.
 
 Existing Devin/Cursor/Copilot review history informed the fixes. New Devin or

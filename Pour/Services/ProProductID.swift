@@ -14,7 +14,7 @@ enum ProProductID {
     static let configurationName = "Pour"
 
     /// Existing site page.
-    static let privacyPolicyURL = URL(string: "https://barpour.pages.dev/privacy.html")!
+    static let privacyPolicyURL = URL(string: "https://barpour-7hb.pages.dev/privacy.html")!
 
     /// Apple’s standard Licensed Application End User License Agreement.
     static let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!

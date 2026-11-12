@@ -11,7 +11,7 @@ final class ProEntitlementLogicTests: XCTestCase {
             "com.devin.pour.pro.yearly",
         ])
         XCTAssertEqual(ProProductID.all, Set(ProProductID.ordered))
-        XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://barpour.pages.dev/privacy.html")
+        XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://barpour-7hb.pages.dev/privacy.html")
         XCTAssertEqual(
             ProProductID.termsOfUseURL.absoluteString,
             "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
@@ -177,6 +177,8 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     override func tearDown() async throws {
         store?.stop()
+        session?.clearTransactions()
+        session?.resetToDefaultState()
         store = nil
         session = nil
     }

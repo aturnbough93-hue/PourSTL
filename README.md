@@ -6,7 +6,7 @@ Dark-mode-first SwiftUI app with a copper-accented design system, seeded with ~3
 
 ## Requirements
 
-- Xcode 26 with an installed iOS Simulator runtime (CI uses macos-15)
+- Xcode 16.4 or newer with an installed iOS Simulator runtime (CI records the selected Xcode in the build manifest)
 - iOS 17.0+ deployment target
 - iPhone simulator or device
 
@@ -27,7 +27,7 @@ The dependency-free marketing site runs on Linux or macOS with
 app. VS Code includes a local website-server launch configuration.
 
 Cloudflare Pages is the production host. The project name is **barpour** and the
-public address is **https://barpour.pages.dev**. See
+public address is **https://barpour-7hb.pages.dev**. See
 [website/README.md](website/README.md) for the project settings and build.
 
 See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,
@@ -64,6 +64,7 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - My Bar: categorized inventory, in/out-of-stock toggles, low-stock flag, search, quick-add missing recipe ingredients, barcode scan with confirm-before-add
 - Barcode scan stays on device: camera when the device allows it, a small offline bottle catalog, manual code entry when the camera is missing or denied, and the existing add-item sheet plus ingredient normalization when a code is unknown
 - Shopping list with purchased tracking
+- Local venues: create a venue, check in/out, and persist the selected workplace
 - Custom recipe editor with glass-type picker mapped to SF Symbols
 - Timer view: large circular progress ring, haptic ticks at 10s/5s/done
 - Settings: manual dark/light/system appearance (persisted), preferred measurement unit (oz/ml) applied app-wide
@@ -74,16 +75,12 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
 - Pour Pro upsell using StoreKit 2. The shared Pour scheme loads `Pour.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `Pour/Services/ProProductID.swift`: `com.devin.pour.pro.monthly` and `com.devin.pour.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
 
-### Stubbed entry points (clean seams, not functional)
-
-- Venue check-in / shift mode — model + entry point exist
-
 ### Planned (out of scope for this build)
 
 - CloudKit sync, Sign in with Apple. Charging customers still needs Apple Developer enrollment and App Store Connect products; the local StoreKit configuration does not create those.
 - Voice search (Speech framework), agentic commands
 - Live Activities / widgets
-- AI video generation, venue QR onboarding, team features, inventory costing/export
+- AI video generation, venue QR onboarding, shift/team workflows, inventory costing/export
 
 ## Accessibility checklist (spot-checked per spec)
 
