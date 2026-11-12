@@ -119,6 +119,11 @@ def build_site(source, output, origin, preview=False):
     with tempfile.TemporaryDirectory(prefix=f".{output.name}-build-", dir=output.parent) as temporary:
         stage = Path(temporary) / "site"
         shutil.copytree(source, stage, ignore=shutil.ignore_patterns("README.md"))
+        # iOS and some crawlers request these paths at the site root and ignore
+        # the <link rel="apple-touch-icon"> tag that points at /assets/.
+        touch_icon = stage / "assets" / "apple-touch-icon.png"
+        for filename in ("apple-touch-icon.png", "apple-touch-icon-precomposed.png"):
+            shutil.copy2(touch_icon, stage / filename)
         for page in stage.rglob("*.html"):
             page.write_text(rewrite_metadata(page.read_text(), origin))
         sitemap = stage / "sitemap.xml"
