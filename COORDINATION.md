@@ -1,3 +1,67 @@
+# PourSTL delivery — November 12, 2026
+
+Owner steering: rename the app/project to **PourSTL**, use **pourstl.com**, and
+save everything in GitHub for continuation. Current work is on
+`codex/pour-testing-release` (PR #16). See **docs/HANDOFF.md** for the current
+project names, validation, hosting and account steps.
+
+The native source, Xcode project/targets/schemes, tests, StoreKit configuration,
+website and social preview now use PourSTL. The approved icon art is unchanged.
+Bundle ID is `com.pourstl.app`; local-only product IDs are
+`com.pourstl.app.pro.monthly` and `.yearly`. No live App Store products or signed
+builds exist. Legacy settings/storage keys and `pour://` links are preserved.
+
+Cloudflare project `pourstl` is live at https://pourstl.pages.dev. The purchased
+domain `pourstl.com` is at IONOS. The owner is handling its DNS and deferred the
+switch; pourstl.pages.dev remains the current primary address. The
+Wrangler grant cannot create zones or edit DNS. Repository settings calls
+returned 403 even after GitHub CLI login; the owner completed the rename and
+About metadata in GitHub. Confirmed repository:
+https://github.com/aturnbough93-hue/PourSTL. The owner's description is
+“PourSTL — iOS bartender assistant”, with homepage https://pourstl.com. The
+product is a bartending app; current local/offline behavior is a testing-build
+capability, not its overall identity.
+
+At `6c709ab`, both Quality workflows pass **162/162 unit tests**, and universal
+Release archives are verified on matched Xcode 16.4 / SDK/runtime 18.5. Full QA
+43324406233 passed **184/185** (162 unit tests, 22/23 UI tests, zero skips).
+The remaining stock-toggle UI interaction is being corrected with an explicit
+pre-save state assertion; the persistence tests pass. All earlier StoreKit,
+recipe navigation, variation, scaling and Pro fixture failures now pass. Eight
+current screenshots were visually reviewed. The live site passes 108 browser
+checks; local checks pass 10 static, 9 build and 10 demo tests. The simulator
+prerelease remains a draft until the final QA pass. Earlier entries below are
+historical status, including retired names/domains and third-party claims.
+
+---
+
+# Current integration — November 12, 2026
+
+The owner authorized completing all open PRs, reconciling all branches, publishing
+the Cloudflare website, and preparing personal app testing. Work is collected in
+`codex/pour-testing-release`; see docs/BRANCH_RECONCILIATION.md for the full audit.
+PRs #12–15 are included with integration fixes. The former PR10-specific QA
+harness is updated for the current app and normal main/codex CI triggers.
+
+The authorized Cloudflare account now owns the `barpour` Pages project at
+`barpour-7hb.pages.dev`; the preferred `barpour.pages.dev` is registered outside
+that account. Production was published by direct upload and is reachable at https://barpour-7hb.pages.dev. Website
+copy now matches the offline Bar Assistant and local StoreKit testing. The
+approved app icon is preserved. Local website/build/demo tests pass. Native unit tests passed 158/158 and
+a universal Release simulator app was built in run 43312827329. The first full
+QA run passed 180/181 (one XCTest SwiftUI Menu hit-point failure); the test now
+taps the verified visible frame and retains strict result assertions. StoreKit
+fixtures now clear transactions before UI tests. Re-run evidence is required
+before merging the release.
+See docs/PERSONAL_TESTING.md for artifacts, installation and device requirements.
+
+Existing Devin/Cursor/Copilot review history informed the fixes. New Devin or
+Claude sessions were not invoked through an unavailable integration. The log
+below is historical and includes third-party coordination claims that this
+integration does not independently establish.
+
+---
+
 # Pour App Coordination Log
 
 **Date:** 2026-11-13

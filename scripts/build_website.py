@@ -7,7 +7,7 @@ Local: SITE_URL=https://your-confirmed-domain.example python3 scripts/build_webs
 SITE_URL is an optional production-origin override, normally a confirmed custom
 domain. Otherwise CF_PAGES_URL identifies the Pages project; deployment hashes
 and branch prefixes are removed from its *.pages.dev hostname. Source metadata
-uses https://barpour.pages.dev; the build rewrites that origin to the production
+uses https://pourstl.pages.dev; the build rewrites that origin to the production
 origin above.
 """
 
@@ -21,10 +21,12 @@ from urllib.parse import urlsplit
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-OLD_ORIGIN = "https://barpour.pages.dev"
+OLD_ORIGIN = "https://pourstl.pages.dev"
 EXTENSIONLESS_PAGES = ("privacy", "try", "support")
-MARKER = ".pour-generated-site"
-MARKER_CONTENT = "Pour static website build v1\n"
+MARKER = ".pourstl-generated-site"
+MARKER_CONTENT = "PourSTL static website build v1\n"
+LEGACY_MARKER = ".pour-generated-site"
+LEGACY_MARKER_CONTENT = "Pour static website build v1\n"
 DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 TAG = re.compile(r"<(?:link|meta)\b[^>]*>", re.IGNORECASE)
 ATTRIBUTE = re.compile(r'''([\w:-]+)\s*=\s*(["'])(.*?)\2''', re.DOTALL)
@@ -108,8 +110,12 @@ def build_site(source, output, origin, preview=False):
         raise ValueError("Output must be separate from the source directory and its ancestors")
     if output.exists():
         marker = output / MARKER
+        allowed_contents = {MARKER_CONTENT, LEGACY_MARKER_CONTENT}
+        if not marker.exists() and not marker.is_symlink():
+            marker = output / LEGACY_MARKER
+            allowed_contents = {LEGACY_MARKER_CONTENT}
         if (not output.is_dir() or not marker.is_file() or marker.is_symlink()
-                or marker.read_text() != MARKER_CONTENT):
+                or marker.read_text() not in allowed_contents):
             raise ValueError(f"Refusing to replace an unrecognized existing output directory: {output}")
     if any(path.is_symlink() for path in source.rglob("*")):
         raise ValueError("Website source must not contain symlinks")
@@ -119,6 +125,11 @@ def build_site(source, output, origin, preview=False):
     with tempfile.TemporaryDirectory(prefix=f".{output.name}-build-", dir=output.parent) as temporary:
         stage = Path(temporary) / "site"
         shutil.copytree(source, stage, ignore=shutil.ignore_patterns("README.md"))
+        # iOS and some crawlers request these paths at the site root and ignore
+        # the <link rel="apple-touch-icon"> tag that points at /assets/.
+        touch_icon = stage / "assets" / "apple-touch-icon.png"
+        for filename in ("apple-touch-icon.png", "apple-touch-icon-precomposed.png"):
+            shutil.copy2(touch_icon, stage / filename)
         for page in stage.rglob("*.html"):
             page.write_text(rewrite_metadata(page.read_text(), origin))
         sitemap = stage / "sitemap.xml"

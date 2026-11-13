@@ -30,22 +30,32 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_build_website.py' -v
 
   ios:
-    name: iOS simulator build and XCTest
+    name: iOS tests and downloadable simulator app
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Build and test on an available iPhone
+      - name: Test and package a Release simulator app
+        id: ios
         run: bash scripts/test_ios.sh
+      - name: Upload installable simulator app and build manifest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: PourSTL-Simulator
+          path: ${{ steps.ios.outputs.artifact_directory }}
+          retention-days: 14
+          if-no-files-found: error
       - name: Retain test results and build log
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ios-test-results
           path: |
-            ${{ runner.temp }}/PourTests.xcresult
-            ${{ runner.temp }}/pour-xcodebuild.log
+            ${{ steps.ios.outputs.results_directory }}/PourSTLTests.xcresult
+            ${{ steps.ios.outputs.results_directory }}/pourstl-test-summary.json
+            ${{ steps.ios.outputs.results_directory }}/pourstl-xcodebuild.log
+            ${{ steps.ios.outputs.results_directory }}/pourstl-release-build.log
           retention-days: 7
           if-no-files-found: warn

@@ -1,0 +1,39 @@
+name: Simulator QA pass
+
+on:
+  push:
+    branches: [main, 'codex/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-simulator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-qa:
+    name: iPhone 6.9-inch simulator QA
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Unit tests, UI tests, and testing screenshots
+        id: qa
+        run: bash scripts/qa_simulator_pass.sh
+      - name: Upload xcresult, results, and screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: qa-simulator-pass
+          path: |
+            ${{ steps.qa.outputs.artifacts_directory }}/PourSTLQA.xcresult
+            ${{ steps.qa.outputs.artifacts_directory }}/qa-results.md
+            ${{ steps.qa.outputs.artifacts_directory }}/pourstl-test-summary.json
+            ${{ steps.qa.outputs.artifacts_directory }}/pourstl-xcodebuild.log
+            ${{ steps.qa.outputs.artifacts_directory }}/screenshots
+          retention-days: 14
+          if-no-files-found: warn

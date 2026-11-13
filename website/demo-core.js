@@ -33,7 +33,7 @@
     return { id, name, amount, unit, optional };
   }
 
-  // These six specs mirror Pour/Services/SeedData.swift. Matching is based on
+  // These six specs mirror PourSTL/Services/SeedData.swift. Matching is based on
   // required ingredients, not bottle quantities, equipment, garnish, or allergies.
   const recipes = freeze([
     {
@@ -185,7 +185,7 @@
       ...spec.ingredients.map(item => `${formatMeasure(item.amount, item.unit, count, unit)} ${item.name}${item.optional ? ' (optional)' : ''}`),
       '', spec.instructions,
       ...(spec.garnish ? [`Garnish: ${spec.garnish}`] : []),
-      '', 'From the Pour browser demo. Check ingredients and allergies before serving.'
+      '', 'From the PourSTL browser demo. Check ingredients and allergies before serving.'
     ].join('\n');
   }
 
