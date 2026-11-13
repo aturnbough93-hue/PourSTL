@@ -168,27 +168,24 @@ final class ProEntitlementStoreTests: XCTestCase {
         }
         session = Self.sharedSession
         session.resetToDefaultState()
-        session.disableDialogs = true
-        session.clearTransactions()
         session.askToBuyEnabled = false
+        try await clearStoreKitFixture()
         store = ProEntitlementStore()
         await store.start()
     }
 
     override func tearDown() async throws {
         store?.stop()
-        session?.resetToDefaultState()
-        session?.clearTransactions()
-        // clearTransactions() updates the StoreKit service synchronously, but
-        // the app's entitlement view may lag. Do not leak the previous fixture
-        // into the next test or the separate UI-test app process.
-        let cleared = await waitUntil {
-            let ids = await self.currentStoreKitProductIDs()
-            return ids.isEmpty
+        guard let session else {
+            store = nil
+            return
         }
-        XCTAssertTrue(cleared, "The local StoreKit fixture did not clear its entitlements")
-        store = nil
-        session = nil
+        defer {
+            session.resetToDefaultState()
+            store = nil
+            self.session = nil
+        }
+        try await clearStoreKitFixture()
     }
 
     func testLaunchWithoutPurchaseIsNotPro() {
@@ -297,6 +294,22 @@ final class ProEntitlementStoreTests: XCTestCase {
         await store.purchase(productID: ProProductID.monthly)
         XCTAssertEqual(store.purchaseStatus, .failed(ProStoreCopy.productMissing))
         XCTAssertFalse(store.isPro)
+    }
+
+    private func clearStoreKitFixture() async throws {
+        let session = try XCTUnwrap(session, "Local StoreKit must be initialized before fixture cleanup")
+        // clearTransactions() produces an empty test receipt. Synchronize that
+        // receipt into StoreKit 2 before checking the app's entitlement view.
+        // Keep test dialogs suppressed until the synchronization has finished.
+        session.disableDialogs = true
+        session.clearTransactions()
+        XCTAssertTrue(session.allTransactions().isEmpty, "The StoreKit test service still contains transactions")
+        try await AppStore.sync()
+        let cleared = await waitUntil {
+            let ids = await self.currentStoreKitProductIDs()
+            return ids.isEmpty
+        }
+        XCTAssertTrue(cleared, "The local StoreKit fixture did not clear its entitlements")
     }
 
     private func waitUntil(timeout: TimeInterval = 10, _ condition: @MainActor () async -> Bool) async -> Bool {
