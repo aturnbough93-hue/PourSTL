@@ -530,9 +530,45 @@ final class QAPassTests: XCTestCase {
         }
         let expectedLabel = "\(prefix), \(on ? "on" : "off")"
         if toggle.label != expectedLabel {
-            // Use the switch's accessibility activation point. A point near
-            // the edge of its AX bounds can miss the native control.
-            toggle.tap()
+            // SwiftUI gives the identifier to the whole row. The native switch
+            // is a separate AX element; the row's center only taps its label.
+            let rowFrame = toggle.frame
+            guard !rowFrame.isEmpty, app.frame.contains(rowFrame) else {
+                XCTFail("\(identifier) must have a fully visible row; frame: \(rowFrame)")
+                return
+            }
+            let controls = app.switches.allElementsBoundByIndex.filter { candidate in
+                let frame = candidate.frame
+                return candidate.identifier.isEmpty
+                    && frame.width > 0 && frame.height > 0
+                    && frame.width < rowFrame.width
+                    && frame.midX > rowFrame.midX
+                    && rowFrame.contains(frame)
+            }
+            let evidence = XCTAttachment(string:
+                "\(identifier): \(toggle.label), value: \(String(describing: toggle.value))\n"
+                + "Identified row: \(rowFrame)\n"
+                + "Native control candidates: \(controls.map { $0.frame })\n"
+                + app.switches.debugDescription
+            )
+            evidence.name = "\(identifier)-activation-geometry"
+            evidence.lifetime = .keepAlways
+            add(evidence)
+            guard controls.count == 1 else {
+                XCTFail("Expected one native switch inside \(identifier); found \(controls.count)")
+                return
+            }
+            let control = controls[0]
+            let controlFrame = control.frame
+            guard !controlFrame.isEmpty,
+                  app.frame.contains(controlFrame), rowFrame.contains(controlFrame),
+                  controlFrame.midX > rowFrame.midX else {
+                XCTFail("The native switch must remain visible inside \(identifier); frame: \(controlFrame)")
+                return
+            }
+            // One physical tap at the measured native control center, with no
+            // retries or test-only state changes. The row must report the result.
+            control.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
         let stateChanged = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label == %@", expectedLabel), object: toggle
