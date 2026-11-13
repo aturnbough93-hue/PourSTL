@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Unit tests, UI tests, and testing screenshots
+      - name: Core unit tests, all UI tests, and testing screenshots
         id: qa
         run: bash scripts/qa_simulator_pass.sh
       - name: Upload xcresult, results, and screenshots

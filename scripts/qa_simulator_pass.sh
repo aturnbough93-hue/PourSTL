@@ -116,9 +116,14 @@ if [[ "$test_status" -eq 0 ]]; then
     xcrun simctl install "$simulator_id" "$app_path"
     xcrun simctl privacy "$simulator_id" revoke camera com.pourstl.app || true
     set +e
+    # Quality checks runs all 162 unit tests, including real StoreKit sessions.
+    # Avoid repeating those nine slow integration cases before UI feedback;
+    # all other unit tests and every UI test still run here. Release validation
+    # requires both workflows to pass at the same commit.
     xcodebuild test-without-building \
       -project PourSTL.xcodeproj \
       -scheme PourSTLQA \
+      -skip-testing:PourSTLTests/ProEntitlementStoreTests \
       -destination "$destination" \
       -derivedDataPath "$derived" \
       -resultBundlePath "$artifacts/PourSTLQA.xcresult" \

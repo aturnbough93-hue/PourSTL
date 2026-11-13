@@ -208,12 +208,23 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testTransactionUpdatesGrantEntitlement() async throws {
         XCTAssertFalse(store.isPro)
-        XCTAssertTrue(store.isObservingTransactions, "start() must wait for the StoreKit listener")
+        XCTAssertTrue(store.isObservingTransactions, "The StoreKit listener task must be running")
+        let purchaseStarted = Date()
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let unlocked = await waitUntil { self.store.isPro }
-        let frameworkIDs = await currentStoreKitProductIDs()
-        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs); listener active: \(store.isObservingTransactions)")
+        let purchaseReturned = Date()
+        // StoreKitTest delivered this event after the old 10-second deadline on
+        // CI. This tests the real asynchronous framework, which promises no
+        // delivery deadline; pure state-transition tests remain deterministic.
+        let unlocked = await waitUntil(timeout: 30) {
+            self.store.activeProductIDs.contains(ProProductID.yearly)
+        }
+        print("StoreKit purchase request: \(purchaseReturned.timeIntervalSince(purchaseStarted))s; verified update wait: \(Date().timeIntervalSince(purchaseReturned))s")
+        XCTAssertTrue(unlocked, "No verified yearly transaction update arrived within the 30-second integration deadline")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
+        if !unlocked {
+            let frameworkIDs = await currentStoreKitProductIDs()
+            print("StoreKit timeout diagnostics: current verified products \(frameworkIDs); listener active: \(store.isObservingTransactions)")
+        }
     }
 
     func testUITestingStoreDoesNotInheritStoreKitTransactions() async throws {

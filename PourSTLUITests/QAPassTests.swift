@@ -510,29 +510,26 @@ final class QAPassTests: XCTestCase {
     }
 
     private func turnOffInStock() {
-        dismissKeyboard()
         setSwitch(prefix: "In stock", on: false)
     }
 
     private func setSwitch(prefix: String, on: Bool) {
+        guard dismissInventoryKeyboard() else { return }
         let identifier = prefix == "In stock" ? "inventory.inStock" : "inventory.lowStock"
         let toggle = app.switches[identifier]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        let form = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.tables.firstMatch
-        if app.keyboards.element.exists {
-            XCTAssertTrue(form.exists, "Inventory controls must be inside the editor form")
-            form.swipeUp()
-            let keyboardDismissed = XCTNSPredicateExpectation(
-                predicate: NSPredicate(format: "exists == false"), object: app.keyboards.element
-            )
-            XCTAssertEqual(XCTWaiter.wait(for: [keyboardDismissed], timeout: 5), .completed)
+        guard toggle.waitForExistence(timeout: 5) else {
+            XCTFail("The inventory editor must expose \(identifier)")
+            return
+        }
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"), object: toggle
+        )
+        guard XCTWaiter.wait(for: [hittable], timeout: 5) == .completed else {
+            XCTFail("\(prefix) must be visible after dismissing the inventory keyboard")
+            return
         }
         let expectedLabel = "\(prefix), \(on ? "on" : "off")"
         if toggle.label != expectedLabel {
-            for _ in 0..<3 where !toggle.isHittable {
-                if toggle.frame.midY < app.frame.midY { form.swipeDown() } else { form.swipeUp() }
-            }
-            XCTAssertTrue(toggle.isHittable, "\(prefix) must be visible before changing it")
             // Use the switch's accessibility activation point. A point near
             // the edge of its AX bounds can miss the native control.
             toggle.tap()
@@ -598,7 +595,12 @@ final class QAPassTests: XCTestCase {
 
     private func dismissKeyboard() {
         guard app.keyboards.element.exists else { return }
-        let titles = ["Confirm item", "Confirm ingredient", "Add item", "Edit item", "New recipe", "Enter code"]
+        let inventoryTitles = ["Confirm item", "Add item", "Edit item"]
+        if inventoryTitles.contains(where: { app.navigationBars[$0].exists }) {
+            dismissInventoryKeyboard()
+            return
+        }
+        let titles = ["Confirm ingredient", "New recipe", "Enter code"]
         for title in titles {
             let bar = app.navigationBars[title]
             if bar.exists {
@@ -606,6 +608,30 @@ final class QAPassTests: XCTestCase {
                 return
             }
         }
+    }
+
+    @discardableResult
+    private func dismissInventoryKeyboard() -> Bool {
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.exists else { return true }
+        let done = app.buttons["inventory.keyboard.done"]
+        guard done.waitForExistence(timeout: 5) else {
+            XCTFail("The inventory keyboard must offer its Done action")
+            return false
+        }
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"), object: done
+        )
+        guard XCTWaiter.wait(for: [hittable], timeout: 5) == .completed else {
+            XCTFail("The inventory keyboard Done action must be tappable")
+            return false
+        }
+        done.tap()
+        guard keyboard.waitForNonExistence(timeout: 5) else {
+            XCTFail("The inventory keyboard must close before changing stock or saving")
+            return false
+        }
+        return true
     }
 
     private func capture(_ name: String) {

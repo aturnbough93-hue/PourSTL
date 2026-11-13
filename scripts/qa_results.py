@@ -167,6 +167,7 @@ def main():
         f"- Xcode: {args.xcode}",
         "- Bundle ID: `com.pourstl.app`",
         f"- XCTest summary: {'pass' if summary_ok else 'fail'}",
+        "- Scope: core unit tests and all UI tests. The nine StoreKit integration cases run in Quality checks; require that workflow to pass at this same commit before release.",
         "",
         "This report covers the simulator at the exact commit above. Physical camera, torch, real device lifecycle, and signed distribution still need iPhone testing before launch.",
         "",

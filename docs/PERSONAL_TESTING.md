@@ -12,6 +12,8 @@ A Mac with Xcode and an installed iOS Simulator runtime is required. This is an 
 4. In Terminal, change to the extracted artifact directory, verify and extract the app, then install it:
 
    ```bash
+   (
+   set -e
    python3 - <<'PY'
    import hashlib, json
    from pathlib import Path
@@ -26,6 +28,7 @@ A Mac with Xcode and an installed iOS Simulator runtime is required. This is an 
    xcrun simctl list devices booted
    xcrun simctl install booted PourSTL.app
    xcrun simctl launch booted com.pourstl.app
+   )
    ```
 
    If several simulators are booted, replace `booted` with the selected device's UDID from the list. If you see an architecture/runtime error, check the manifest and select a compatible simulator. Simulator apps cannot be opened directly on macOS.
@@ -50,7 +53,7 @@ bash scripts/test_ios.sh
 bash scripts/qa_simulator_pass.sh
 ```
 
-The first script runs unit tests and builds a universal Release simulator archive, with a manifest and checksum. The second runs unit and UI tests serially on an available iPhone 16 Pro Max or iPhone 17 Pro Max simulator and produces eight 1320×2868 testing screenshots plus a checklist. Both choose an iOS 17+ runtime compatible with the selected Xcode's simulator SDK, prefer its matching major/minor version, and print the actual SDK/runtime. A newer runtime installed by another Xcode is not silently selected. Both fail when tests are missing or failing. They print artifact locations; repeated runs keep separate output folders.
+The first script runs all 162 unit tests, including nine real StoreKit integration cases, and builds a universal Release simulator archive, with a manifest and checksum. The second runs the other 153 unit tests and all 23 UI tests serially on an available iPhone 16 Pro Max or iPhone 17 Pro Max simulator and produces eight 1320×2868 testing screenshots plus a checklist. It avoids repeating the slow StoreKit sessions before UI feedback. Release validation requires both workflows to pass at the same commit: 162 unit tests plus 23 UI tests in total. Both choose an iOS 17+ runtime compatible with the selected Xcode's simulator SDK, prefer its matching major/minor version, and print the actual SDK/runtime. A newer runtime installed by another Xcode is not silently selected. Both fail when tests are missing or failing. They print artifact locations; repeated runs keep separate output folders.
 
 Download **qa-simulator-pass** from the [Simulator QA pass workflow](https://github.com/aturnbough93-hue/PourSTL/actions/workflows/qa-simulator-pass.yml) for the **same commit** as the app artifact. Its `qa-results.md`, `PourSTLQA.xcresult`, test summary, build log, and screenshots show the checks actually performed. CI artifact retention is 14 days for the app and QA package. Images checked into `qa/screenshots` came from an older barcode QA run; use current run artifacts as evidence for the current app.
 
