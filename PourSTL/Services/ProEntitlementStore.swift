@@ -34,10 +34,8 @@ final class ProEntitlementStore {
     private var entitlementRevision = 0
     // Keep a directly verified transaction until currentEntitlements catches up.
     private var unreconciledTransactions: [String: ProTransactionSnapshot] = [:]
-    private var updatesTask: Task<Void, Never>?
     private var expirationTask: Task<Void, Never>?
     private var hasStarted = false
-    private var listenerGeneration = 0
     private var refreshGeneration = 0
     private var operationInProgress = false
     private let now: () -> Date
@@ -76,15 +74,16 @@ final class ProEntitlementStore {
         guard !hasStarted else { return }
         hasStarted = true
         if observesTransactionUpdates {
-            listenerGeneration += 1
-            let generation = listenerGeneration
-            // Do not return from start() while the listener task is merely
-            // scheduled: a purchase could otherwise precede its subscription.
-            await withCheckedContinuation { ready in
-                updatesTask = Task { [weak self] in
-                    guard let self else { ready.resume(); return }
-                    await self.observeTransactions(ready: ready, generation: generation)
-                }
+            // Subscribe before parking so a transaction that is already queued
+            // is applied to this store. start() returns only once that consumer
+            // is suspended inside Transaction.updates.
+            isObservingTransactions = true
+            TransactionUpdateCenter.shared.subscribe(self)
+            await TransactionUpdateCenter.shared.arm()
+            guard hasStarted else {
+                TransactionUpdateCenter.shared.unsubscribe(self)
+                isObservingTransactions = false
+                return
             }
         }
         guard hasStarted else { return }
@@ -92,9 +91,10 @@ final class ProEntitlementStore {
     }
 
     func stop() {
-        updatesTask?.cancel()
-        updatesTask = nil
-        listenerGeneration += 1
+        // Leave the process-wide StoreKit consumer running. Cancelling it does
+        // not leave Transaction.updates, and the next consumer then misses the
+        // purchase or deadlocks currentEntitlements during fixture cleanup.
+        TransactionUpdateCenter.shared.unsubscribe(self)
         isObservingTransactions = false
         expirationTask?.cancel()
         expirationTask = nil
@@ -294,25 +294,6 @@ final class ProEntitlementStore {
         }
     }
 
-    private func observeTransactions(ready: CheckedContinuation<Void, Never>, generation: Int) async {
-        var iterator = Transaction.updates.makeAsyncIterator()
-        guard !Task.isCancelled, generation == listenerGeneration else {
-            ready.resume()
-            return
-        }
-        isObservingTransactions = true
-        ready.resume()
-        defer {
-            if generation == listenerGeneration { isObservingTransactions = false }
-        }
-        while let update = await iterator.next() {
-            guard !Task.isCancelled, generation == listenerGeneration else { return }
-            guard let transaction = Self.verifiedTransaction(update) else { continue }
-            applyVerifiedTransaction(Self.snapshot(transaction))
-            await transaction.finish()
-            await refreshEntitlements()
-        }
-    }
 
     private static func currentEntitlements() async -> [ProTransactionSnapshot] {
         var snapshots: [ProTransactionSnapshot] = []
@@ -368,5 +349,93 @@ final class ProEntitlementStore {
     private static func foregroundScene() -> UIWindowScene? {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         return scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+    }
+}
+
+/// One StoreKit consumer for the process. `Transaction.updates` does not replay
+/// events that arrive before `next()` is waiting, and a cancelled iterator stays
+/// attached until the next event. Per-test listeners therefore either miss the
+/// purchase or wedge `Transaction.currentEntitlements` while the fixture is cleared.
+@MainActor
+private final class TransactionUpdateCenter {
+    static let shared = TransactionUpdateCenter()
+
+    private final class Subscriber {
+        weak var store: ProEntitlementStore?
+        init(_ store: ProEntitlementStore) { self.store = store }
+    }
+
+    private var listenerTask: Task<Void, Never>?
+    private var subscribers: [ObjectIdentifier: Subscriber] = [:]
+    private var waitEpoch = 0
+    private var parkedEpoch = -1
+    private var armWaiters: [CheckedContinuation<Void, Never>] = []
+
+    func subscribe(_ store: ProEntitlementStore) {
+        subscribers[ObjectIdentifier(store)] = Subscriber(store)
+    }
+
+    func unsubscribe(_ store: ProEntitlementStore) {
+        subscribers.removeValue(forKey: ObjectIdentifier(store))
+    }
+
+    /// Returns only when the shared consumer is suspended in `Transaction.updates`.
+    func arm() async {
+        if parkedEpoch == waitEpoch { return }
+        await withCheckedContinuation { continuation in
+            armWaiters.append(continuation)
+            guard listenerTask == nil else { return }
+            listenerTask = Task { @MainActor in
+                await self.consumeUpdates()
+            }
+        }
+    }
+
+    private func consumeUpdates() async {
+        defer { resumeArmWaiters() }
+        while !Task.isCancelled {
+            var iterator = Transaction.updates.makeAsyncIterator()
+            while !Task.isCancelled {
+                let epoch = waitEpoch
+                Task { @MainActor in self.markParked(epoch) }
+                guard let update = await iterator.next() else {
+                    markBusy()
+                    break
+                }
+                markBusy()
+                await handle(update)
+            }
+        }
+    }
+
+    private func markParked(_ epoch: Int) {
+        // Ignore a signal scheduled for an iterator call that already resumed.
+        guard waitEpoch == epoch else { return }
+        parkedEpoch = epoch
+        resumeArmWaiters()
+    }
+
+    private func markBusy() {
+        waitEpoch += 1
+        parkedEpoch = -1
+    }
+
+    private func resumeArmWaiters() {
+        let waiters = armWaiters
+        armWaiters.removeAll()
+        waiters.forEach { $0.resume() }
+    }
+
+    private func handle(_ update: VerificationResult<Transaction>) async {
+        guard let transaction = ProEntitlementStore.verifiedTransaction(update) else { return }
+        let snapshot = ProEntitlementStore.snapshot(transaction)
+        let stores = subscribers.values.compactMap(\.store).filter(\.isObservingTransactions)
+        for store in stores {
+            store.applyVerifiedTransaction(snapshot)
+        }
+        await transaction.finish()
+        for store in stores where store.isObservingTransactions {
+            await store.refreshEntitlements()
+        }
     }
 }

@@ -157,6 +157,10 @@ final class ProEntitlementStoreTests: XCTestCase {
     private var session: SKTestSession!
     private var store: ProEntitlementStore!
     private static var sharedSession: SKTestSession?
+    /// resetToDefaultState() closes an existing Transaction.updates sequence.
+    /// Do that once, before the shared listener parks, and use clearTransactions
+    /// afterwards so the listener stays attached for the rest of the process.
+    private static var didResetSession = false
 
     override func setUp() async throws {
         if Self.sharedSession == nil {
@@ -167,28 +171,28 @@ final class ProEntitlementStoreTests: XCTestCase {
             Self.sharedSession = try SKTestSession(contentsOf: url)
         }
         session = Self.sharedSession
-        session.resetToDefaultState()
+        if !Self.didResetSession {
+            session.resetToDefaultState()
+            Self.didResetSession = true
+        }
         session.disableDialogs = true
-        session.clearTransactions()
         session.askToBuyEnabled = false
+        try await clearStoreKitFixture()
         store = ProEntitlementStore()
         await store.start()
     }
 
     override func tearDown() async throws {
-        store?.stop()
-        session?.resetToDefaultState()
-        session?.clearTransactions()
-        // clearTransactions() updates the StoreKit service synchronously, but
-        // the app's entitlement view may lag. Do not leak the previous fixture
-        // into the next test or the separate UI-test app process.
-        let cleared = await waitUntil {
-            let ids = await self.currentStoreKitProductIDs()
-            return ids.isEmpty
+        // Stop only after the empty receipt is visible. Stopping first cancels
+        // nothing useful and leaves currentEntitlements waiting on a listener
+        // that will never finish the removal.
+        defer {
+            store?.stop()
+            store = nil
+            session = nil
         }
-        XCTAssertTrue(cleared, "The local StoreKit fixture did not clear its entitlements")
-        store = nil
-        session = nil
+        guard session != nil else { return }
+        try await clearStoreKitFixture()
     }
 
     func testLaunchWithoutPurchaseIsNotPro() {
@@ -213,9 +217,9 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
         XCTAssertTrue(store.isObservingTransactions, "start() must wait for the StoreKit listener")
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let unlocked = await waitUntil { self.store.isPro }
+        let unlocked = await waitUntil { self.store.isPro && self.store.activeProductIDs.contains(ProProductID.yearly) }
         let frameworkIDs = await currentStoreKitProductIDs()
-        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs); listener active: \(store.isObservingTransactions)")
+        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
     }
 
@@ -299,6 +303,47 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
     }
 
+    /// clearTransactions() empties the StoreKit test service immediately, but
+    /// StoreKit 2 keeps serving the old receipt until that empty receipt is
+    /// synchronized. The shared listener stays parked so it can finish the
+    /// removal instead of wedging this read.
+    private func clearStoreKitFixture() async throws {
+        let session = try XCTUnwrap(session, "Local StoreKit must be initialized before fixture cleanup")
+        session.disableDialogs = true
+        session.askToBuyEnabled = false
+        session.clearTransactions()
+        XCTAssertTrue(
+            session.allTransactions().isEmpty,
+            "The StoreKit test service still contains transactions"
+        )
+        // StoreKit 2 keeps the previous receipt until this synchronization.
+        // A stalled sync must not hold the job open; currentEntitlements still
+        // has to come back empty below.
+        let synced = await withCheckedContinuation { continuation in
+            let gate = SyncReadGate(continuation)
+            Task.detached {
+                do {
+                    try await AppStore.sync()
+                    gate.finish(true)
+                } catch {
+                    gate.finish(false)
+                }
+            }
+            Task.detached {
+                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                gate.finish(false)
+            }
+        }
+        let cleared = await waitUntil {
+            await self.currentStoreKitProductIDs().isEmpty
+        }
+        let remaining = await currentStoreKitProductIDs()
+        XCTAssertTrue(
+            cleared && remaining.isEmpty,
+            "The local StoreKit fixture did not clear its entitlements. Remaining verified products: \(remaining.sorted()); receipt sync published: \(synced)"
+        )
+    }
+
     private func waitUntil(timeout: TimeInterval = 10, _ condition: @MainActor () async -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -309,13 +354,70 @@ final class ProEntitlementStoreTests: XCTestCase {
     }
 
     private func currentStoreKitProductIDs() async -> Set<String> {
-        var ids: Set<String> = []
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  ProProductID.all.contains(transaction.productID) else { continue }
-            ids.insert(transaction.productID)
+        if Self.entitlementReadDidTimeOut {
+            return [entitlementReadTimeoutSentinel]
+        }
+        let ids = await withCheckedContinuation { continuation in
+            let gate = EntitlementReadGate(continuation)
+            Task.detached {
+                var ids: Set<String> = []
+                for await result in Transaction.currentEntitlements {
+                    guard case .verified(let transaction) = result,
+                          ProProductID.all.contains(transaction.productID) else { continue }
+                    ids.insert(transaction.productID)
+                }
+                gate.finish(ids)
+            }
+            Task.detached {
+                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                gate.finish([entitlementReadTimeoutSentinel])
+            }
+        }
+        if ids.contains(entitlementReadTimeoutSentinel) {
+            Self.entitlementReadDidTimeOut = true
         }
         return ids
+    }
+
+    /// A wedged StoreKit read must fail the strict empty check instead of holding
+    /// the test until the job timeout. Later reads stay failed so they do not
+    /// stack more iterators on top of the wedged one.
+    private static var entitlementReadDidTimeOut = false
+}
+
+private let entitlementReadTimeoutSentinel = "<Transaction.currentEntitlements timed out>"
+
+private final class SyncReadGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Bool, Never>?
+
+    init(_ continuation: CheckedContinuation<Bool, Never>) {
+        self.continuation = continuation
+    }
+
+    func finish(_ synced: Bool) {
+        lock.lock()
+        let continuation = self.continuation
+        self.continuation = nil
+        lock.unlock()
+        continuation?.resume(returning: synced)
+    }
+}
+
+private final class EntitlementReadGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Set<String>, Never>?
+
+    init(_ continuation: CheckedContinuation<Set<String>, Never>) {
+        self.continuation = continuation
+    }
+
+    func finish(_ ids: Set<String>) {
+        lock.lock()
+        let continuation = self.continuation
+        self.continuation = nil
+        lock.unlock()
+        continuation?.resume(returning: ids)
     }
 }
 

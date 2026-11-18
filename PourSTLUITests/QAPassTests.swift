@@ -510,25 +510,22 @@ final class QAPassTests: XCTestCase {
     }
 
     private func turnOffInStock() {
-        dismissKeyboard()
         setSwitch(prefix: "In stock", on: false)
     }
 
     private func setSwitch(prefix: String, on: Bool) {
+        // On the 6.9-inch sheet the keyboard covers the form. Swiping
+        // collectionViews.firstMatch hits that keyboard (or a list behind the
+        // sheet), so scrollDismissesKeyboard never runs and the keyboard stays
+        // up. Dismiss through the editor's keyboard action, then require the
+        // exact stock label before saving.
+        XCTAssertTrue(dismissInventoryKeyboard(), "The inventory keyboard must close before changing \(prefix)")
         let identifier = prefix == "In stock" ? "inventory.inStock" : "inventory.lowStock"
         let toggle = app.switches[identifier]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        let form = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.tables.firstMatch
-        if app.keyboards.element.exists {
-            XCTAssertTrue(form.exists, "Inventory controls must be inside the editor form")
-            form.swipeUp()
-            let keyboardDismissed = XCTNSPredicateExpectation(
-                predicate: NSPredicate(format: "exists == false"), object: app.keyboards.element
-            )
-            XCTAssertEqual(XCTWaiter.wait(for: [keyboardDismissed], timeout: 5), .completed)
-        }
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "The inventory editor must expose \(identifier)")
         let expectedLabel = "\(prefix), \(on ? "on" : "off")"
         if toggle.label != expectedLabel {
+            let form = editorForm(containing: toggle)
             for _ in 0..<3 where !toggle.isHittable {
                 if toggle.frame.midY < app.frame.midY { form.swipeDown() } else { form.swipeUp() }
             }
@@ -544,6 +541,15 @@ final class QAPassTests: XCTestCase {
             XCTWaiter.wait(for: [stateChanged], timeout: 5), .completed,
             "Expected \(expectedLabel) before saving; actual label: \(toggle.label), value: \(String(describing: toggle.value))"
         )
+    }
+
+    /// The editor sheet's scroll view, not the My Bar list sitting behind it.
+    private func editorForm(containing toggle: XCUIElement) -> XCUIElement {
+        let candidates = app.collectionViews.allElementsBoundByIndex + app.tables.allElementsBoundByIndex
+        let forms = candidates.filter { element in
+            element.exists && element.frame.height > 160 && element.frame.intersects(toggle.frame)
+        }
+        return forms.min(by: { $0.frame.height < $1.frame.height }) ?? app.collectionViews.firstMatch
     }
 
     private func addBottle(_ name: String, inStock: Bool, lowStock: Bool = false) {
@@ -598,7 +604,12 @@ final class QAPassTests: XCTestCase {
 
     private func dismissKeyboard() {
         guard app.keyboards.element.exists else { return }
-        let titles = ["Confirm item", "Confirm ingredient", "Add item", "Edit item", "New recipe", "Enter code"]
+        let inventoryTitles = ["Confirm item", "Add item", "Edit item"]
+        if inventoryTitles.contains(where: { app.navigationBars[$0].exists }) {
+            _ = dismissInventoryKeyboard()
+            return
+        }
+        let titles = ["Confirm ingredient", "New recipe", "Enter code"]
         for title in titles {
             let bar = app.navigationBars[title]
             if bar.exists {
@@ -606,6 +617,41 @@ final class QAPassTests: XCTestCase {
                 return
             }
         }
+    }
+
+    @discardableResult
+    private func dismissInventoryKeyboard() -> Bool {
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.exists else { return true }
+        let done = inventoryKeyboardDone()
+        guard done.waitForExistence(timeout: 5) else {
+            XCTFail("The inventory keyboard must offer its Done action")
+            return false
+        }
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"), object: done
+        )
+        guard XCTWaiter.wait(for: [hittable], timeout: 5) == .completed else {
+            XCTFail("The inventory keyboard Done action must be tappable")
+            return false
+        }
+        done.tap()
+        guard keyboard.waitForNonExistence(timeout: 5) else {
+            XCTFail("The inventory keyboard must close before changing stock or saving")
+            return false
+        }
+        return true
+    }
+
+    /// Toolbar Done, its accessibility label, or the field's submit button.
+    private func inventoryKeyboardDone() -> XCUIElement {
+        let identified = app.buttons["inventory.keyboard.done"]
+        if identified.exists { return identified }
+        let labeled = app.buttons["Dismiss inventory keyboard"]
+        if labeled.exists { return labeled }
+        let submit = app.keyboards.buttons["Done"]
+        if submit.exists { return submit }
+        return identified
     }
 
     private func capture(_ name: String) {
