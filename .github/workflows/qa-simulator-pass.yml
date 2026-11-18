@@ -3,6 +3,7 @@ name: Simulator QA pass
 on:
   push:
     branches: [main, 'codex/**']
+  pull_request:
   workflow_dispatch:
 
 permissions:

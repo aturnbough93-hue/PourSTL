@@ -157,6 +157,10 @@ final class ProEntitlementStoreTests: XCTestCase {
     private var session: SKTestSession!
     private var store: ProEntitlementStore!
     private static var sharedSession: SKTestSession?
+    /// resetToDefaultState() closes an existing Transaction.updates sequence.
+    /// Do that once, before the shared listener parks, and use clearTransactions
+    /// afterwards so the listener stays attached for the rest of the process.
+    private static var didResetSession = false
 
     override func setUp() async throws {
         if Self.sharedSession == nil {
@@ -167,28 +171,49 @@ final class ProEntitlementStoreTests: XCTestCase {
             Self.sharedSession = try SKTestSession(contentsOf: url)
         }
         session = Self.sharedSession
-        session.resetToDefaultState()
+        if !Self.didResetSession {
+            session.resetToDefaultState()
+            Self.didResetSession = true
+        }
         session.disableDialogs = true
-        session.clearTransactions()
         session.askToBuyEnabled = false
+        // clearTransactions() is the test service. Do not call AppStore.sync()
+        // here: sync() returns, then a StoreKit 2 entitlement read started
+        // before the listener is parked never finishes.
+        session.clearTransactions()
+        XCTAssertTrue(
+            session.allTransactions().isEmpty,
+            "The StoreKit test service still contains transactions"
+        )
         store = ProEntitlementStore()
         await store.start()
     }
 
     override func tearDown() async throws {
-        store?.stop()
-        session?.resetToDefaultState()
-        session?.clearTransactions()
-        // clearTransactions() updates the StoreKit service synchronously, but
-        // the app's entitlement view may lag. Do not leak the previous fixture
-        // into the next test or the separate UI-test app process.
-        let cleared = await waitUntil {
-            let ids = await self.currentStoreKitProductIDs()
-            return ids.isEmpty
+        // Read currentEntitlements on the main actor while the listener is
+        // still attached. Stopping first leaves a cancelled consumer in next(),
+        // and that is what wedged this read for the rest of the suite.
+        defer {
+            store?.stop()
+            store = nil
+            session = nil
         }
-        XCTAssertTrue(cleared, "The local StoreKit fixture did not clear its entitlements")
-        store = nil
-        session = nil
+        guard let session else { return }
+        session.disableDialogs = true
+        session.askToBuyEnabled = false
+        session.clearTransactions()
+        XCTAssertTrue(
+            session.allTransactions().isEmpty,
+            "The StoreKit test service still contains transactions"
+        )
+        let cleared = await waitUntil {
+            await self.currentStoreKitProductIDs().isEmpty
+        }
+        let remaining = await currentStoreKitProductIDs()
+        XCTAssertTrue(
+            cleared && remaining.isEmpty,
+            "The local StoreKit fixture did not clear its entitlements. Remaining verified products: \(remaining.sorted())"
+        )
     }
 
     func testLaunchWithoutPurchaseIsNotPro() {
@@ -213,9 +238,9 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
         XCTAssertTrue(store.isObservingTransactions, "start() must wait for the StoreKit listener")
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let unlocked = await waitUntil { self.store.isPro }
+        let unlocked = await waitUntil { self.store.isPro && self.store.activeProductIDs.contains(ProProductID.yearly) }
         let frameworkIDs = await currentStoreKitProductIDs()
-        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs); listener active: \(store.isObservingTransactions)")
+        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
     }
 
@@ -308,6 +333,8 @@ final class ProEntitlementStoreTests: XCTestCase {
         return await condition()
     }
 
+    /// Main-actor read. A detached iterator never observes the sequence finish
+    /// after AppStore.sync(), and a timeout flag then fails every later test.
     private func currentStoreKitProductIDs() async -> Set<String> {
         var ids: Set<String> = []
         for await result in Transaction.currentEntitlements {

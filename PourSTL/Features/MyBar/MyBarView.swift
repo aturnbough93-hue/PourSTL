@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct MyBarView: View {
     @Query(sort: \InventoryItem.name) private var items: [InventoryItem]
@@ -246,6 +247,12 @@ struct InventoryEditSheet: View {
     @State private var isLowStock = false
     @State private var canonicalOverride = ""
     @State private var barcode = ""
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case name
+        case canonical
+    }
 
     /// Canonical ingredients required by recipes but not in inventory — one-tap add.
     private var suggestedMissing: [String] {
@@ -287,6 +294,9 @@ struct InventoryEditSheet: View {
                 }
                 Section("Item") {
                     TextField("Name (e.g. London Dry Gin)", text: $name)
+                        .focused($focusedField, equals: .name)
+                        .submitLabel(.done)
+                        .onSubmit { dismissKeyboardFocus() }
                         .onChange(of: name) { _, new in
                             if item == nil {
                                 category = IngredientNormalizer.category(for: new)
@@ -307,6 +317,9 @@ struct InventoryEditSheet: View {
                 }
                 Section {
                     TextField("Canonical ingredient (optional)", text: $canonicalOverride)
+                        .focused($focusedField, equals: .canonical)
+                        .submitLabel(.done)
+                        .onSubmit { dismissKeyboardFocus() }
                         .autocorrectionDisabled()
                 } header: {
                     Text("Matching")
@@ -362,6 +375,13 @@ struct InventoryEditSheet: View {
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { dismissKeyboardFocus() }
+                        .accessibilityLabel("Dismiss inventory keyboard")
+                        .accessibilityHint("Closes the keyboard and keeps your edits.")
+                        .accessibilityIdentifier("inventory.keyboard.done")
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .accessibilityLabel("Cancel")
@@ -375,6 +395,11 @@ struct InventoryEditSheet: View {
                 }
             }
         }
+    }
+
+    private func dismissKeyboardFocus() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     private var navigationTitle: String {
