@@ -304,7 +304,7 @@ final class ProEntitlementStore {
         return snapshots
     }
 
-    private static func snapshot(_ transaction: Transaction) -> ProTransactionSnapshot {
+    fileprivate static func snapshot(_ transaction: Transaction) -> ProTransactionSnapshot {
         ProTransactionSnapshot(
             productID: transaction.productID,
             revocationDate: transaction.revocationDate,
