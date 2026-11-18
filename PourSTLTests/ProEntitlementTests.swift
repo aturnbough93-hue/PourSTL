@@ -308,14 +308,20 @@ final class ProEntitlementStoreTests: XCTestCase {
     /// synchronized. The shared listener stays parked so it can finish the
     /// removal instead of wedging this read.
     private func clearStoreKitFixture() async throws {
+        // A timed-out currentEntitlements read stays wedged in the background.
+        // Throw before start() can issue another unbounded StoreKit query.
+        if Self.entitlementReadDidTimeOut {
+            XCTFail("StoreKit currentEntitlements is wedged; refusing another entitlement query")
+            throw FixtureCleanupError.storeKitUnavailable
+        }
         let session = try XCTUnwrap(session, "Local StoreKit must be initialized before fixture cleanup")
         session.disableDialogs = true
         session.askToBuyEnabled = false
         session.clearTransactions()
-        XCTAssertTrue(
-            session.allTransactions().isEmpty,
-            "The StoreKit test service still contains transactions"
-        )
+        guard session.allTransactions().isEmpty else {
+            XCTFail("The StoreKit test service still contains transactions")
+            throw FixtureCleanupError.storeKitUnavailable
+        }
         // StoreKit 2 keeps the previous receipt until this synchronization.
         // A stalled sync must not hold the job open; currentEntitlements still
         // has to come back empty below.
@@ -338,10 +344,10 @@ final class ProEntitlementStoreTests: XCTestCase {
             await self.currentStoreKitProductIDs().isEmpty
         }
         let remaining = await currentStoreKitProductIDs()
-        XCTAssertTrue(
-            cleared && remaining.isEmpty,
-            "The local StoreKit fixture did not clear its entitlements. Remaining verified products: \(remaining.sorted()); receipt sync published: \(synced)"
-        )
+        guard cleared, remaining.isEmpty else {
+            XCTFail("The local StoreKit fixture did not clear its entitlements. Remaining verified products: \(remaining.sorted()); receipt sync published: \(synced)")
+            throw FixtureCleanupError.storeKitUnavailable
+        }
     }
 
     private func waitUntil(timeout: TimeInterval = 10, _ condition: @MainActor () async -> Bool) async -> Bool {
@@ -386,6 +392,10 @@ final class ProEntitlementStoreTests: XCTestCase {
 }
 
 private let entitlementReadTimeoutSentinel = "<Transaction.currentEntitlements timed out>"
+
+private enum FixtureCleanupError: Error {
+    case storeKitUnavailable
+}
 
 private final class SyncReadGate: @unchecked Sendable {
     private let lock = NSLock()
