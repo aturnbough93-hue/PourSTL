@@ -177,22 +177,43 @@ final class ProEntitlementStoreTests: XCTestCase {
         }
         session.disableDialogs = true
         session.askToBuyEnabled = false
-        try await clearStoreKitFixture()
+        // clearTransactions() is the test service. Do not call AppStore.sync()
+        // here: sync() returns, then a StoreKit 2 entitlement read started
+        // before the listener is parked never finishes.
+        session.clearTransactions()
+        XCTAssertTrue(
+            session.allTransactions().isEmpty,
+            "The StoreKit test service still contains transactions"
+        )
         store = ProEntitlementStore()
         await store.start()
     }
 
     override func tearDown() async throws {
-        // Stop only after the empty receipt is visible. Stopping first cancels
-        // nothing useful and leaves currentEntitlements waiting on a listener
-        // that will never finish the removal.
+        // Read currentEntitlements on the main actor while the listener is
+        // still attached. Stopping first leaves a cancelled consumer in next(),
+        // and that is what wedged this read for the rest of the suite.
         defer {
             store?.stop()
             store = nil
             session = nil
         }
-        guard session != nil else { return }
-        try await clearStoreKitFixture()
+        guard let session else { return }
+        session.disableDialogs = true
+        session.askToBuyEnabled = false
+        session.clearTransactions()
+        XCTAssertTrue(
+            session.allTransactions().isEmpty,
+            "The StoreKit test service still contains transactions"
+        )
+        let cleared = await waitUntil {
+            await self.currentStoreKitProductIDs().isEmpty
+        }
+        let remaining = await currentStoreKitProductIDs()
+        XCTAssertTrue(
+            cleared && remaining.isEmpty,
+            "The local StoreKit fixture did not clear its entitlements. Remaining verified products: \(remaining.sorted())"
+        )
     }
 
     func testLaunchWithoutPurchaseIsNotPro() {
@@ -303,53 +324,6 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
     }
 
-    /// clearTransactions() empties the StoreKit test service immediately, but
-    /// StoreKit 2 keeps serving the old receipt until that empty receipt is
-    /// synchronized. The shared listener stays parked so it can finish the
-    /// removal instead of wedging this read.
-    private func clearStoreKitFixture() async throws {
-        // A timed-out currentEntitlements read stays wedged in the background.
-        // Throw before start() can issue another unbounded StoreKit query.
-        if Self.entitlementReadDidTimeOut {
-            XCTFail("StoreKit currentEntitlements is wedged; refusing another entitlement query")
-            throw FixtureCleanupError.storeKitUnavailable
-        }
-        let session = try XCTUnwrap(session, "Local StoreKit must be initialized before fixture cleanup")
-        session.disableDialogs = true
-        session.askToBuyEnabled = false
-        session.clearTransactions()
-        guard session.allTransactions().isEmpty else {
-            XCTFail("The StoreKit test service still contains transactions")
-            throw FixtureCleanupError.storeKitUnavailable
-        }
-        // StoreKit 2 keeps the previous receipt until this synchronization.
-        // A stalled sync must not hold the job open; currentEntitlements still
-        // has to come back empty below.
-        let synced = await withCheckedContinuation { continuation in
-            let gate = SyncReadGate(continuation)
-            Task.detached {
-                do {
-                    try await AppStore.sync()
-                    gate.finish(true)
-                } catch {
-                    gate.finish(false)
-                }
-            }
-            Task.detached {
-                try? await Task.sleep(nanoseconds: 8_000_000_000)
-                gate.finish(false)
-            }
-        }
-        let cleared = await waitUntil {
-            await self.currentStoreKitProductIDs().isEmpty
-        }
-        let remaining = await currentStoreKitProductIDs()
-        guard cleared, remaining.isEmpty else {
-            XCTFail("The local StoreKit fixture did not clear its entitlements. Remaining verified products: \(remaining.sorted()); receipt sync published: \(synced)")
-            throw FixtureCleanupError.storeKitUnavailable
-        }
-    }
-
     private func waitUntil(timeout: TimeInterval = 10, _ condition: @MainActor () async -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -359,75 +333,16 @@ final class ProEntitlementStoreTests: XCTestCase {
         return await condition()
     }
 
+    /// Main-actor read. A detached iterator never observes the sequence finish
+    /// after AppStore.sync(), and a timeout flag then fails every later test.
     private func currentStoreKitProductIDs() async -> Set<String> {
-        if Self.entitlementReadDidTimeOut {
-            return [entitlementReadTimeoutSentinel]
-        }
-        let ids = await withCheckedContinuation { continuation in
-            let gate = EntitlementReadGate(continuation)
-            Task.detached {
-                var ids: Set<String> = []
-                for await result in Transaction.currentEntitlements {
-                    guard case .verified(let transaction) = result,
-                          ProProductID.all.contains(transaction.productID) else { continue }
-                    ids.insert(transaction.productID)
-                }
-                gate.finish(ids)
-            }
-            Task.detached {
-                try? await Task.sleep(nanoseconds: 8_000_000_000)
-                gate.finish([entitlementReadTimeoutSentinel])
-            }
-        }
-        if ids.contains(entitlementReadTimeoutSentinel) {
-            Self.entitlementReadDidTimeOut = true
+        var ids: Set<String> = []
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result,
+                  ProProductID.all.contains(transaction.productID) else { continue }
+            ids.insert(transaction.productID)
         }
         return ids
-    }
-
-    /// A wedged StoreKit read must fail the strict empty check instead of holding
-    /// the test until the job timeout. Later reads stay failed so they do not
-    /// stack more iterators on top of the wedged one.
-    private static var entitlementReadDidTimeOut = false
-}
-
-private let entitlementReadTimeoutSentinel = "<Transaction.currentEntitlements timed out>"
-
-private enum FixtureCleanupError: Error {
-    case storeKitUnavailable
-}
-
-private final class SyncReadGate: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<Bool, Never>?
-
-    init(_ continuation: CheckedContinuation<Bool, Never>) {
-        self.continuation = continuation
-    }
-
-    func finish(_ synced: Bool) {
-        lock.lock()
-        let continuation = self.continuation
-        self.continuation = nil
-        lock.unlock()
-        continuation?.resume(returning: synced)
-    }
-}
-
-private final class EntitlementReadGate: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<Set<String>, Never>?
-
-    init(_ continuation: CheckedContinuation<Set<String>, Never>) {
-        self.continuation = continuation
-    }
-
-    func finish(_ ids: Set<String>) {
-        lock.lock()
-        let continuation = self.continuation
-        self.continuation = nil
-        lock.unlock()
-        continuation?.resume(returning: ids)
     }
 }
 

@@ -519,10 +519,17 @@ final class QAPassTests: XCTestCase {
         // sheet), so scrollDismissesKeyboard never runs and the keyboard stays
         // up. Dismiss through the editor's keyboard action, then require the
         // exact stock label before saving.
-        XCTAssertTrue(dismissInventoryKeyboard(), "The inventory keyboard must close before changing \(prefix)")
         let identifier = prefix == "In stock" ? "inventory.inStock" : "inventory.lowStock"
         let toggle = app.switches[identifier]
+        let labelBeforeDismiss = toggle.exists ? toggle.label : nil
+        XCTAssertTrue(dismissInventoryKeyboard(), "The inventory keyboard must close before changing \(prefix)")
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "The inventory editor must expose \(identifier)")
+        if let labelBeforeDismiss {
+            XCTAssertEqual(
+                toggle.label, labelBeforeDismiss,
+                "Dismissing the keyboard must not change \(prefix). Before Done: \(labelBeforeDismiss); after: \(toggle.label), value: \(String(describing: toggle.value))"
+            )
+        }
         let expectedLabel = "\(prefix), \(on ? "on" : "off")"
         if toggle.label != expectedLabel {
             let form = editorForm(containing: toggle)
@@ -530,9 +537,7 @@ final class QAPassTests: XCTestCase {
                 if toggle.frame.midY < app.frame.midY { form.swipeDown() } else { form.swipeUp() }
             }
             XCTAssertTrue(toggle.isHittable, "\(prefix) must be visible before changing it")
-            // Use the switch's accessibility activation point. A point near
-            // the edge of its AX bounds can miss the native control.
-            toggle.tap()
+            tapSwitchControl(toggle)
         }
         let stateChanged = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label == %@", expectedLabel), object: toggle
@@ -541,6 +546,19 @@ final class QAPassTests: XCTestCase {
             XCTWaiter.wait(for: [stateChanged], timeout: 5), .completed,
             "Expected \(expectedLabel) before saving; actual label: \(toggle.label), value: \(String(describing: toggle.value))"
         )
+    }
+
+    /// The switch row's center is its title. A tap there does not flip the control.
+    private func tapSwitchControl(_ toggle: XCUIElement) {
+        let nested = toggle.switches.allElementsBoundByIndex.filter { element in
+            element.exists && element.frame.width + 1 < toggle.frame.width
+        }
+        if let control = nested.min(by: { $0.frame.width < $1.frame.width }), control.isHittable {
+            control.tap()
+            return
+        }
+        let alongTrailingEdge: CGFloat = toggle.frame.width > 100 ? 0.92 : 0.5
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: alongTrailingEdge, dy: 0.5)).tap()
     }
 
     /// The editor sheet's scroll view, not the My Bar list sitting behind it.
