@@ -615,7 +615,13 @@ h2 {
 .site-footer {
   font-size: 14px;
   color: var(--muted);
-  margin: 28px 0 8px;
+  max-width: 1600px;
+  margin: 8px auto 16px;
+  padding: 0 22px 12px;
+}
+
+.site-footer p {
+  margin: 0;
 }
 
 .demo-footer a {
@@ -841,6 +847,9 @@ dialog p {
   }
   main {
     padding: 24px 14px;
+  }
+  .site-footer {
+    padding: 0 14px 12px;
   }
   .intro {
     margin: 0 2px 22px;
