@@ -49,6 +49,29 @@ class Page(HTMLParser):
             self.inline_script.append(text)
 
 
+def csp_directives(policy):
+    """Split a CSP into directive name -> source tokens."""
+    directives = {}
+    for directive in policy.split(";"):
+        tokens = directive.split()
+        if tokens:
+            directives[tokens[0]] = tokens[1:]
+    return directives
+
+
+_META_ATTRIBUTE = re.compile(r"""([\w:-]+)\s*=\s*(['"])(.*?)\2""", re.IGNORECASE | re.DOTALL)
+
+
+def meta_csp_policies(html):
+    """Return CSP policies from meta tags, keeping quoted keywords such as 'self'."""
+    policies = []
+    for tag in re.findall(r"<meta\b[^>]*>", html, flags=re.IGNORECASE):
+        attributes = {match.group(1).lower(): match.group(3) for match in _META_ATTRIBUTE.finditer(tag)}
+        if attributes.get("http-equiv", "").lower() == "content-security-policy" and "content" in attributes:
+            policies.append(attributes["content"])
+    return policies
+
+
 def local_target(page_path, reference):
     """Resolve root-relative and relative site links, including directory URLs."""
     parsed = urlsplit(reference)
@@ -133,35 +156,45 @@ class WebsiteChecks(unittest.TestCase):
         lines = (SITE / "_headers").read_text().splitlines()
         self.assertEqual(lines[0], "/*")
         headers = dict(line.strip().split(":", 1) for line in lines[1:] if line.strip())
-        directives = {}
-        for directive in headers["Content-Security-Policy"].split(";"):
-            tokens = directive.split()
-            if tokens:
-                directives[tokens[0]] = tokens[1:]
+        self.assert_csp_allows_cloudflare_analytics(csp_directives(headers["Content-Security-Policy"]))
+        self.assertNotIn("*", headers["Content-Security-Policy"])
+        for source in self.sources.values():
+            for policy in meta_csp_policies(source):
+                self.assert_csp_allows_cloudflare_analytics(csp_directives(policy))
+        self.assertEqual(headers["X-Content-Type-Options"].strip(), "nosniff")
+        self.assertEqual(headers["X-Frame-Options"].strip(), "DENY")
+
+    def test_meta_csp_quotes_do_not_truncate_keywords(self):
+        policy = (
+            "default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; "
+            "style-src 'self' 'unsafe-inline'; connect-src https://cloudflareinsights.com"
+        )
+        for html in (
+            f'<meta http-equiv="Content-Security-Policy" content="{policy}">',
+            f'<meta content="{policy}" http-equiv="Content-Security-Policy">',
+            "<meta name=\"viewport\" content=\"width=device-width\">",
+        ):
+            with self.subTest(html=html):
+                found = meta_csp_policies(html)
+                if "Content-Security-Policy" not in html:
+                    self.assertEqual(found, [])
+                    continue
+                self.assertEqual(found, [policy])
+                directives = csp_directives(found[0])
+                self.assertEqual(directives["default-src"], ["'none'"])
+                self.assertEqual(directives["script-src"],
+                                 ["'self'", "https://static.cloudflareinsights.com"])
+                self.assertEqual(directives["style-src"], ["'self'", "'unsafe-inline'"])
+                self.assertEqual(directives["connect-src"], ["https://cloudflareinsights.com"])
+
+    def assert_csp_allows_cloudflare_analytics(self, directives):
         for name, value in {
+                "default-src": ["'none'"],
                 "script-src": ["'self'", "https://static.cloudflareinsights.com"],
                 "connect-src": ["https://cloudflareinsights.com"],
                 "frame-ancestors": ["'none'"], "object-src": ["'none'"],
                 "base-uri": ["'none'"], "form-action": ["'none'"]}.items():
             self.assertEqual(directives.get(name), value, name)
-        self.assertEqual(directives.get("default-src"), ["'none'"])
-        self.assertNotIn("*", headers["Content-Security-Policy"])
-        for source in self.sources.values():
-            for tag in re.findall(r"<meta\b[^>]*>", source, flags=re.IGNORECASE):
-                if not re.search(r"http-equiv\s*=\s*['\"]content-security-policy['\"]", tag, flags=re.IGNORECASE):
-                    continue
-                content = re.search(r"content\s*=\s*['\"]([^'\"]+)['\"]", tag, flags=re.IGNORECASE)
-                self.assertIsNotNone(content, tag)
-                meta = {}
-                for directive in content.group(1).split(";"):
-                    tokens = directive.split()
-                    if tokens:
-                        meta[tokens[0]] = tokens[1:]
-                self.assertEqual(meta.get("script-src"),
-                                 ["'self'", "https://static.cloudflareinsights.com"])
-                self.assertEqual(meta.get("connect-src"), ["https://cloudflareinsights.com"])
-        self.assertEqual(headers["X-Content-Type-Options"].strip(), "nosniff")
-        self.assertEqual(headers["X-Frame-Options"].strip(), "DENY")
 
     def test_privacy_support_and_sitemap_remain_reachable(self):
         homepage = self.pages[SITE / "index.html"]
