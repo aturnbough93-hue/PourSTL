@@ -118,9 +118,11 @@ The app is in development. Keep download calls to action pointed at the status s
 
 Cloudflare Pages reads `_headers` from the generated publish directory. It
 allows this origin plus Cloudflare Web Analytics
-(`https://static.cloudflareinsights.com` for scripts and
-`https://cloudflareinsights.com` for connections), blocks other network calls
-and framing, and disables camera/microphone/geolocation permissions. Inline styles
+(`https://static.cloudflareinsights.com` for scripts, and `'self'` plus
+`https://cloudflareinsights.com` for connections). Proxied automatic injection
+posts the beacon to this site's `/cdn-cgi/rum`, which needs `'self'`. Other
+network calls and framing stay blocked, and camera, microphone, geolocation,
+and payment permissions stay disabled. Inline styles
 remain allowed because
 the static page uses inline presentation styles; inline scripts are blocked.
 `python3 -m http.server` does not apply these headers. Check the real deployed

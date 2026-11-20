@@ -191,7 +191,7 @@ class WebsiteChecks(unittest.TestCase):
         for name, value in {
                 "default-src": ["'none'"],
                 "script-src": ["'self'", "https://static.cloudflareinsights.com"],
-                "connect-src": ["https://cloudflareinsights.com"],
+                "connect-src": ["'self'", "https://cloudflareinsights.com"],
                 "frame-ancestors": ["'none'"], "object-src": ["'none'"],
                 "base-uri": ["'none'"], "form-action": ["'none'"]}.items():
             self.assertEqual(directives.get(name), value, name)
