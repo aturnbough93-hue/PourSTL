@@ -1,42 +1,36 @@
 # Connect pourstl.com to PourSTL
 
-Future custom domain: **https://pourstl.com**. Current live primary:
-**https://pourstl.pages.dev**. The owner is handling DNS and deferred the switch. Registrar: **IONOS SE**. The domain stays registered
-at IONOS while Cloudflare provides DNS and the Pages website.
+Canonical site: **https://pourstl.com**. It is live on Cloudflare Pages project
+**pourstl**, including `/privacy` and `/support`. Registrar: **IONOS SE**. The
+domain stays registered at IONOS while Cloudflare provides DNS and the Pages
+website.
 
-Cloudflare Pages project **pourstl** already has `pourstl.com` and
-`www.pourstl.com` attached. Their DNS/TLS validation is pending. Current Wrangler
-permissions cannot create DNS zones or edit DNS records; the account owner must
-complete those dashboard steps. Do not paste API keys into issues or commits.
+This repository does not change DNS records or add redirects. The Pages project
+name stays `pourstl`. The assigned Pages hostname `pourstl.pages.dev` remains
+the CNAME target for `@` and `www`; it is not the canonical URL.
 
-## Cloudflare
+Cloudflare Pages project **pourstl** serves `pourstl.com` and `www.pourstl.com`.
+Current Wrangler permissions cannot create DNS zones or edit DNS records. Do
+not paste API keys into issues or commits.
 
-1. In the authorized account, add **pourstl.com** and choose the **Free** plan.
-2. Import/review existing DNS records. Set the website records below. Replace
-   conflicting A/AAAA/CNAME website records only for `@` and `www`.
-3. Preserve mail records, including existing MX, SPF, DKIM and verification
-   entries. Public DNS currently shows priority-10 MX records for
-   `mx00.ionos.com` and `mx01.ionos.com`; keep them if using IONOS mail.
-4. Copy the **two nameservers assigned to pourstl.com by Cloudflare**. They end
-   in `.ns.cloudflare.com`; obtain their actual values from the domain dashboard.
+## Website records
+
+Leave these records in place. This change does not create or edit them.
+Preserve mail records, including existing MX, SPF, DKIM and verification
+entries. Public DNS has shown priority-10 MX records for `mx00.ionos.com` and
+`mx01.ionos.com`; keep them if using IONOS mail.
 
 | Type | Name | Target | Proxy | TTL |
 | --- | --- | --- | --- | --- |
 | CNAME | `@` | `pourstl.pages.dev` | Proxied | Auto |
 | CNAME | `www` | `pourstl.pages.dev` | Proxied | Auto |
 
-The original IONOS nameservers were `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`,
-`ns1095.ui-dns.com`, and `ns1122.ui-dns.de`. Those are the old registrar values,
-not the two Cloudflare nameservers to enter.
+Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and
+`matt.ns.cloudflare.com`. The original IONOS nameservers were
+`ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, and
+`ns1122.ui-dns.de`. This change does not replace nameservers.
 
-## IONOS
-
-Open **Domains & SSL → pourstl.com → Nameservers → Use custom nameservers**.
-Replace the existing nameserver set with the two values Cloudflare assigned,
-save the change, and complete any IONOS confirmation. DNS checks may take time
-after both the Cloudflare records and IONOS nameserver change are saved.
-
-## Verify before declaring the domain live
+## Checks for the live site
 
 - Public NS records resolve to the assigned Cloudflare nameservers.
 - Cloudflare shows the zone as Active and both Pages custom domains as Active.
@@ -47,14 +41,14 @@ after both the Cloudflare records and IONOS nameserver change are saved.
 - An unknown URL returns a real 404; CSP, nosniff, permissions policy and framing
   restrictions are present.
 
-The live fallback currently uses `pourstl.pages.dev` in canonical/social metadata.
-Once the custom domain is active, deploy the reviewed main commit with
+Canonical and social metadata, robots, and the sitemap use `https://pourstl.com`.
+Deploy a reviewed commit with
 `SITE_URL=https://pourstl.com CF_PAGES_BRANCH=main python3 scripts/build_website.py`,
 then upload `dist` to project `pourstl` as documented in
-[the website README](../website/README.md). Verify canonical/social metadata,
-robots and sitemap use `https://pourstl.com`. Keep the Pages alias usable as a
-fallback; the app's Privacy Policy link uses its verified policy page.
+[the website README](../website/README.md). The app Privacy Policy link is
+`https://pourstl.com/privacy`. The site support page is `https://pourstl.com/support`.
+Do not add a redirect from the Pages hostname in this repo.
 
-Record the actual verification time, deployment commit and any remaining DNS
-status in [HANDOFF.md](HANDOFF.md). Domain registration or a pending status alone
-does not establish that the custom website is live.
+`https://pourstl.com`, `/privacy`, and `/support` already respond over HTTPS.
+`https://www.pourstl.com` redirects to `https://pourstl.com/`. Record any later
+DNS change in [HANDOFF.md](HANDOFF.md). This file does not make one.

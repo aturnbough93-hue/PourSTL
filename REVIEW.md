@@ -4,8 +4,8 @@
 
 The active app, project, test targets and website are now named **PourSTL**.
 Approved icon artwork is preserved; the social preview carries the new name.
-The current live address is **https://pourstl.pages.dev**. The owner is handling
-`pourstl.com` separately and deferred switching domains. Domain activation and current native CI results are tracked in
+The canonical site is **https://pourstl.com**, on the same Cloudflare Pages
+project. Domain notes and current native CI results are tracked in
 [the handoff](docs/HANDOFF.md). The earlier reviews below describe their original
 commits and pre-rename names; their test counts are not evidence that the
 renamed app has passed CI.

@@ -15,6 +15,9 @@ def fingerprints(directory):
 
 
 class CloudflareBuildTests(unittest.TestCase):
+    def test_source_canonical_origin_is_the_custom_domain(self):
+        self.assertEqual(OLD_ORIGIN, "https://pourstl.com")
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -97,7 +100,11 @@ class CloudflareBuildTests(unittest.TestCase):
         self.assertFalse((self.output / "stale.html").exists())
         self.assertFalse(legacy_marker.exists())
         self.assertEqual((self.output / MARKER).read_text(), MARKER_CONTENT)
-        self.assertIn('href="https://pourstl.com/"', (self.output / "index.html").read_text())
+        built = (self.output / "index.html").read_text()
+        self.assertIn('href="https://pourstl.com/"', built)
+        self.assertNotIn("pourstl.pages.dev", built)
+        self.assertNotIn("pourstl.pages.dev", (self.output / "sitemap.xml").read_text())
+        self.assertNotIn("pourstl.pages.dev", (self.output / "robots.txt").read_text())
 
     def test_refuses_invalid_or_symlinked_legacy_marker_without_deleting_data(self):
         self.output.mkdir()

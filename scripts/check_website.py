@@ -157,6 +157,7 @@ class WebsiteChecks(unittest.TestCase):
         for location in locations:
             parsed = urlsplit(location.text)
             self.assertEqual(parsed.scheme, "https")
+            self.assertEqual(parsed.netloc, "pourstl.com")
             paths.add(parsed.path)
             target = local_target(SITE / "index.html", parsed.path)
             self.assertTrue(target[0].is_file(), parsed.path)
@@ -164,16 +165,24 @@ class WebsiteChecks(unittest.TestCase):
         self.assertIn("/support.html", paths)
 
     def test_subpages_share_the_existing_social_image(self):
-        image = "https://pourstl.pages.dev/assets/og-image.jpg"
+        origin = "https://pourstl.com"
+        image = f"{origin}/assets/og-image.jpg"
         for name in ("index.html", "privacy.html", "try.html", "support.html"):
             source = self.sources[SITE / name]
             with self.subTest(page=name):
+                self.assertNotIn("pourstl.pages.dev", source)
+                self.assertIn(f'rel="canonical" href="{origin}/', source)
                 self.assertIn(f'property="og:image" content="{image}"', source)
-                self.assertIn(f'property="og:title"', source)
-                self.assertIn(f'property="og:url" content="https://pourstl.pages.dev/', source)
+                self.assertIn('property="og:title"', source)
+                self.assertIn(f'property="og:url" content="{origin}/', source)
                 self.assertIn('name="twitter:card" content="summary_large_image"', source)
                 self.assertIn(f'name="twitter:image" content="{image}"', source)
         self.assertTrue((SITE / "assets" / "og-image.jpg").is_file())
+        robots = (SITE / "robots.txt").read_text()
+        sitemap = (SITE / "sitemap.xml").read_text()
+        self.assertIn(f"Sitemap: {origin}/sitemap.xml", robots)
+        self.assertNotIn("pourstl.pages.dev", robots)
+        self.assertNotIn("pourstl.pages.dev", sitemap)
 
     def test_support_points_at_github_issues_without_an_email(self):
         source = self.sources[SITE / "support.html"]

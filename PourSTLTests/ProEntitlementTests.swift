@@ -11,7 +11,7 @@ final class ProEntitlementLogicTests: XCTestCase {
             "com.pourstl.app.pro.yearly",
         ])
         XCTAssertEqual(ProProductID.all, Set(ProProductID.ordered))
-        XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://pourstl.pages.dev/privacy")
+        XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://pourstl.com/privacy")
         XCTAssertEqual(
             ProProductID.termsOfUseURL.absoluteString,
             "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"

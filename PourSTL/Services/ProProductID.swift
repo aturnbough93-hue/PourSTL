@@ -13,8 +13,8 @@ enum ProProductID {
     /// Local StoreKit configuration file name, without the extension.
     static let configurationName = "PourSTL"
 
-    /// Existing site page.
-    static let privacyPolicyURL = URL(string: "https://pourstl.pages.dev/privacy")!
+    /// Privacy policy on the canonical site. The live Pages route is extensionless.
+    static let privacyPolicyURL = URL(string: "https://pourstl.com/privacy")!
 
     /// Apple’s standard Licensed Application End User License Agreement.
     static let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!

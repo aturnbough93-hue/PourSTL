@@ -11,9 +11,9 @@ Bundle ID is `com.pourstl.app`; local-only product IDs are
 `com.pourstl.app.pro.monthly` and `.yearly`. No live App Store products or signed
 builds exist. Legacy settings/storage keys and `pour://` links are preserved.
 
-Cloudflare project `pourstl` is live at https://pourstl.pages.dev. The purchased
-domain `pourstl.com` is at IONOS. The owner is handling its DNS and deferred the
-switch; pourstl.pages.dev remains the current primary address. The
+Cloudflare project `pourstl` publishes the canonical site https://pourstl.com,
+including /privacy and /support. The project name stays `pourstl`. This note
+does not change DNS or add redirects. The
 Wrangler grant cannot create zones or edit DNS. Repository settings calls
 returned 403 even after GitHub CLI login; the owner completed the rename and
 About metadata in GitHub. Confirmed repository:
