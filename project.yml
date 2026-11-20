@@ -1,21 +1,23 @@
-name: Pour
+name: PourSTL
 options:
-  bundleIdPrefix: com.devin.pour
+  bundleIdPrefix: com.pourstl.app
   createIntermediateGroups: true
 targets:
-  Pour:
+  PourSTL:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: Pour
+      - path: PourSTL
         excludes:
           - Info.plist
+      - path: PourSTL.storekit
+        buildPhase: resources
     info:
-      path: Pour/Info.plist
+      path: PourSTL/Info.plist
       properties:
         CFBundleDevelopmentRegion: $(DEVELOPMENT_LANGUAGE)
-        CFBundleDisplayName: Pour
+        CFBundleDisplayName: PourSTL
         CFBundleExecutable: $(EXECUTABLE_NAME)
         CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
         CFBundleInfoDictionaryVersion: "6.0"
@@ -24,7 +26,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
-        NSCameraUsageDescription: Pour uses the camera to scan bottle barcodes into My Bar. Codes are matched on this device and are not sent anywhere.
+        NSCameraUsageDescription: PourSTL uses the camera to scan bottle barcodes into My Bar. Codes are matched on this device and are not sent anywhere.
         UIRequiresFullScreen: true
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
@@ -36,12 +38,13 @@ targets:
           UIApplicationSupportsMultipleScenes: false
           UISceneConfigurations: {}
         CFBundleURLTypes:
-          - CFBundleURLName: com.devin.pour.deeplink
+          - CFBundleURLName: com.pourstl.app.deeplink
             CFBundleURLSchemes:
+              - pourstl
               - pour
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.devin.pour
+        PRODUCT_BUNDLE_IDENTIFIER: com.pourstl.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
@@ -51,32 +54,75 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
-  PourTests:
+  PourSTLTests:
     type: bundle.unit-test
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: PourTests
+      - path: PourSTLTests
+      - path: PourSTL.storekit
+        buildPhase: resources
     dependencies:
-      - target: Pour
+      - target: PourSTL
+      - sdk: StoreKit.framework
+      - sdk: StoreKitTest.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.devin.pour.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.pourstl.app.tests
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
+  PourSTLUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PourSTLUITests
+    dependencies:
+      - target: PourSTL
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pourstl.app.uitests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PourSTL
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
 schemes:
-  Pour:
+  PourSTL:
     build:
       targets:
-        Pour: all
-        PourTests:
+        PourSTL: all
+        PourSTLTests:
           - test
     test:
       gatherCoverageData: false
       targets:
-        - PourTests
+        - PourSTLTests
     run:
       config: Debug
+      storeKitConfiguration: PourSTL.storekit
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+  PourSTLQA:
+    build:
+      targets:
+        PourSTL: all
+        PourSTLTests:
+          - test
+        PourSTLUITests:
+          - test
+    test:
+      gatherCoverageData: false
+      targets:
+        - PourSTLTests
+        - PourSTLUITests
+    run:
+      config: Debug
+      storeKitConfiguration: PourSTL.storekit
     profile:
       config: Release
     analyze:

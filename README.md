@@ -1,23 +1,23 @@
-# Pour
+# PourSTL
 
-**Pour** is a native iOS bartender's assistant — a fast, offline-first recipe, inventory, and service tool for working bartenders.
+**PourSTL** is a bartending app with recipes, inventory, and service tools for working bartenders. The current native client is built for iOS.
 
 Dark-mode-first SwiftUI app with a copper-accented design system, seeded with ~30 classic cocktails, intelligent "what can I make" inventory matching, professional scaling/batch mode, shopping list, timers, and custom recipes.
 
 ## Requirements
 
-- Xcode 15+ (built with Xcode 26)
+- Xcode 16.4 or newer with an installed iOS Simulator runtime (CI records the selected Xcode in the build manifest)
 - iOS 17.0+ deployment target
 - iPhone simulator or device
 
 ## Run it
 
 ```bash
-open Pour.xcodeproj
+open PourSTL.xcodeproj
 # or build for the simulator:
-xcodebuild -scheme Pour -destination 'platform=iOS Simulator,name=iPhone 17' build
+xcodebuild -scheme PourSTL -destination 'generic/platform=iOS Simulator' build
 # run tests:
-xcodebuild -scheme Pour -destination 'platform=iOS Simulator,name=iPhone 17' test
+bash scripts/test_ios.sh
 ```
 
 Then choose a simulator/device in Xcode and press ⌘R.
@@ -26,10 +26,12 @@ The dependency-free marketing site runs on Linux or macOS with
 `python3 -m http.server 8080 --directory website`. It is separate from the native
 app. VS Code includes a local website-server launch configuration.
 
-Cloudflare Pages is the production host. The project name is **barpour** and the
-public address is **https://barpour.pages.dev**. See
+Cloudflare Pages hosts project **pourstl** at **https://pourstl.pages.dev**.
+The owner is connecting **pourstl.com** separately; the live Pages address stays
+primary until the domain is ready. See
 [website/README.md](website/README.md) for the project settings and build.
 
+See [docs/HANDOFF.md](docs/HANDOFF.md) for current delivery status and resuming work.
 See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,
 and prioritized release/product roadmap. Native changes must pass simulator and
 device validation before distributing a build.
@@ -44,10 +46,14 @@ node --check website/site.js
 bash scripts/test_ios.sh
 ```
 
-GitHub Actions runs the website checks and unsigned simulator build/tests on
-pushes to `main` and `codex/**`, and on pull requests. The native runner chooses
-an available iPhone instead of depending on one simulator name. This does not
-archive, sign, or distribute the app.
+GitHub Actions runs the website checks and native unit tests on pushes to `main`
+and `codex/**`, and on pull requests. A successful run includes a downloadable
+**PourSTL-Simulator** artifact: a universal Release simulator app, commit/build
+manifest, checksum, and installation guide. A separate **Simulator QA pass**
+workflow records current UI tests and screenshots. See
+[docs/PERSONAL_TESTING.md](docs/PERSONAL_TESTING.md) for installation and the
+personal testing checklist. These unsigned builds require a Mac with Xcode;
+physical iPhone installation and TestFlight need Apple provisioning/signing.
 
 ## Feature status
 
@@ -60,26 +66,23 @@ archive, sign, or distribute the app.
 - My Bar: categorized inventory, in/out-of-stock toggles, low-stock flag, search, quick-add missing recipe ingredients, barcode scan with confirm-before-add
 - Barcode scan stays on device: camera when the device allows it, a small offline bottle catalog, manual code entry when the camera is missing or denied, and the existing add-item sheet plus ingredient normalization when a code is unknown
 - Shopping list with purchased tracking
+- Local venues: create a venue, check in/out, and persist the selected workplace
 - Custom recipe editor with glass-type picker mapped to SF Symbols
 - Timer view: large circular progress ring, haptic ticks at 10s/5s/done
 - Settings: manual dark/light/system appearance (persisted), preferred measurement unit (oz/ml) applied app-wide
 - Ingredient normalization: local alias map ("London Dry Gin", "Beefeater" → gin) powering matching, "What can I make", and search
 - Empty / error states throughout; everything works fully offline
-- XCTest coverage for unit conversion, ingredient normalization, and barcode parsing, catalog matching, confirm/add, and camera availability
-- `pour://` deep links (`pour://recipe?name=Negroni`, `pour://tab/bar`) as seams for future App Intents
-
-### Stubbed entry points (clean seams, not functional)
-
-- AI Bartender Assistant (Pro) — toolbar/sheet entry point exists
-- Venue check-in / shift mode — model + entry point exist
-- "Pro" upsell surface
+- XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
+- `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
+- Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
+- PourSTL Pro upsell using StoreKit 2. The shared PourSTL scheme loads `PourSTL.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `PourSTL/Services/ProProductID.swift`: `com.pourstl.app.pro.monthly` and `com.pourstl.app.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
 
 ### Planned (out of scope for this build)
 
-- StoreKit 2 subscriptions, CloudKit sync, Sign in with Apple
+- CloudKit sync, Sign in with Apple. Charging customers still needs Apple Developer enrollment and App Store Connect products; the local StoreKit configuration does not create those.
 - Voice search (Speech framework), agentic commands
 - Live Activities / widgets
-- AI video generation, venue QR onboarding, team features, inventory costing/export
+- AI video generation, venue QR onboarding, shift/team workflows, inventory costing/export
 
 ## Accessibility checklist (spot-checked per spec)
 
@@ -92,13 +95,13 @@ archive, sign, or distribute the app.
 ## Project layout
 
 ```
-Pour/
+PourSTL/
   App/            entry point, root tab view, deep-link router
   Design/         palette, typography, glass→SF Symbol mapping
   Models/         SwiftData models
   Services/       conversion, normalization, matching, seeding, haptics, settings
-  Features/       Home, RecipeDetail, MyBar, Shopping, Editor, Timer, Settings, stubs
-PourTests/        XCTest unit tests
+  Features/       Home, Recipes, MyBar, Shopping, Timer, Assistant, Settings, stubs
+PourSTLTests/        XCTest unit tests
 project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 ```
 

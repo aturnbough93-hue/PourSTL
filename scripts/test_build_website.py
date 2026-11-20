@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from build_website import (MARKER, OLD_ORIGIN, REPOSITORY, build_site,
+from build_website import (MARKER, MARKER_CONTENT, OLD_ORIGIN, REPOSITORY, build_site,
                            deployment_settings, rewrite_metadata, validate_origin)
 
 
@@ -23,7 +23,7 @@ class CloudflareBuildTests(unittest.TestCase):
 
     def test_production_build_rewrites_metadata_and_preserves_source_assets_headers(self):
         before = fingerprints(self.source)
-        origin = "https://confirmed-pour.pages.dev"
+        origin = "https://confirmed-pourstl.pages.dev"
         build_site(self.source, self.output, origin)
         self.assertEqual(fingerprints(self.source), before)
         for name in ["index.html", "privacy.html", "try.html", "support.html", "sitemap.xml", "robots.txt"]:
@@ -33,6 +33,9 @@ class CloudflareBuildTests(unittest.TestCase):
         self.assertEqual((self.output / "_headers").read_bytes(), (self.source / "_headers").read_bytes())
         self.assertEqual((self.output / "site.js").read_bytes(), (self.source / "site.js").read_bytes())
         self.assertEqual(fingerprints(self.output / "assets"), fingerprints(self.source / "assets"))
+        touch_icon = (self.source / "assets" / "apple-touch-icon.png").read_bytes()
+        self.assertEqual((self.output / "apple-touch-icon.png").read_bytes(), touch_icon)
+        self.assertEqual((self.output / "apple-touch-icon-precomposed.png").read_bytes(), touch_icon)
         self.assertFalse((self.output / "README.md").exists())
         self.assertTrue((self.output / MARKER).exists())
         self.assertTrue((self.output / "404.html").is_file())
@@ -49,24 +52,24 @@ class CloudflareBuildTests(unittest.TestCase):
 
     def test_metadata_rewriting_preserves_copy_and_regular_links(self):
         html = f'<p>{OLD_ORIGIN}/privacy.html</p><a href="{OLD_ORIGIN}/privacy.html">Old site</a>'
-        self.assertEqual(rewrite_metadata(html, "https://barpour.pages.dev"), html)
+        self.assertEqual(rewrite_metadata(html, "https://different.example.com"), html)
 
     def test_infers_stable_project_origin_and_explicit_custom_domain_takes_precedence(self):
-        for deployment in ["https://abc123.confirmed-pour.pages.dev", "https://feature.confirmed-pour.pages.dev/", "https://confirmed-pour.pages.dev"]:
+        for deployment in ["https://abc123.confirmed-pourstl.pages.dev", "https://feature.confirmed-pourstl.pages.dev/", "https://confirmed-pourstl.pages.dev"]:
             self.assertEqual(deployment_settings({"CF_PAGES_URL": deployment, "CF_PAGES_BRANCH": "main"}),
-                             ("https://confirmed-pour.pages.dev", False))
-        self.assertEqual(deployment_settings({"SITE_URL": "https://pour.example.com/", "CF_PAGES_URL": "https://hash.project.pages.dev"}),
-                         ("https://pour.example.com", False))
+                             ("https://confirmed-pourstl.pages.dev", False))
+        self.assertEqual(deployment_settings({"SITE_URL": "https://pourstl.example.com/", "CF_PAGES_URL": "https://hash.project.pages.dev"}),
+                         ("https://pourstl.example.com", False))
 
     def test_preview_is_noindex_with_production_canonical_and_preserved_security(self):
-        origin, preview = deployment_settings({"CF_PAGES_URL": "https://hash.confirmed-pour.pages.dev", "CF_PAGES_BRANCH": "feature/review"})
+        origin, preview = deployment_settings({"CF_PAGES_URL": "https://hash.confirmed-pourstl.pages.dev", "CF_PAGES_BRANCH": "feature/review"})
         self.assertTrue(preview)
         build_site(self.source, self.output, origin, preview)
         headers = (self.output / "_headers").read_text()
         self.assertIn("X-Robots-Tag: noindex, nofollow", headers)
         self.assertIn("Content-Security-Policy:", headers)
         self.assertEqual((self.output / "robots.txt").read_text(), "User-agent: *\nDisallow: /\n")
-        self.assertIn('href="https://confirmed-pour.pages.dev/"', (self.output / "index.html").read_text())
+        self.assertIn('href="https://confirmed-pourstl.pages.dev/"', (self.output / "index.html").read_text())
         self.assertFalse(deployment_settings({"SITE_URL": origin, "CF_PAGES_BRANCH": "release", "SITE_PRODUCTION_BRANCH": "release"})[1])
 
     def test_rejects_invalid_or_missing_origins(self):
@@ -83,6 +86,37 @@ class CloudflareBuildTests(unittest.TestCase):
         build_site(self.source, self.output, "https://second.example.com")
         self.assertFalse((self.output / "stale.html").exists())
         self.assertIn("https://second.example.com", (self.output / "index.html").read_text())
+
+    def test_rebuild_recognizes_the_previous_brand_generated_marker(self):
+        build_site(self.source, self.output, "https://first.example.com")
+        (self.output / MARKER).unlink()
+        legacy_marker = self.output / ".pour-generated-site"
+        legacy_marker.write_text("Pour static website build v1\n")
+        (self.output / "stale.html").write_text("old generated content")
+        build_site(self.source, self.output, "https://pourstl.com")
+        self.assertFalse((self.output / "stale.html").exists())
+        self.assertFalse(legacy_marker.exists())
+        self.assertEqual((self.output / MARKER).read_text(), MARKER_CONTENT)
+        self.assertIn('href="https://pourstl.com/"', (self.output / "index.html").read_text())
+
+    def test_refuses_invalid_or_symlinked_legacy_marker_without_deleting_data(self):
+        self.output.mkdir()
+        keep = self.output / "keep.txt"
+        keep.write_text("user work")
+        legacy_marker = self.output / ".pour-generated-site"
+        legacy_marker.write_text(MARKER_CONTENT)
+        with self.assertRaises(ValueError):
+            build_site(self.source, self.output, "https://example.com")
+        self.assertEqual(keep.read_text(), "user work")
+
+        legacy_marker.unlink()
+        outside_marker = Path(self.temporary.name) / "outside-marker"
+        outside_marker.write_text("Pour static website build v1\n")
+        legacy_marker.symlink_to(outside_marker)
+        with self.assertRaises(ValueError):
+            build_site(self.source, self.output, "https://example.com")
+        self.assertEqual(keep.read_text(), "user work")
+        self.assertEqual(outside_marker.read_text(), "Pour static website build v1\n")
 
     def test_refuses_unrecognized_output_source_or_symlink_without_deleting_data(self):
         self.output.mkdir()

@@ -1,4 +1,64 @@
-# Pour product, code, UI, and security review
+# PourSTL product, code, UI, and security review
+
+## PourSTL rebrand and domain setup
+
+The active app, project, test targets and website are now named **PourSTL**.
+Approved icon artwork is preserved; the social preview carries the new name.
+The current live address is **https://pourstl.pages.dev**. The owner is handling
+`pourstl.com` separately and deferred switching domains. Domain activation and current native CI results are tracked in
+[the handoff](docs/HANDOFF.md). The earlier reviews below describe their original
+commits and pre-rename names; their test counts are not evidence that the
+renamed app has passed CI.
+
+Current evidence at `6c709ab`: both Quality workflows pass all **162 unit tests**
+and produce verified universal Release simulator archives. Full QA passed
+**184/185** (162 units and 22/23 UI tests); one stock-toggle UI interaction is
+being corrected before the final rerun and merge. All eight current screenshots
+were visually checked. The live PourSTL site passed 108 browser checks; 10
+static, 9 build and 10 demo checks pass locally. The latest build fix recognizes
+the actual pre-rename generated-output marker filename while retaining exact
+content, symlink and unmarked-directory protections. These current results
+supersede the historical integration counts below.
+
+## November 12 integration review
+
+The current release integrates the root Apple touch icon, StoreKit purchase and
+restore flow, offline Bar Assistant, and simulator QA pull requests. The approved
+production icon is preserved. Cloudflare is already hosting the public website
+at **https://barpour-7hb.pages.dev**; the browser demo remains at `/try.html`.
+
+Additional fixes address SwiftData actor isolation, negative/decimal and invalid
+scaled measures, recipe-name ambiguity, ingredient matching, stock-question
+routing, and allergy/diet questions the rule-based helper cannot assess. The
+helper is labeled honestly and remains free. StoreKit verified transactions
+apply immediately, expiration/foreground checks refresh access, stale queries
+cannot overwrite newer transactions, and transient states reset on reopening.
+No free offline tools depend on a purchase.
+
+Local validation passed 10 website checks, 7 Cloudflare build tests and 10 demo
+logic tests. Rendered desktop/mobile checks covered navigation, demo storage,
+shopping, scaling, keyboard use, privacy/support copy, and error fallbacks.
+Live Cloudflare checks verified security headers and a real unknown-page 404.
+Native unit tests passed 158/158 with no failures or skips in
+[run 43312827329](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43312827329),
+and the universal Release simulator archive was verified against its checksum
+and actual executable architectures. The initial full QA run passed 180/181;
+a SwiftUI Menu/XCTest hit-point issue is corrected in the harness and awaits
+a repeat run. Final results and exact tested commits are recorded in Actions.
+
+The new CI artifact supplies a universal **Release simulator app**, provenance
+manifest and checksum. [Personal testing instructions](docs/PERSONAL_TESTING.md)
+explain installation, StoreKit sessions and the device test checklist. Physical
+camera/lifecycle/accessibility checks, owner signing, actual App Store products,
+and TestFlight distribution remain separate release requirements.
+
+The review below is historical (November 5). Its validation counts, icon
+concept, permission inventory and hosting activation notes describe that older
+revision. Camera access has since shipped for on-device barcode scanning;
+StoreKit may contact Apple when billing is tested, and the Bar Assistant uses
+local rules rather than a remote model.
+
+## November 5 review (historical)
 
 Reviewed November 5, 2026. Scope: checked-in SwiftUI/SwiftData app, XCTest source,
 Xcode project, static website, development configuration, and Git history.
@@ -110,7 +170,7 @@ Cloudflare activation still requires an authorized account/project connection;
 source publication alone does not establish a live deployment.
 
 The native polish revision passed 46 XCTest tests with zero failures in
-[macOS CI](https://github.com/aturnbough93-hue/pour/actions/runs/42034714391).
+[macOS CI](https://github.com/aturnbough93-hue/PourSTL/actions/runs/42034714391).
 The browser pass adds 10 logic tests to the 5 static and 7 migration tests;
 desktop/mobile interactions passed with and without the production CSP applied.
 

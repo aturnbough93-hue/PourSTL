@@ -3,23 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacy — Pour</title>
-<meta name="description" content="How the current Pour app and website handle recipes, inventory, preferences, and web requests.">
+<title>Privacy — PourSTL</title>
+<meta name="description" content="How the current PourSTL app and website handle recipes, inventory, preferences, and web requests.">
 <meta name="theme-color" content="#0A0A0C">
-<link rel="canonical" href="https://barpour.pages.dev/privacy.html">
-<meta property="og:title" content="Privacy — Pour">
-<meta property="og:description" content="How the current Pour app and website handle recipes, inventory, preferences, and web requests.">
-<meta property="og:image" content="https://barpour.pages.dev/assets/og-image.jpg">
+<link rel="canonical" href="https://pourstl.pages.dev/privacy.html">
+<meta property="og:title" content="Privacy — PourSTL">
+<meta property="og:description" content="How the current PourSTL app and website handle recipes, inventory, preferences, and web requests.">
+<meta property="og:image" content="https://pourstl.pages.dev/assets/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Pour app logo with copper coupe glass on dark background">
-<meta property="og:url" content="https://barpour.pages.dev/privacy.html">
+<meta property="og:image:alt" content="PourSTL — The Bartender’s Assistant">
+<meta property="og:url" content="https://pourstl.pages.dev/privacy.html">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Privacy — Pour">
-<meta name="twitter:description" content="How the current Pour app and website handle recipes, inventory, preferences, and web requests.">
-<meta name="twitter:image" content="https://barpour.pages.dev/assets/og-image.jpg">
+<meta name="twitter:title" content="Privacy — PourSTL">
+<meta name="twitter:description" content="How the current PourSTL app and website handle recipes, inventory, preferences, and web requests.">
+<meta name="twitter:image" content="https://pourstl.pages.dev/assets/og-image.jpg">
 <link rel="icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <style>
   :root { color-scheme: dark; --bg: #0A0A0C; --accent: #E8A87C; --text: #F7F7F8; --muted: #AEAEB2; }
   * { box-sizing: border-box; }
@@ -34,24 +35,30 @@
 </head>
 <body>
 <main>
-  <a href="/">← Back to Pour</a>
+  <a href="/">← Back to PourSTL</a>
   <h1>Your bar, on your device.</h1>
-  <p>Updated November 10, 2026. This page describes the current development version of Pour, this website, and its browser demo. It will be updated before features that change data handling are released.</p>
+  <p>Updated November 12, 2026. This page describes the current development version of PourSTL, this website, and its browser demo. It will be updated before features that change data handling are released.</p>
   <h2>The current iPhone app</h2>
-  <p>Pour stores recipes, ingredient lists, inventory, shopping lists, favorites, and preferences locally. The current code does not include an account service, advertising SDK, analytics SDK, or a network service for uploading this data.</p>
+  <p>PourSTL stores recipes, ingredient lists, inventory, shopping lists, favorites, venue names and check-in state, and preferences locally. Venue check-in is a label you select in the app; it does not use your location. The current code does not include an account service, advertising SDK, analytics SDK, or a network service for uploading this data.</p>
   <p>When you use the Share action, recipe text goes to the app or person you select in the iOS share sheet. That destination handles the shared text under its own privacy practices.</p>
+  <h2>Offline Bar Assistant</h2>
+  <p>The Bar Assistant uses rules to answer supported questions from recipes and inventory on your device. Questions and replies stay in the app’s memory while the assistant is open; they are not uploaded, saved to the recipe database, or sent to an AI provider. It does not record your voice or search the web.</p>
+  <h2>Purchases in development</h2>
+  <p>The current project includes purchase, restore, and subscription-entitlement flows using Apple’s StoreKit. The shared development scheme uses a local StoreKit test configuration; these simulated purchases do not charge you. Live App Store products and a public subscription are not available yet.</p>
+  <p>When live purchases are enabled, Apple will process payments under its own privacy practices. PourSTL’s StoreKit implementation reads product and verified transaction information to determine access; it does not receive card details or upload recipes, inventory, or shopping lists. The free tools keep working offline with no subscription.</p>
   <h2>Backups and removal</h2>
   <p>Local storage does not mean a separate backup. Device backups may include app data, depending on your Apple settings. The current app does not provide cloud sync or a complete export-and-restore feature. Removing the app removes its local data; copies in device backups and anything you shared elsewhere are managed separately.</p>
   <h2>Permissions and future features</h2>
-  <p>Barcode scanning uses the camera only to read a barcode on this device. Pour does not store camera images and does not send them anywhere. The barcode and the bottle name you confirm stay with the rest of your local inventory. Voice search, AI assistance, and venue tools are planned or placeholder features. The current app does not implement microphone or speech recording. If those features ship, this page and the relevant permission explanations will describe their data use.</p>
+  <p>Barcode scanning uses the camera only to read a barcode on this device. PourSTL does not store camera images and does not send them anywhere. The barcode and the bottle name you confirm stay with the rest of your local inventory. You can enter a barcode or ingredient manually if camera access is unavailable.</p>
+  <p>Voice search, cloud sync, online AI services, and team features are planned. The current app does not implement microphone or speech recording. Before features with new data handling ship, this page and the relevant permission explanations will describe their data use.</p>
   <h2>This website</h2>
-  <p>This site serves its own images, styles, and scripts. It does not add analytics, advertising, signup forms, or cookies. The hosting provider handles normal requests and may process technical information such as IP addresses and request logs to operate the service.</p>
+  <p>This site serves its own images, styles, and scripts through Cloudflare Pages. It does not add analytics, advertising, signup forms, or cookies. Cloudflare handles normal requests and may process technical information such as IP addresses and request logs to operate the service. See <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare’s privacy policy</a> for its practices.</p>
   <h2>Browser demo storage and clipboard</h2>
   <p>The <a href="try.html">browser demo</a> saves your selected ingredients, shopping list, servings, measurement unit, and selected recipe in this browser’s local storage. This data stays in the browser; the demo does not upload it or sync it with the iPhone app. If browser storage is unavailable, changes last only for the current tab session.</p>
   <p>Use “Reset demo” and confirm to clear the saved demo state and restore the starter ingredients. You can also remove the site’s data in your browser settings. When you choose “Copy recipe,” the demo writes the displayed recipe text to your clipboard. If clipboard access is blocked, it offers text you can select and copy yourself.</p>
   <p>Links to GitHub and other destinations leave this website. Those services handle your visit under their own policies.</p>
   <h2>Questions or a security concern?</h2>
-  <p>For general questions, <a href="https://github.com/aturnbough93-hue/pour/issues">open a GitHub issue</a>. Do not include personal information, credentials, or vulnerability details in a public issue. Use the repository's private vulnerability reporting option when it is available. The <a href="support.html">support page</a> uses this same path.</p>
+  <p>For general questions, <a href="https://github.com/aturnbough93-hue/PourSTL/issues">open a GitHub issue</a>. Do not include personal information, credentials, or vulnerability details in a public issue. Use the repository's private vulnerability reporting option when it is available. The <a href="support.html">support page</a> uses this same path.</p>
 </main>
 </body>
 </html>

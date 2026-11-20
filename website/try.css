@@ -101,6 +101,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .brand {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 12px;
   font-size: 30px;
   font-weight: 750;
@@ -116,15 +117,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   display: flex;
   gap: 40px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .header-actions a {
   font-size: 18px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .header-actions button {
   min-width: 146px;
+  white-space: nowrap;
 }
 
 main {

@@ -164,20 +164,20 @@ class WebsiteChecks(unittest.TestCase):
         self.assertIn("/support.html", paths)
 
     def test_subpages_share_the_existing_social_image(self):
-        image = "https://barpour.pages.dev/assets/og-image.jpg"
+        image = "https://pourstl.pages.dev/assets/og-image.jpg"
         for name in ("index.html", "privacy.html", "try.html", "support.html"):
             source = self.sources[SITE / name]
             with self.subTest(page=name):
                 self.assertIn(f'property="og:image" content="{image}"', source)
                 self.assertIn(f'property="og:title"', source)
-                self.assertIn(f'property="og:url" content="https://barpour.pages.dev/', source)
+                self.assertIn(f'property="og:url" content="https://pourstl.pages.dev/', source)
                 self.assertIn('name="twitter:card" content="summary_large_image"', source)
                 self.assertIn(f'name="twitter:image" content="{image}"', source)
         self.assertTrue((SITE / "assets" / "og-image.jpg").is_file())
 
     def test_support_points_at_github_issues_without_an_email(self):
         source = self.sources[SITE / "support.html"]
-        self.assertIn("https://github.com/aturnbough93-hue/pour/issues", source)
+        self.assertIn("https://github.com/aturnbough93-hue/PourSTL/issues", source)
         lowered = "\n".join(self.sources.values()).lower()
         self.assertNotIn("support@", lowered)
         self.assertNotIn("@example.com", lowered)
