@@ -145,11 +145,7 @@
     font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--accent); margin-bottom: 18px;
   }
-  .eyebrow-text {
-    /* Keep a narrow wrap from leaving one word on its own line. */
-    text-wrap: balance;
-  }
-  .eyebrow-ios { text-transform: none; }
+  .eyebrow-text { text-wrap: balance; }
   .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 1px; }
   h1 {
     font-size: clamp(40px, 5.6vw, 62px); font-weight: 800; letter-spacing: -0.035em;
@@ -386,6 +382,7 @@
     .nav-inner { gap: 8px; }
     .nav-inner .brand { font-size: 17px; }
     .btn-sm { padding: 0 12px; }
+    .eyebrow { letter-spacing: 0.03em; }
   }
 </style>
 <noscript><style>
@@ -432,7 +429,7 @@
 <header class="hero" id="top">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow"><span class="eyebrow-text"><span class="eyebrow-ios">iOS</span> 17+ ·&nbsp;Built for service ·&nbsp;Private by default</span></span>
+      <span class="eyebrow"><span class="eyebrow-text">Built for service ·&nbsp;Private by default</span></span>
       <h1>The bar tool that keeps up with <em>service</em>.</h1>
       <p class="hero-sub">PourSTL is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
       <div class="hero-ctas">
@@ -809,7 +806,7 @@
     </div>
     <details>
       <summary>Can I download PourSTL today?</summary>
-      <p>You can <a href="try.html">try six recipes in your browser</a> now, with inventory matching, scaling, and a shopping list. This browser demo is separate from the iPhone app, which is in development for iOS 17 and later. A public App Store or TestFlight link has not been announced. <a href="https://github.com/aturnbough93-hue/PourSTL">Follow the project on GitHub</a> for release updates.</p>
+      <p>You can <a href="try.html">try six recipes in your browser</a> now, with inventory matching, scaling, and a shopping list. This browser demo is separate from the iPhone app, which is still in development. A public App Store or TestFlight link has not been announced. <a href="https://github.com/aturnbough93-hue/PourSTL">Follow the project on GitHub</a> for release updates.</p>
     </details>
     <details>
       <summary>What works without an account or connection?</summary>
@@ -837,7 +834,7 @@
 <section class="cta-final" id="get">
   <div class="wrap">
     <h2>Ready when the rush hits.</h2>
-    <p>PourSTL is in active development for iPhone (iOS 17+). The repo is where it happens.</p>
+    <p>PourSTL is in active development for iPhone. The repo is where it happens.</p>
     <a class="appstore-btn" href="https://github.com/aturnbough93-hue/PourSTL">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5L2 12l6 7M16 5l6 7-6 7M14 3l-4 18"/></svg>
       <span style="text-align:left"><span class="as-small">Currently in development</span><br><span class="as-big">View on GitHub</span></span>
@@ -867,6 +864,7 @@
         <a href="https://github.com/aturnbough93-hue/PourSTL">GitHub</a>
       </div>
     </div>
+    <p class="foot-note">Pour requires an iPhone running iOS 17 or later.</p>
     <p class="foot-note">© 2026 PourSTL. Free features work fully offline — no account, no tracking. Drink responsibly.</p>
   </div>
 </footer>

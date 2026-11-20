@@ -612,6 +612,12 @@ h2 {
   margin: 8px 0 0;
 }
 
+.site-footer {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 28px 0 8px;
+}
+
 .demo-footer a {
   color: var(--accent);
 }

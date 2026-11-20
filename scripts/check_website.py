@@ -250,15 +250,33 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn(">App status<", homepage)
         self.assertGreaterEqual(homepage.count("iPhone app status"), 2)
         self.assertEqual(homepage.count(">Related builds<"), 1)
-        self.assertIn('<span class="eyebrow-ios">iOS</span>', homepage)
-        self.assertRegex(homepage, r"\.eyebrow-ios\s*\{[^}]*text-transform:\s*none")
-        self.assertIn("·&nbsp;Built for service", homepage)
-        self.assertIn("·&nbsp;Private by default", homepage)
+        self.assertIn(
+            '<span class="eyebrow"><span class="eyebrow-text">Built for service ·&nbsp;Private by default</span></span>',
+            homepage,
+        )
+        self.assertNotIn("eyebrow-ios", homepage)
         self.assertRegex(
             homepage,
             r"@media\s*\(\s*max-width:\s*860px\s*\)\s*\{[^@]*?\.nav-status\s*\{[^}]*display:\s*none",
         )
         self.assertIn('class="btn btn-ghost">iPhone app status</a>', homepage)
+
+    def test_ios_requirement_stays_in_the_footer(self):
+        requirement = "Pour requires an iPhone running iOS 17 or later."
+        for name in ("index.html", "privacy.html", "try.html", "support.html"):
+            source = self.sources[SITE / name]
+            with self.subTest(page=name):
+                footer = re.search(r"<footer\b[^>]*>.*?</footer>", source, flags=re.IGNORECASE | re.DOTALL)
+                self.assertIsNotNone(footer, "Footer missing")
+                self.assertEqual(footer.group(0).count(requirement), 1)
+                self.assertEqual(source.count(requirement), 1)
+                outside = re.sub(r"<footer\b[^>]*>.*?</footer>", "", source, flags=re.IGNORECASE | re.DOTALL)
+                self.assertNotIn("iOS 17", outside)
+        eyebrow = re.search(r'<span class="eyebrow">.*?</span></span>', self.sources[SITE / "index.html"])
+        self.assertIsNotNone(eyebrow)
+        self.assertNotIn("iOS 17", eyebrow.group(0))
+        self.assertNotIn("· ·", eyebrow.group(0))
+        self.assertTrue(eyebrow.group(0).startswith('<span class="eyebrow"><span class="eyebrow-text">Built for service'))
 
     def test_empty_overlay_tap_closes_mobile_menu_without_falling_through(self):
         """AND-6: iPhone Safari often does not click a non-interactive overlay."""
