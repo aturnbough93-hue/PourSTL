@@ -62,6 +62,22 @@ integration does not independently establish.
 
 ---
 
+# Verified status — November 19, 2026 (Devin audit)
+
+This entry supersedes the open-PR and site status in the log entries below.
+
+- **Pull requests:** #21 is the only open PR. #1, #2, #4–#10 and #12–#18 are merged; #3 is closed.
+- **PR #21:** both bot findings (CSP meta parsing, `connect-src 'self'`) are fixed on the branch. No further code changes were needed.
+- **Live site:** `https://pourstl.com` still publishes `https://pourstl.pages.dev` in its canonical links and in the `Sitemap:` line of `robots.txt`. PR #21 fixes this; it takes effect after merge and the next production build.
+- **Analytics copy:** PR #21 allows Cloudflare Web Analytics in the CSP, while `privacy.html` and the homepage say the site adds no analytics. No beacon is injected on `pourstl.com` today. Update that copy before turning analytics on.
+- **Legacy site:** `https://barpour.pages.dev` still serves the old Pour-branded site with a self canonical and no `noindex`. docs/HANDOFF.md records it as outside this Cloudflare account, so the takedown stays with the owner.
+- **Netlify:** the `barpour` Netlify site still posts deploy previews on PRs although Netlify is no longer a deploy target; `barpour.netlify.app` returns 404.
+- **Website checks on main:** `check_website.py`, `node --check website/site.js`, `test_demo.cjs` and `test_build_website.py` pass.
+- **Native tests on main:** 153 unit tests pass on an iPhone 17 simulator (iOS 26.5) with `ProEntitlementStoreTests` skipped. `SKTestSession` fails on the Devin Mac (`SKInternalErrorDomain Code=3`), so that class only runs in CI, where it passed on PR #18.
+- **Code review:** a targeted read of the matching, units, persistence, deep-link, StoreKit, shopping, editor and inventory code found no defects.
+
+---
+
 # Pour App Coordination Log
 
 **Date:** 2026-11-19
