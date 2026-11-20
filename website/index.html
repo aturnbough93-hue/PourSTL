@@ -70,9 +70,10 @@
   .nav-links { display: flex; gap: 22px; margin-left: auto; }
   @media (max-width: 860px) {
     .nav-inner { gap: 16px; }
-    .nav-status { margin-left: auto; }
+    /* The hero already shows this link; hide the header copy on phone widths. */
+    .nav-status { display: none; }
+    .nav-toggle { margin-left: auto; }
   }
-  @media (max-width: 860px) { .nav-toggle { margin-left: 0; } }
   .nav-links a, .nav-status { font-size: 14px; color: var(--text-secondary); transition: color .18s ease; }
   .nav-links a:hover, .nav-status:hover { color: var(--text-primary); }
   .nav-status { white-space: nowrap; }
@@ -143,9 +144,12 @@
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--accent); margin-bottom: 18px;
+  }
+  .eyebrow-text {
     /* Keep a narrow wrap from leaving one word on its own line. */
     text-wrap: balance;
   }
+  .eyebrow-ios { text-transform: none; }
   .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 1px; }
   h1 {
     font-size: clamp(40px, 5.6vw, 62px); font-weight: 800; letter-spacing: -0.035em;
@@ -316,11 +320,11 @@
   .prin p { font-size: 13px; color: var(--text-secondary); }
 
   .lineage { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 28px; }
+  .lineage > h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
   .line {
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 18px 20px;
   }
-  .line h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
   .line p { font-size: 14px; color: var(--text-secondary); }
   .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
   .chain span { color: var(--accent); }
@@ -381,7 +385,6 @@
     .phone { width: 268px; }
     .nav-inner { gap: 8px; }
     .nav-inner .brand { font-size: 17px; }
-    .nav-status { font-size: 13px; }
     .btn-sm { padding: 0 12px; }
   }
 </style>
@@ -429,7 +432,7 @@
 <header class="hero" id="top">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow">iOS 17+&nbsp;· Built for service&nbsp;· Private by default</span>
+      <span class="eyebrow"><span class="eyebrow-text"><span class="eyebrow-ios">iOS</span> 17+ ·&nbsp;Built for service ·&nbsp;Private by default</span></span>
       <h1>The bar tool that keeps up with <em>service</em>.</h1>
       <p class="hero-sub">PourSTL is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
       <div class="hero-ctas">
@@ -750,18 +753,16 @@
       </div>
     </div>
     <div class="lineage" id="lineage">
+      <h3>Related builds</h3>
       <div class="line">
-        <h3>Related builds</h3>
         <p class="chain">Old Fashioned <span>↔</span> Manhattan</p>
         <p>Both pair whiskey with bitters. The Old Fashioned uses sugar; the Manhattan brings sweet vermouth. Compare their balance rather than treating one as a direct historical descendant.</p>
       </div>
       <div class="line">
-        <h3>Related builds</h3>
         <p class="chain">Americano <span>↔</span> Negroni <span>↔</span> Boulevardier</p>
         <p>The Americano is Campari, sweet vermouth, and soda. Drop the soda, add gin, and it’s a Negroni. Replace the gin with whiskey and it’s a Boulevardier.</p>
       </div>
       <div class="line">
-        <h3>Related builds</h3>
         <p class="chain">Daiquiri <span>↔</span> Mojito <span>↔</span> Hemingway Daiquiri</p>
         <p>Rum, citrus, and sweetness connect these drinks. A Mojito adds mint and soda; a Hemingway Daiquiri uses grapefruit and maraschino liqueur. These are recipe relationships, not a proven family tree.</p>
       </div>

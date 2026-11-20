@@ -138,10 +138,28 @@ class WebsiteChecks(unittest.TestCase):
             tokens = directive.split()
             if tokens:
                 directives[tokens[0]] = tokens[1:]
-        for name, value in {"script-src": ["'self'"], "connect-src": ["'none'"],
-                            "frame-ancestors": ["'none'"], "object-src": ["'none'"],
-                            "base-uri": ["'none'"], "form-action": ["'none'"]}.items():
+        for name, value in {
+                "script-src": ["'self'", "https://static.cloudflareinsights.com"],
+                "connect-src": ["https://cloudflareinsights.com"],
+                "frame-ancestors": ["'none'"], "object-src": ["'none'"],
+                "base-uri": ["'none'"], "form-action": ["'none'"]}.items():
             self.assertEqual(directives.get(name), value, name)
+        self.assertEqual(directives.get("default-src"), ["'none'"])
+        self.assertNotIn("*", headers["Content-Security-Policy"])
+        for source in self.sources.values():
+            for tag in re.findall(r"<meta\b[^>]*>", source, flags=re.IGNORECASE):
+                if not re.search(r"http-equiv\s*=\s*['\"]content-security-policy['\"]", tag, flags=re.IGNORECASE):
+                    continue
+                content = re.search(r"content\s*=\s*['\"]([^'\"]+)['\"]", tag, flags=re.IGNORECASE)
+                self.assertIsNotNone(content, tag)
+                meta = {}
+                for directive in content.group(1).split(";"):
+                    tokens = directive.split()
+                    if tokens:
+                        meta[tokens[0]] = tokens[1:]
+                self.assertEqual(meta.get("script-src"),
+                                 ["'self'", "https://static.cloudflareinsights.com"])
+                self.assertEqual(meta.get("connect-src"), ["https://cloudflareinsights.com"])
         self.assertEqual(headers["X-Content-Type-Options"].strip(), "nosniff")
         self.assertEqual(headers["X-Frame-Options"].strip(), "DENY")
 
@@ -198,6 +216,16 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn("hero-photo", homepage)
         self.assertNotIn(">App status<", homepage)
         self.assertGreaterEqual(homepage.count("iPhone app status"), 2)
+        self.assertEqual(homepage.count(">Related builds<"), 1)
+        self.assertIn('<span class="eyebrow-ios">iOS</span>', homepage)
+        self.assertRegex(homepage, r"\.eyebrow-ios\s*\{[^}]*text-transform:\s*none")
+        self.assertIn("·&nbsp;Built for service", homepage)
+        self.assertIn("·&nbsp;Private by default", homepage)
+        self.assertRegex(
+            homepage,
+            r"@media\s*\(\s*max-width:\s*860px\s*\)\s*\{[^@]*?\.nav-status\s*\{[^}]*display:\s*none",
+        )
+        self.assertIn('class="btn btn-ghost">iPhone app status</a>', homepage)
 
     def test_empty_overlay_tap_closes_mobile_menu_without_falling_through(self):
         """AND-6: iPhone Safari often does not click a non-interactive overlay."""
