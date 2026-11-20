@@ -1,6 +1,6 @@
 # Test PourSTL
 
-The live website is **https://pourstl.pages.dev**, with the browser demo at **https://pourstl.pages.dev/try**. The owner is handling **pourstl.com** separately and deferred that switch. The browser demo works on a phone or computer without a Mac, Apple Developer account, or native installation. It saves data in that browser; it does not sync with the native app.
+The canonical website is **https://pourstl.com**, with the browser demo at **https://pourstl.com/try**. The browser demo works on a phone or computer without a Mac, Apple Developer account, or native installation. It saves data in that browser; it does not sync with the native app.
 
 ## Download the native simulator app
 

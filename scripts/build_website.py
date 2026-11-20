@@ -4,11 +4,12 @@
 Cloudflare: python3 scripts/build_website.py (output: dist/).
 Local: SITE_URL=https://your-confirmed-domain.example python3 scripts/build_website.py
 
-SITE_URL is an optional production-origin override, normally a confirmed custom
-domain. Otherwise CF_PAGES_URL identifies the Pages project; deployment hashes
-and branch prefixes are removed from its *.pages.dev hostname. Source metadata
-uses https://pourstl.pages.dev; the build rewrites that origin to the production
-origin above.
+SITE_URL is an optional production-origin override. The canonical origin is
+https://pourstl.com, and production uploads should pass that value. Otherwise
+CF_PAGES_URL identifies the Pages project; deployment hashes and branch prefixes
+are removed from its *.pages.dev hostname. Source metadata uses
+https://pourstl.com; the build rewrites that origin when the selected origin
+differs.
 """
 
 import argparse
@@ -21,7 +22,7 @@ from urllib.parse import urlsplit
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-OLD_ORIGIN = "https://pourstl.pages.dev"
+OLD_ORIGIN = "https://pourstl.com"
 EXTENSIONLESS_PAGES = ("privacy", "try", "support")
 MARKER = ".pourstl-generated-site"
 MARKER_CONTENT = "PourSTL static website build v1\n"

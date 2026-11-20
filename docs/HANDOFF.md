@@ -9,17 +9,17 @@ continued from GitHub. Do not rely on old coordination entries as current state.
 - Integration branch: `codex/pour-testing-release`; release PR #16 includes the heads of #12–15 and every audited legacy branch. See [branch reconciliation](BRANCH_RECONCILIATION.md).
 - Xcode: `PourSTL.xcodeproj`, schemes **PourSTL** and **PourSTLQA**, source/test folders `PourSTL/`, `PourSTLTests/`, `PourSTLUITests/`.
 - App display name/module: **PourSTL**. Development bundle ID: `com.pourstl.app`. StoreKit placeholders: `com.pourstl.app.pro.monthly` / `.yearly`, configured in `PourSTL.storekit`. They are not registered App Store products.
-- The app’s Privacy Policy link uses the verified live https://pourstl.pages.dev/privacy while custom-domain DNS is pending. This is the same owned policy served by the Pages project.
+- The app’s Privacy Policy link is https://pourstl.com/privacy. Terms of Use stay on Apple’s standard EULA. These pages are served by Pages project `pourstl`.
 - Deep links: `pourstl://`; legacy `pour://` remains supported. Existing internal preferences and browser storage keys remain stable. Approved app icon artwork is unchanged.
 
 Product positioning: PourSTL is a bartending app, with connected features planned. Current local feature behavior is documented accurately; “offline” is a capability of today’s testing build, not the overall product identity.
 
 ## Hosting
 
-- Authorized Cloudflare account owns Pages project **pourstl**, live at **https://pourstl.pages.dev**. Commit `6c709ab` is deployed and passed 108 live browser checks. The final copy/build compatibility corrections still need deployment. Deployment method: authenticated Wrangler direct upload; GitHub pushes run quality checks but do not automatically deploy this project.
-- Future custom domain: **https://pourstl.com**, registered with **IONOS SE**. The owner is handling it separately and explicitly deferred switching the live site. **https://pourstl.pages.dev remains the current primary address**. It must be added to Cloudflare's Free plan, DNS configured, and IONOS nameservers changed before its HTTPS site is considered live.
-- Wrangler currently has account/user read and Pages write permissions. Creating the zone failed with missing `com.cloudflare.api.account.zone.create`; no nameserver or DNS record changes have been made by the agent.
-- Current IONOS nameservers from RDAP: `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, `ns1122.ui-dns.de`. These are the current registrar settings, **not** the Cloudflare nameservers to enter. Obtain the two assigned Cloudflare nameservers from that domain's dashboard.
+- Authorized Cloudflare account owns Pages project **pourstl**. The canonical site is **https://pourstl.com**, including `/privacy` and `/support`. Commit `6c709ab` passed 108 live browser checks on the earlier Pages deployment. Deployment method: authenticated Wrangler direct upload; GitHub pushes run quality checks but do not automatically deploy this project. A source change does not publish until that upload.
+- **https://pourstl.com** is registered with **IONOS SE** and is already the canonical public URL. This repo does not change DNS or add redirects. The assigned Pages hostname stays `pourstl.pages.dev` and is not the canonical URL.
+- Wrangler currently has account/user read and Pages write permissions. An earlier zone-create attempt failed with missing `com.cloudflare.api.account.zone.create`. This change does not edit DNS or nameservers.
+- Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and `matt.ns.cloudflare.com`. The earlier IONOS nameservers were `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, and `ns1122.ui-dns.de`.
 - The earlier temporary site at `barpour-7hb.pages.dev` remains available. The preferred legacy `barpour.pages.dev` was registered outside this account and is not managed here.
 
 Exact IONOS/Cloudflare DNS steps: [DOMAIN_SETUP.md](DOMAIN_SETUP.md).
@@ -68,7 +68,7 @@ has been delivered.
 ## Finish and record
 
 1. Repository rename and metadata are complete. Canonical GitHub links use /PourSTL; old /pour links redirect. Preserve the owner’s About description without adding “offline”.
-2. Domain switch is deferred to a later session while the owner works on DNS. Keep pourstl.pages.dev live. Follow DOMAIN_SETUP.md only when the owner says pourstl.com is ready; validate HTTPS before switching canonical/social metadata.
+2. Canonical metadata in this repo uses https://pourstl.com. Do not add redirects or change DNS from this repository. Production upload still uses project name `pourstl` and `SITE_URL=https://pourstl.com`. The assigned Pages hostname remains pourstl.pages.dev.
 3. Inspect the latest renamed app unit/Release/UI workflows. Fix genuine failures; record tested commit, SDK/runtime, counts and current screenshots.
 4. Merge PR #16 normally after required checks; confirm #12–15 are marked merged and every audited remote head is an ancestor of main. Keep superseded revert history reconciled without applying its deletions.
 5. Publish the tested simulator prerelease/package with manifest, checksum and guide. Confirm the documented download exists before final handoff.

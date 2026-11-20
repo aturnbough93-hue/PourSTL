@@ -26,9 +26,8 @@ The dependency-free marketing site runs on Linux or macOS with
 `python3 -m http.server 8080 --directory website`. It is separate from the native
 app. VS Code includes a local website-server launch configuration.
 
-Cloudflare Pages hosts project **pourstl** at **https://pourstl.pages.dev**.
-The owner is connecting **pourstl.com** separately; the live Pages address stays
-primary until the domain is ready. See
+Cloudflare Pages hosts project **pourstl**. The canonical site is
+**https://pourstl.com**. See
 [website/README.md](website/README.md) for the project settings and build.
 
 See [docs/HANDOFF.md](docs/HANDOFF.md) for current delivery status and resuming work.
