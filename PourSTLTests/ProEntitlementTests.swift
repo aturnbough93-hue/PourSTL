@@ -170,12 +170,15 @@ final class ProEntitlementStoreTests: XCTestCase {
                 pourStoreKitURL(for: ProEntitlementStoreTests.self),
                 "PourSTL.storekit must be copied into the app or test bundle"
             )
+            NSLog("SKDIAG setUp: creating SKTestSession")
             Self.sharedSession = try SKTestSession(contentsOf: url)
+            NSLog("SKDIAG setUp: SKTestSession created")
         }
         session = Self.sharedSession
         if !Self.didResetSession {
             session.resetToDefaultState()
             Self.didResetSession = true
+            NSLog("SKDIAG setUp: resetToDefaultState returned")
         }
         session.disableDialogs = true
         session.askToBuyEnabled = false
@@ -187,8 +190,10 @@ final class ProEntitlementStoreTests: XCTestCase {
             session.allTransactions().isEmpty,
             "The StoreKit test service still contains transactions"
         )
+        NSLog("SKDIAG setUp: cleared, starting store")
         store = ProEntitlementStore()
         await store.start()
+        NSLog("SKDIAG setUp: store.start returned")
     }
 
     override func tearDown() async throws {
@@ -201,6 +206,7 @@ final class ProEntitlementStoreTests: XCTestCase {
             session = nil
         }
         guard let session else { return }
+        NSLog("SKDIAG tearDown: begin")
         session.disableDialogs = true
         session.askToBuyEnabled = false
         session.clearTransactions()
@@ -208,10 +214,12 @@ final class ProEntitlementStoreTests: XCTestCase {
             session.allTransactions().isEmpty,
             "The StoreKit test service still contains transactions"
         )
+        NSLog("SKDIAG tearDown: cleared, reading currentEntitlements")
         let cleared = await waitUntil {
             await self.currentStoreKitProductIDs().isEmpty
         }
         let remaining = await currentStoreKitProductIDs()
+        NSLog("SKDIAG tearDown: read finished cleared=\(cleared) remaining=\(remaining.sorted())")
         XCTAssertTrue(
             cleared && remaining.isEmpty,
             "The local StoreKit fixture did not clear its entitlements. Remaining verified products: \(remaining.sorted())"
@@ -271,15 +279,19 @@ final class ProEntitlementStoreTests: XCTestCase {
     }
 
     func testCurrentEntitlementsOnLaunch() async throws {
+        NSLog("SKDIAG launch: buying")
         _ = try await session.buyProduct(identifier: ProProductID.monthly)
+        NSLog("SKDIAG launch: bought")
         store.stop()
         let relaunched = ProEntitlementStore()
         await relaunched.start()
+        NSLog("SKDIAG launch: relaunched.start returned isPro=\(relaunched.isPro)")
         let unlocked = await waitUntil {
             if relaunched.isPro { return true }
             await relaunched.refreshEntitlements()
             return relaunched.isPro
         }
+        NSLog("SKDIAG launch: waitUntil returned unlocked=\(unlocked)")
         XCTAssertTrue(unlocked)
         XCTAssertTrue(relaunched.hasResolvedEntitlements)
         XCTAssertTrue(relaunched.activeProductIDs.contains(ProProductID.monthly))
