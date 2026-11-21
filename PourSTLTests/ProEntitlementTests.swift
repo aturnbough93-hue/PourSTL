@@ -272,7 +272,12 @@ final class ProEntitlementStoreTests: XCTestCase {
         var latest = await currentStoreKitProductIDs()
         var remaining = latest
         let deadline = Date().addingTimeInterval(TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds))
+        // A subscription status sync that storekitd started before the clear
+        // can finish after it and restore the cleared subscription. Later
+        // reads never drop it, so the loop clears again before each read.
         while let products = latest, !products.isEmpty, Date() < deadline {
+            print("StoreKit still reported \(products.sorted()) after clearTransactions(); clearing again")
+            session.clearTransactions()
             try? await Task.sleep(nanoseconds: 200_000_000)
             latest = await currentStoreKitProductIDs()
             if let latest { remaining = latest }
