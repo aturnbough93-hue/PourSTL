@@ -25,7 +25,8 @@
   :root { color-scheme: dark; --bg: #0A0A0C; --accent: #E8A87C; --text: #F7F7F8; --muted: #AEAEB2; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  main { max-width: 760px; margin: auto; padding: 48px 24px 80px; }
+  main { max-width: 760px; margin: auto; padding: 48px 24px 8px; }
+  footer { max-width: 760px; margin: auto; padding: 28px 24px 64px; font-size: 14px; }
   a { color: var(--accent); text-underline-offset: 4px; }
   h1 { font-size: clamp(34px, 7vw, 48px); line-height: 1.15; letter-spacing: -.03em; margin: 36px 0 16px; }
   h2 { font-size: 23px; margin: 32px 0 12px; }
@@ -52,7 +53,8 @@
   <p>Barcode scanning uses the camera only to read a barcode on this device. PourSTL does not store camera images and does not send them anywhere. The barcode and the bottle name you confirm stay with the rest of your local inventory. You can enter a barcode or ingredient manually if camera access is unavailable.</p>
   <p>Voice search, cloud sync, online AI services, and team features are planned. The current app does not implement microphone or speech recording. Before features with new data handling ship, this page and the relevant permission explanations will describe their data use.</p>
   <h2>This website</h2>
-  <p>This site serves its own images, styles, and scripts through Cloudflare Pages. It does not add analytics, advertising, signup forms, or cookies. Cloudflare handles normal requests and may process technical information such as IP addresses and request logs to operate the service. See <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare’s privacy policy</a> for its practices.</p>
+  <p>This site serves its own images, styles, and scripts through Cloudflare Pages. It has no advertising or signup forms. Cloudflare may inject its cookieless Web Analytics script to measure website visits and page performance. This is separate from the iPhone app and does not upload your recipes, inventory, shopping list, or browser demo state. The site’s security policy permits this service; permitting it does not itself enable analytics.</p>
+  <p>Cloudflare also handles normal requests and may process technical information such as IP addresses and request logs to operate the service. See <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare’s privacy policy</a> and <a href="https://developers.cloudflare.com/web-analytics/about/">Web Analytics documentation</a> for its practices.</p>
   <h2>Browser demo storage and clipboard</h2>
   <p>The <a href="try.html">browser demo</a> saves your selected ingredients, shopping list, servings, measurement unit, and selected recipe in this browser’s local storage. This data stays in the browser; the demo does not upload it or sync it with the iPhone app. If browser storage is unavailable, changes last only for the current tab session.</p>
   <p>Use “Reset demo” and confirm to clear the saved demo state and restore the starter ingredients. You can also remove the site’s data in your browser settings. When you choose “Copy recipe,” the demo writes the displayed recipe text to your clipboard. If clipboard access is blocked, it offers text you can select and copy yourself.</p>
@@ -60,5 +62,8 @@
   <h2>Questions or a security concern?</h2>
   <p>For general questions, <a href="https://github.com/aturnbough93-hue/PourSTL/issues">open a GitHub issue</a>. Do not include personal information, credentials, or vulnerability details in a public issue. Use the repository's private vulnerability reporting option when it is available. The <a href="support.html">support page</a> uses this same path.</p>
 </main>
+<footer>
+  <p>PourSTL requires an iPhone running iOS 17 or later.</p>
+</footer>
 </body>
 </html>

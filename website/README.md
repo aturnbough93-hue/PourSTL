@@ -54,9 +54,10 @@ records the commit and reports if the working tree is dirty.
 The commands above write `https://pourstl.com` into public metadata. Source
 pages already use that origin. A build does not configure DNS, attach a custom
 domain, add a redirect, or provision its HTTPS certificate. A Cloudflare build
-that omits `SITE_URL` still infers the `*.pages.dev` project hostname and would
-rewrite canonical metadata to that hostname, so production uploads must pass
-`SITE_URL=https://pourstl.com`.
+that omits `SITE_URL` maps the `pourstl.pages.dev` project hostname, including
+deployment hashes and branch prefixes, to `https://pourstl.com`. Other
+`*.pages.dev` projects keep their own project origin. An explicit `SITE_URL`
+still overrides that mapping.
 
 `wrangler.toml` records the project name and generated output directory. The
 build is dependency-free Python; it copies public files and sets canonical,
@@ -111,13 +112,17 @@ Git. Existing directories without the generator marker are never overwritten.
 
 The app is in development. Keep download calls to action pointed at the status section until a public distribution link exists. Phone frames are illustrative previews, not simulator screenshots. Planned features must stay clearly labeled.
 
-`privacy.html` describes current data handling. Update it when adding network services, analytics, accounts, permissions, or backup/export behavior. The site has no third-party scripts or dependencies.
+`privacy.html` describes current data handling. Update it when adding network services, analytics, accounts, permissions, or backup/export behavior. The repository does not vendor third-party scripts. The content security policy allows the host to inject Cloudflare Web Analytics and blocks other remote APIs.
 
 ## Hosting security headers
 
 Cloudflare Pages reads `_headers` from the generated publish directory. It
-restricts scripts and assets to this origin, blocks network API calls and
-framing, and disables camera/microphone/geolocation permissions. Inline styles
+allows this origin plus Cloudflare Web Analytics
+(`https://static.cloudflareinsights.com` for scripts, and `'self'` plus
+`https://cloudflareinsights.com` for connections). Proxied automatic injection
+posts the beacon to this site's `/cdn-cgi/rum`, which needs `'self'`. Other
+network calls and framing stay blocked, and camera, microphone, geolocation,
+and payment permissions stay disabled. Inline styles
 remain allowed because
 the static page uses inline presentation styles; inline scripts are blocked.
 `python3 -m http.server` does not apply these headers. Check the real deployed
@@ -130,7 +135,7 @@ matching, serving/unit controls, and a deduplicated shopping/restocking flow.
 Its state lives only in that browser; it does not sync with the native app.
 Reset demo requests confirmation and clears this demo state. Clipboard failures
 show selectable recipe text instead of claiming a successful copy. The current
-CSP still permits no remote API connections.
+CSP allows Cloudflare Web Analytics and still blocks other remote APIs.
 
 Run its logic regression suite with `node scripts/test_demo.cjs`. On production,
 test `/try` at `https://pourstl.com/try`. Opening a browser demo does not
