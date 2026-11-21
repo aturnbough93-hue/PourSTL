@@ -43,7 +43,7 @@ jobs:
       - name: StoreKit daemon diagnostics (temporary, do not merge)
         if: always()
         run: |
-          grep -a "first entitlement sync\|ProEntitlementStoreTests" "${{ steps.ios.outputs.results_directory }}/pourstl-xcodebuild.log" | cut -c1-300 || true
+          grep -a "first entitlement sync\|SKDIAG\|ProEntitlementStoreTests" "${{ steps.ios.outputs.results_directory }}/pourstl-xcodebuild.log" | cut -c1-300 || true
           for udid in $(xcrun simctl list devices booted | grep -oE '[0-9A-F]{8}-[0-9A-F-]{27}'); do
             echo "== storekit log for $udid"
             xcrun simctl spawn "$udid" log show --last 40m --style compact \

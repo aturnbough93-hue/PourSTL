@@ -272,10 +272,17 @@ final class ProEntitlementStoreTests: XCTestCase {
         var latest = await currentStoreKitProductIDs()
         var remaining = latest
         let deadline = Date().addingTimeInterval(TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds))
+        var extraClears = 0
         while let products = latest, !products.isEmpty, Date() < deadline {
+            print("SKDIAG StoreKit still reported \(products.sorted()) after clearTransactions(), allTransactions=\(session.allTransactions().count); clearing again")
+            session.clearTransactions()
+            extraClears += 1
             try? await Task.sleep(nanoseconds: 200_000_000)
             latest = await currentStoreKitProductIDs()
             if let latest { remaining = latest }
+        }
+        if extraClears > 0 {
+            print("SKDIAG StoreKit needed \(extraClears) extra clearTransactions() calls; last read: \(String(describing: remaining?.sorted()))")
         }
         if let remaining {
             XCTAssertTrue(
