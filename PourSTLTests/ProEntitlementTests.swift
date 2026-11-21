@@ -481,9 +481,10 @@ private func raceAgainstDeadline<Value: Sendable>(
 @MainActor
 private final class StoreKitEntitlementReader {
     /// A stall detector, not a timing assertion. StoreKit syncs receipts
-    /// with its test server on every read, and one read has taken 11.5
-    /// seconds on a hosted runner, so 8 and 10 second limits failed there.
-    nonisolated static let defaultTimeoutSeconds = 60
+    /// with its test server on every read, at background priority. One
+    /// read has taken 70 seconds on a hosted runner, so 8, 10 and 60
+    /// second limits failed there.
+    nonisolated static let defaultTimeoutSeconds = 300
     /// Latched so one fixture never starts a second read behind a stuck one.
     private(set) var didTimeOut = false
 
