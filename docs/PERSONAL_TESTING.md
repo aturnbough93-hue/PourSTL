@@ -40,7 +40,7 @@ The downloadable Release app follows normal onboarding and saves data between la
 xcrun simctl uninstall booted "$(python3 -c 'import json; print(json.load(open("build-manifest.json")).get("bundleIdentifier") or "com.pourstl.app")')"
 ```
 
-Installing a newer build of the same bundle ID over the existing app keeps that app's data. `bar.pourstl.app` does not replace `com.pourstl.app`. Simulator keeps them as two apps with separate stores, and the new app does not import recipes or inventory from the older one. Leave the `com.pourstl.app` app installed if that data is still needed.
+Installing a newer build of the same bundle ID over the existing app keeps that app's data. `bar.pourstl.app` does not replace `com.pourstl.app`. Simulator keeps them as two apps with separate stores, and the new app does not import recipes or inventory from the older one. Leave the `com.pourstl.app` app installed if that data is still needed. Both builds register `pourstl://` and `pour://`. While both are installed, iOS may open either one for those links. Uninstall `com.pourstl.app` when those links should open the new build. Automated tests pass the link to the app under test directly, so they do not use that system choice.
 
 The Release artifact does not carry Xcode's local StoreKit session. Subscription prices may be unavailable there until real App Store products exist. The free recipe, inventory, shopping, and timer functions remain usable.
 
