@@ -9,7 +9,7 @@ source review or a historical simulator run.
 ## Build & Quality
 - [ ] Unit and UI tests pass on an available iOS 17+ iPhone simulator; record workflow and commit
 - [ ] Clean build (no warnings treated as errors)
-- [ ] Bundle ID and signing team match the owner’s Apple provisioning (current development ID: com.pourstl.app)
+- [ ] Bundle ID and signing team match the owner’s Apple provisioning (current development ID: bar.pourstl.app)
 - [ ] Version/Build incremented
 - [ ] Icons and launch screen present
 

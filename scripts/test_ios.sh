@@ -107,7 +107,7 @@ app, output, summary_path = map(Path, sys.argv[1:4])
 with (app / "Info.plist").open("rb") as stream:
     info = plistlib.load(stream)
 assert info.get("CFBundleSupportedPlatforms") == ["iPhoneSimulator"], "Unexpected native platform"
-assert info["CFBundleIdentifier"] == "com.pourstl.app", "Unexpected application identity"
+assert info["CFBundleIdentifier"] == "bar.pourstl.app", "Unexpected application identity"
 executable = app / info["CFBundleExecutable"]
 architectures = subprocess.check_output(["xcrun", "lipo", "-archs", str(executable)], text=True).split()
 assert set(architectures) == {"arm64", "x86_64"}, f"Incomplete simulator architectures: {architectures}"

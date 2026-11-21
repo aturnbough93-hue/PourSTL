@@ -109,12 +109,12 @@ set -e
 app_path="$derived/Build/Products/Debug-iphonesimulator/PourSTL.app"
 if [[ "$test_status" -eq 0 ]]; then
   bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_path/Info.plist")"
-  if [[ "$bundle_id" != "com.pourstl.app" ]]; then
+  if [[ "$bundle_id" != "bar.pourstl.app" ]]; then
     echo "Refusing to test an unexpected bundle id: $bundle_id"
     test_status=1
   else
     xcrun simctl install "$simulator_id" "$app_path"
-    xcrun simctl privacy "$simulator_id" revoke camera com.pourstl.app || true
+    xcrun simctl privacy "$simulator_id" revoke camera bar.pourstl.app || true
     set +e
     xcodebuild test-without-building \
       -project PourSTL.xcodeproj \
