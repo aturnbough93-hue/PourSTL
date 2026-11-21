@@ -34,7 +34,11 @@ A Mac with Xcode and an installed iOS Simulator runtime is required. This is an 
 
    If several simulators are booted, replace `booted` with the selected device's UDID from the list. If you see an architecture/runtime error, check the manifest and select a compatible simulator. Simulator apps cannot be opened directly on macOS. Launch and uninstall use `bundleIdentifier` from that artifact's manifest. Current CI manifests record it. The 2026-11-12 prerelease is `com.pourstl.app`; the command above uses that ID when the manifest omits the field. Builds from the bundle-ID change onward are `bar.pourstl.app`.
 
-The downloadable Release app follows normal onboarding and saves data between launches of the same bundle ID. Automated test flags are disabled in Release. To reset that simulator app, run `xcrun simctl uninstall booted "$bundle_id"` with the ID printed above and reinstall. That deletes data for that bundle ID only.
+The downloadable Release app follows normal onboarding and saves data between launches of the same bundle ID. Automated test flags are disabled in Release. To reset that simulator app, run this from the extracted artifact directory and then reinstall. It reads the manifest again, so it does not depend on the install session, and it deletes data for that bundle ID only.
+
+```bash
+xcrun simctl uninstall booted "$(python3 -c 'import json; print(json.load(open("build-manifest.json")).get("bundleIdentifier") or "com.pourstl.app")')"
+```
 
 Installing a newer build of the same bundle ID over the existing app keeps that app's data. `bar.pourstl.app` does not replace `com.pourstl.app`. Simulator keeps them as two apps with separate stores, and the new app does not import recipes or inventory from the older one. Leave the `com.pourstl.app` app installed if that data is still needed.
 
