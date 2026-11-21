@@ -40,6 +40,16 @@ jobs:
       - name: Test and package a Release simulator app
         id: ios
         run: bash scripts/test_ios.sh
+      - name: StoreKit daemon diagnostics (temporary, do not merge)
+        if: always()
+        run: |
+          grep -a "first entitlement sync\|ProEntitlementStoreTests" "${{ steps.ios.outputs.results_directory }}/pourstl-xcodebuild.log" | cut -c1-300 || true
+          for udid in $(xcrun simctl list devices booted | grep -oE '[0-9A-F]{8}-[0-9A-F-]{27}'); do
+            echo "== storekit log for $udid"
+            xcrun simctl spawn "$udid" log show --last 40m --style compact \
+              --predicate 'subsystem BEGINSWITH "com.apple.storekit" OR process == "storekitd" OR process == "ASOctaneSupportXPCService"' \
+              | grep -av "APSConnection" | cut -c1-420 | head -n 8000 || true
+          done
       - name: Upload installable simulator app and build manifest
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

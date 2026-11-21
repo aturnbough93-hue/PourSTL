@@ -5,6 +5,8 @@ struct RecipeDetailView: View {
     @Bindable var recipe: Recipe
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var inventory: [InventoryItem]
 
     @State private var servings: Int = 1
@@ -20,6 +22,11 @@ struct RecipeDetailView: View {
     private var effectiveUnit: UnitPreference { unitOverride ?? settings.unit }
     private var match: RecipeMatch { RecipeEngine.match(recipe, inventory: inventory) }
     private var scaleFactor: Double { Double(servings) }
+    private var adaptiveRow: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -27,6 +34,9 @@ struct RecipeDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     hero
                     metadataPills
+                    if dynamicTypeSize.isAccessibilitySize {
+                        actionBar(proxy: proxy)
+                    }
                     scalingControls.id("scaling")
                     ingredientsList
                     instructionsSection
@@ -34,10 +44,14 @@ struct RecipeDetailView: View {
                     shoppingAction
                 }
                 .padding(.horizontal)
-                .padding(.bottom, 90)
+                .padding(.bottom, 16)
             }
             .background(PourColor.background)
-            .overlay(alignment: .bottom) { actionBar(proxy: proxy) }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !dynamicTypeSize.isAccessibilitySize {
+                    actionBar(proxy: proxy)
+                }
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -87,7 +101,7 @@ struct RecipeDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                 }
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(PourColor.border))
-                .frame(height: 180)
+                .frame(minHeight: 180)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(recipe.name)
@@ -107,24 +121,35 @@ struct RecipeDetailView: View {
     // MARK: - Metadata pills
 
     private var metadataPills: some View {
-        HStack(spacing: 8) {
-            metaPill(recipe.glassType, symbol: GlassIcon.symbol(for: recipe.glassType))
-                .accessibilityLabel("Served in a \(recipe.glassType)")
-            if !recipe.method.isEmpty {
-                metaPill(recipe.method, symbol: "drop")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                metadataLabels
             }
-            if match.canMake {
-                metaPill("Can make", symbol: "checkmark.circle.fill", tint: PourColor.canMake)
-            } else {
-                metaPill(
-                    "Missing \(match.missing.count)",
-                    symbol: "exclamationmark.triangle",
-                    tint: PourColor.almost
-                )
+            .fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 8) {
+                metadataLabels
             }
-            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var metadataLabels: some View {
+        metaPill(recipe.glassType, symbol: GlassIcon.symbol(for: recipe.glassType))
+            .accessibilityLabel("Served in a \(recipe.glassType)")
+        if !recipe.method.isEmpty {
+            metaPill(recipe.method, symbol: "drop")
+        }
+        if match.canMake {
+            metaPill("Can make", symbol: "checkmark.circle.fill", tint: PourColor.canMake)
+        } else {
+            metaPill(
+                "Missing \(match.missing.count)",
+                symbol: "exclamationmark.triangle",
+                tint: PourColor.almost
+            )
+        }
     }
 
     private func metaPill(_ text: String, symbol: String, tint: Color = PourColor.textSecondary) -> some View {
@@ -139,7 +164,7 @@ struct RecipeDetailView: View {
     // MARK: - Scaling + unit toggle
 
     private var scalingControls: some View {
-        HStack(spacing: 12) {
+        adaptiveRow {
             VStack(alignment: .leading, spacing: 4) {
                 Text(servings == 1 ? "Servings" : "Batch of \(servings)")
                     .font(.subheadline.weight(.semibold))
@@ -152,6 +177,8 @@ struct RecipeDetailView: View {
                         Image(systemName: "minus.circle.fill")
                             .font(.title2)
                             .foregroundStyle(servings > RecipeScaling.minimumServings ? PourColor.accent : PourColor.textTertiary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .disabled(servings <= RecipeScaling.minimumServings)
                     .accessibilityLabel("Decrease servings")
@@ -171,6 +198,8 @@ struct RecipeDetailView: View {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                             .foregroundStyle(servings < RecipeScaling.maximumServings ? PourColor.accent : PourColor.textTertiary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .disabled(servings >= RecipeScaling.maximumServings)
                     .accessibilityLabel("Increase servings")
@@ -178,19 +207,19 @@ struct RecipeDetailView: View {
                 }
             }
 
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
 
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: 4) {
                 Text("Units")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(PourColor.textSecondary)
-                Picker("Display units", selection: unitBinding) {
-                    ForEach(UnitPreference.allCases, id: \.self) { unit in
-                        Text(unit.rawValue).tag(unit)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 110)
+                AdaptiveSegmentedPicker(
+                    title: "Display units",
+                    selection: unitBinding,
+                    options: UnitPreference.allCases,
+                    optionTitle: { $0.rawValue }
+                )
+                .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 110)
                 .accessibilityLabel("Display units, \(effectiveUnit.rawValue)")
                 .accessibilityAddTraits(.isButton)
             }
@@ -229,14 +258,16 @@ struct RecipeDetailView: View {
         let isMissing = match.missing.contains { $0.persistentModelID == line.persistentModelID }
             || match.missingOptional.contains { $0.persistentModelID == line.persistentModelID }
         let measure = line.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)
-        return HStack(alignment: .firstTextBaseline, spacing: 10) {
+        return adaptiveRow {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(line.name)
-                        .font(.body)
-                        .foregroundStyle(PourColor.textPrimary)
+                Text(line.name)
+                    .font(.body)
+                    .foregroundStyle(PourColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                adaptiveRow {
                     if isMissing {
                         StatusPill(kind: .missing)
+                            .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
                     }
                     if line.isOptional {
                         Text("optional")
@@ -250,11 +281,11 @@ struct RecipeDetailView: View {
                         .foregroundStyle(PourColor.textTertiary)
                 }
             }
-            Spacer(minLength: 8)
+            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
             Text(measure)
                 .font(.pourMeasure)
                 .foregroundStyle(PourColor.textPrimary)
-                .multilineTextAlignment(.trailing)
+                .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .leading : .trailing)
         }
         .frame(minHeight: 52)
         .accessibilityElement(children: .combine)
@@ -346,7 +377,7 @@ struct RecipeDetailView: View {
     // MARK: - Sticky action bar
 
     private func actionBar(proxy: ScrollViewProxy) -> some View {
-        HStack(spacing: 12) {
+        adaptiveRow {
             actionButton(
                 recipe.isFavorite ? "heart.fill" : "heart",
                 label: recipe.isFavorite ? "Unfavorite" : "Favorite",
@@ -355,7 +386,9 @@ struct RecipeDetailView: View {
                 toggleFavorite()
             }
             actionButton("square.resize", label: "Scale") {
-                withAnimation { proxy.scrollTo("scaling", anchor: .top) }
+                withAnimation(reduceMotion ? nil : .default) {
+                    proxy.scrollTo("scaling", anchor: .top)
+                }
             }
             actionButton("timer", label: "Start timer") {
                 showTimer = true
@@ -369,6 +402,7 @@ struct RecipeDetailView: View {
             .accessibilityLabel("Share recipe")
             .accessibilityAddTraits(.isButton)
         }
+        .buttonStyle(.plain)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.ultraThinMaterial)
@@ -408,14 +442,18 @@ struct RecipeDetailView: View {
     }
 
     private func actionBarLabel(_ symbol: String, text: String, selected: Bool = false) -> some View {
-        VStack(spacing: 4) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+            : AnyLayout(VStackLayout(spacing: 4))
+        return layout {
             Image(systemName: symbol)
                 .font(.system(size: 20, weight: .medium))
             Text(text)
-                .font(.caption2.weight(.medium))
+                .font(dynamicTypeSize.isAccessibilitySize ? .body.weight(.medium) : .caption2.weight(.medium))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(selected ? PourColor.accent : PourColor.textSecondary)
-        .frame(maxWidth: .infinity, minHeight: 48)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .center)
         .contentShape(Rectangle())
     }
 }
