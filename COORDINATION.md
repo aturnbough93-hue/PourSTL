@@ -1,6 +1,8 @@
 # Pour App Coordination Log
 
 **Date:** 2026-11-20
+**Bundle ID:** `bar.pourstl.app`. Local StoreKit product IDs stay `com.pourstl.app.pro.monthly` and `com.pourstl.app.pro.yearly`.
+
 **Status:** Free-tier core on main. Sites live at https://pourstl.com, https://pourstl.pages.dev and https://barpour.pages.dev (all HTTP 200 confirmed today with strong security headers: CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, etc.). Open PR #21: Keep pourstl.com canonical and fix the phone homepage (created today, mergeable_state clean). Native beta checklist items still pending Devin Mac Simulator verification. Devin payment failure from 2026-11-10 ($113.90) continues to block new sessions and Mac computer access. Gmail connector still needs reconnect. User previously requested take down barpour.pages.dev — deferred while DNS/Cloudflare handled separately.
 
 ## Devin AI Updates (as of 2026-11-20)

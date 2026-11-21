@@ -8,7 +8,7 @@ continued from GitHub. Do not rely on old coordination entries as current state.
 - Repository rename is confirmed: **https://github.com/aturnbough93-hue/PourSTL**. The owner updated About description to “PourSTL — iOS bartender assistant” and homepage to https://pourstl.com. The local origin now uses the renamed repository. Settings API still returns 403; the owner completed those settings in GitHub.
 - Integration branch: `codex/pour-testing-release`; release PR #16 includes the heads of #12–15 and every audited legacy branch. See [branch reconciliation](BRANCH_RECONCILIATION.md).
 - Xcode: `PourSTL.xcodeproj`, schemes **PourSTL** and **PourSTLQA**, source/test folders `PourSTL/`, `PourSTLTests/`, `PourSTLUITests/`.
-- App display name/module: **PourSTL**. Development bundle ID: `com.pourstl.app`. StoreKit placeholders: `com.pourstl.app.pro.monthly` / `.yearly`, configured in `PourSTL.storekit`. They are not registered App Store products.
+- App display name/module: **PourSTL**. Development bundle ID: `bar.pourstl.app`. StoreKit placeholders: `com.pourstl.app.pro.monthly` / `.yearly`, configured in `PourSTL.storekit`. They are not registered App Store products.
 - The app’s Privacy Policy link is https://pourstl.com/privacy. Terms of Use stay on Apple’s standard EULA. These pages are served by Pages project `pourstl`.
 - Deep links: `pourstl://`; legacy `pour://` remains supported. Existing internal preferences and browser storage keys remain stable. Approved app icon artwork is unchanged.
 

@@ -731,7 +731,7 @@ private final class BarcodeCaptureViewController: UIViewController, AVCaptureMet
     var onConfigured: ((Bool) -> Void)?
 
     private let session = AVCaptureSession()
-    private let sessionQueue = DispatchQueue(label: "com.pourstl.app.barcode-session")
+    private let sessionQueue = DispatchQueue(label: "bar.pourstl.app.barcode-session")
     private var isConfigured = false
     private var wantsRunning = false
     private var isOnScreen = false
