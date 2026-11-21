@@ -298,8 +298,14 @@ final class ProEntitlementStoreTests: XCTestCase {
             await self.store.refreshEntitlements()
             return !self.store.isPro
         }
-        XCTAssertTrue(removed)
-        XCTAssertFalse(store.activeProductIDs.contains(ProProductID.monthly))
+        if !removed {
+            let frameworkIDs = await currentStoreKitProductIDs()
+            XCTFail("Expired subscription stayed active. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted())")
+        }
+        XCTAssertFalse(
+            store.activeProductIDs.contains(ProProductID.monthly),
+            "The monthly subscription must be removed after expiration"
+        )
     }
 
     func testRestoreFindsExternalPurchase() async throws {
