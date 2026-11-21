@@ -167,6 +167,10 @@ final class ProEntitlementStoreTests: XCTestCase {
     /// here once instead of inside a test's own deadlines.
     private static var firstEntitlementSync = FirstEntitlementSync.notAttempted
     private static let firstEntitlementSyncLimit: TimeInterval = 600
+    /// Set when a start() or a read hit the stall limit. Later tests then
+    /// fail at once, so a StoreKit service that stays stuck costs one limit
+    /// instead of one per test.
+    private static var storeKitStalled = false
     /// Set when the first sync or a start() did not finish. That failure is
     /// already recorded, and tearDown must not queue another read behind it.
     private var entitlementReadIsStuck = false
@@ -207,6 +211,12 @@ final class ProEntitlementStoreTests: XCTestCase {
     /// A sync that did not finish fails every later test at once. Nothing
     /// starts another read or store behind it.
     private func finishFirstEntitlementSync() async throws {
+        guard !Self.storeKitStalled else {
+            entitlementReadIsStuck = true
+            throw StoreKitFixtureFailure(
+                "StoreKit did not answer within \(StoreKitEntitlementReader.defaultTimeoutSeconds) seconds in an earlier test, so this test did not start a store"
+            )
+        }
         switch Self.firstEntitlementSync {
         case .finished:
             return
@@ -244,6 +254,7 @@ final class ProEntitlementStoreTests: XCTestCase {
         }
         guard finished != nil else {
             entitlementReadIsStuck = true
+            Self.storeKitStalled = true
             throw StoreKitFixtureFailure("ProEntitlementStore.start() did not finish within \(limit) seconds")
         }
     }
@@ -434,6 +445,7 @@ final class ProEntitlementStoreTests: XCTestCase {
             await Self.storeKitProductIDs()
         }
         if ids == nil, !hadTimedOut {
+            Self.storeKitStalled = true
             XCTFail("Transaction.currentEntitlements did not finish within \(StoreKitEntitlementReader.defaultTimeoutSeconds) seconds in this test's StoreKit fixture")
         }
         return ids
