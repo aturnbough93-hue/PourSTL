@@ -12,25 +12,31 @@ A Mac with Xcode and an installed iOS Simulator runtime is required. This is an 
 4. In Terminal, change to the extracted artifact directory, verify and extract the app, then install it:
 
    ```bash
-   python3 - <<'PY'
-   import hashlib, json
+   bundle_id="$(python3 - <<'PY'
+   import hashlib, json, sys
    from pathlib import Path
    manifest = json.loads(Path('build-manifest.json').read_text())
    digest = hashlib.sha256(Path('PourSTL-Simulator.zip').read_bytes()).hexdigest()
    assert digest == manifest['archiveSHA256'], 'Archive checksum does not match'
    assert manifest['nativePlatform'] == 'iPhoneSimulator'
-   print('Testing commit', manifest['sourceCommit'])
-   print('Architectures:', ', '.join(manifest['architectures']))
+   bundle_id = manifest.get('bundleIdentifier') or 'com.pourstl.app'
+   print('Testing commit', manifest['sourceCommit'], file=sys.stderr)
+   print('Architectures:', ', '.join(manifest['architectures']), file=sys.stderr)
+   print('Bundle ID:', bundle_id, file=sys.stderr)
+   print(bundle_id)
    PY
+   )"
    ditto -x -k PourSTL-Simulator.zip .
    xcrun simctl list devices booted
    xcrun simctl install booted PourSTL.app
-   xcrun simctl launch booted bar.pourstl.app
+   xcrun simctl launch booted "$bundle_id"
    ```
 
-   If several simulators are booted, replace `booted` with the selected device's UDID from the list. If you see an architecture/runtime error, check the manifest and select a compatible simulator. Simulator apps cannot be opened directly on macOS.
+   If several simulators are booted, replace `booted` with the selected device's UDID from the list. If you see an architecture/runtime error, check the manifest and select a compatible simulator. Simulator apps cannot be opened directly on macOS. Launch and uninstall use `bundleIdentifier` from that artifact's manifest. Current CI manifests record it. The 2026-11-12 prerelease is `com.pourstl.app`; the command above uses that ID when the manifest omits the field. Builds from the bundle-ID change onward are `bar.pourstl.app`.
 
-The downloadable Release app follows normal onboarding and saves data between launches. Automated test flags are disabled in Release. To reset the simulator app, use `xcrun simctl uninstall booted bar.pourstl.app` and reinstall; this deletes that simulator's PourSTL data. To update without resetting, install the new app over the old one.
+The downloadable Release app follows normal onboarding and saves data between launches of the same bundle ID. Automated test flags are disabled in Release. To reset that simulator app, run `xcrun simctl uninstall booted "$bundle_id"` with the ID printed above and reinstall. That deletes data for that bundle ID only.
+
+Installing a newer build of the same bundle ID over the existing app keeps that app's data. `bar.pourstl.app` does not replace `com.pourstl.app`. Simulator keeps them as two apps with separate stores, and the new app does not import recipes or inventory from the older one. Leave the `com.pourstl.app` app installed if that data is still needed.
 
 The Release artifact does not carry Xcode's local StoreKit session. Subscription prices may be unavailable there until real App Store products exist. The free recipe, inventory, shopping, and timer functions remain usable.
 
