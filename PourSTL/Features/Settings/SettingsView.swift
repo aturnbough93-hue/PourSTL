@@ -138,5 +138,6 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             }
         }
+        .preferredColorScheme(settings.appearance.colorScheme)
     }
 }

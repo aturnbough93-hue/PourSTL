@@ -260,12 +260,14 @@ struct RecipeDetailView: View {
         let measure = line.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)
         return adaptiveRow {
             VStack(alignment: .leading, spacing: 2) {
+                Text(line.name)
+                    .font(.body)
+                    .foregroundStyle(PourColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
                 adaptiveRow {
-                    Text(line.name)
-                        .font(.body)
-                        .foregroundStyle(PourColor.textPrimary)
                     if isMissing {
                         StatusPill(kind: .missing)
+                            .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
                     }
                     if line.isOptional {
                         Text("optional")

@@ -78,11 +78,9 @@ struct BarcodeInterruptionLatch: Equatable {
     /// True when a system interruption should keep the preview from starting.
     var isInterrupted: Bool { systemInterrupted && !stopPending }
 
-    /// A queued notice from before our stop must not re-arm a restarted session.
-    /// A genuine current interruption still takes precedence over the old stop.
+    /// Reconciles queued notices with the session's current interruption state.
     mutating func noteBegan(stopPending: Bool, sessionIsInterrupted: Bool) {
-        if self.stopPending && !stopPending && !sessionIsInterrupted { return }
-        systemInterrupted = true
+        systemInterrupted = sessionIsInterrupted
         self.stopPending = stopPending
     }
 

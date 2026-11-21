@@ -46,6 +46,7 @@
 		C4A11C0102A11C0102A11C02 /* LaunchConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4A11C0101A11C0101A11C01 /* LaunchConfiguration.swift */; };
 		C4A11C0104A11C0104A11C04 /* LaunchConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4A11C0103A11C0103A11C03 /* LaunchConfigurationTests.swift */; };
 		C4A11C0106A11C0106A11C06 /* QAPassTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4A11C0105A11C0105A11C05 /* QAPassTests.swift */; };
+		C4A11C0112A11C0112A11C12 /* PaletteContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4A11C0111A11C0111A11C11 /* PaletteContrastTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,6 +108,7 @@
 		C4A11C0103A11C0103A11C03 /* LaunchConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchConfigurationTests.swift; sourceTree = "<group>"; };
 		C4A11C0105A11C0105A11C05 /* QAPassTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QAPassTests.swift; sourceTree = "<group>"; };
 		C4A11C0107A11C0107A11C07 /* PourSTLUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PourSTLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4A11C0111A11C0111A11C11 /* PaletteContrastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteContrastTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -220,6 +222,7 @@
 				C4A11C0103A11C0103A11C03 /* LaunchConfigurationTests.swift */,
 				11C6FC535BF978F2166A45DF /* IngredientNormalizationTests.swift */,
 				C0FFEE0000000000000000E1 /* ProEntitlementTests.swift */,
+				C4A11C0111A11C0111A11C11 /* PaletteContrastTests.swift */,
 				319E4AEC18E52C62FED31363 /* RecipeEngineTests.swift */,
 				52965890A0614416836843AB /* UnitConversionTests.swift */,
 			);
@@ -459,6 +462,7 @@
 				C4A11C0104A11C0104A11C04 /* LaunchConfigurationTests.swift in Sources */,
 				A92497A8EA6D57CFF1E9835E /* IngredientNormalizationTests.swift in Sources */,
 				C0FFEE0000000000000000E2 /* ProEntitlementTests.swift in Sources */,
+				C4A11C0112A11C0112A11C12 /* PaletteContrastTests.swift in Sources */,
 				F90DAEAF9C20A5280CE40BE7 /* RecipeEngineTests.swift in Sources */,
 				2A513549294875396BD6C0CC /* UnitConversionTests.swift in Sources */,
 			);

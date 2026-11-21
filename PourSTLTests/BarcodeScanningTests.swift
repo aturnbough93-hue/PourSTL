@@ -792,10 +792,15 @@ final class BarcodeScanningTests: XCTestCase {
         latch.noteBegan(stopPending: false, sessionIsInterrupted: false)
 
         XCTAssertFalse(latch.isInterrupted)
+        XCTAssertFalse(latch.stopPending)
+        XCTAssertTrue(latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false))
         XCTAssertTrue(BarcodeSessionRecovery.shouldRestart(
             wantsRunning: true, isOnScreen: true, isRunning: false,
             isInterrupted: latch.blocksRestart(sessionIsInterrupted: false, sessionIsRunning: false)
         ))
+
+        latch.noteBegan(stopPending: false, sessionIsInterrupted: false)
+        XCTAssertFalse(latch.isInterrupted)
 
         latch.noteBegan(stopPending: false, sessionIsInterrupted: true)
         XCTAssertTrue(latch.blocksRestart(sessionIsInterrupted: true, sessionIsRunning: false))
