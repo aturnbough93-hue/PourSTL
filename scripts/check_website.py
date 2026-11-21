@@ -262,7 +262,7 @@ class WebsiteChecks(unittest.TestCase):
         self.assertIn('class="btn btn-ghost">iPhone app status</a>', homepage)
 
     def test_ios_requirement_stays_in_the_footer(self):
-        requirement = "Pour requires an iPhone running iOS 17 or later."
+        requirement = "PourSTL requires an iPhone running iOS 17 or later."
         for name in ("index.html", "privacy.html", "try.html", "support.html"):
             source = self.sources[SITE / name]
             with self.subTest(page=name):
@@ -277,6 +277,15 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn("iOS 17", eyebrow.group(0))
         self.assertNotIn("· ·", eyebrow.group(0))
         self.assertTrue(eyebrow.group(0).startswith('<span class="eyebrow"><span class="eyebrow-text">Built for service'))
+
+    def test_website_privacy_discloses_optional_host_analytics(self):
+        privacy = self.sources[SITE / "privacy.html"]
+        homepage = self.sources[SITE / "index.html"]
+        self.assertIn("cookieless Web Analytics", privacy)
+        self.assertIn("does not upload your recipes, inventory, shopping list, or browser demo state", privacy)
+        self.assertIn("cookieless website usage analytics", homepage)
+        self.assertNotIn("does not add analytics", privacy)
+        self.assertNotIn("website has no analytics scripts", homepage)
 
     def test_empty_overlay_tap_closes_mobile_menu_without_falling_through(self):
         """AND-6: iPhone Safari often does not click a non-interactive overlay."""
