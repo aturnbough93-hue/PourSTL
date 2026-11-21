@@ -273,9 +273,9 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testUITestingStoreDoesNotInheritStoreKitTransactions() async throws {
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let purchased = await waitUntil {
-            await self.store.refreshEntitlements()
-            return self.store.isPro
+        let purchased = await waitUntil { [store = self.store!] in
+            await store.refreshEntitlements()
+            return store.isPro
         }
         XCTAssertTrue(purchased, "The real StoreKit fixture must contain a verified subscription")
 
@@ -313,15 +313,15 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testExpiredSubscriptionRemovesEntitlement() async throws {
         _ = try await session.buyProduct(identifier: ProProductID.monthly)
-        let unlocked = await waitUntil {
-            await self.store.refreshEntitlements()
-            return self.store.isPro
+        let unlocked = await waitUntil { [store = self.store!] in
+            await store.refreshEntitlements()
+            return store.isPro
         }
         XCTAssertTrue(unlocked)
         try session.expireSubscription(productIdentifier: ProProductID.monthly)
-        let removed = await waitUntil {
-            await self.store.refreshEntitlements()
-            return !self.store.isPro
+        let removed = await waitUntil { [store = self.store!] in
+            await store.refreshEntitlements()
+            return !store.isPro
         }
         if !removed {
             let frameworkIDs = await currentStoreKitProductIDs() ?? []
@@ -335,9 +335,9 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testRestoreFindsExternalPurchase() async throws {
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let present = await waitUntil {
-            await self.store.refreshEntitlements()
-            return self.store.isPro
+        let present = await waitUntil { [store = self.store!] in
+            await store.refreshEntitlements()
+            return store.isPro
         }
         XCTAssertTrue(present)
         await store.restore()
@@ -358,7 +358,8 @@ final class ProEntitlementStoreTests: XCTestCase {
     }
 
     /// The condition races the deadline, so one call that never returns
-    /// cannot hold the test past its timeout.
+    /// cannot hold the test past its timeout. It may still return after
+    /// tearDown, so a condition must capture the store, not read self.store.
     private func waitUntil(timeout: TimeInterval = 10, _ condition: @escaping @MainActor () async -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         let met = await raceAgainstDeadline(nanoseconds: UInt64(timeout * 1_000_000_000)) { @MainActor in
