@@ -271,7 +271,7 @@ final class ProEntitlementStoreTests: XCTestCase {
         // remaining keeps the last set a read did return.
         var latest = await currentStoreKitProductIDs()
         var remaining = latest
-        let deadline = Date().addingTimeInterval(10)
+        let deadline = Date().addingTimeInterval(TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds))
         while let products = latest, !products.isEmpty, Date() < deadline {
             try? await Task.sleep(nanoseconds: 200_000_000)
             latest = await currentStoreKitProductIDs()
@@ -404,7 +404,12 @@ final class ProEntitlementStoreTests: XCTestCase {
     /// The condition races the deadline, so one call that never returns
     /// cannot hold the test past its timeout. It may still return after
     /// tearDown, so a condition must capture the store, not read self.store.
-    private func waitUntil(timeout: TimeInterval = 10, _ condition: @escaping @MainActor () async -> Bool) async -> Bool {
+    /// The deadline cuts a condition off mid-read, so it has to leave room
+    /// for several reads.
+    private func waitUntil(
+        timeout: TimeInterval = TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds),
+        _ condition: @escaping @MainActor () async -> Bool
+    ) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         let met = await raceAgainstDeadline(nanoseconds: UInt64(timeout * 1_000_000_000)) { @MainActor in
             while !Task.isCancelled {
@@ -470,8 +475,9 @@ private func raceAgainstDeadline<Value: Sendable>(
 
 @MainActor
 private final class StoreKitEntitlementReader {
-    /// A stall detector, not a timing assertion. Reads after the first sync
-    /// finish in under a second, but 8 seconds was too short on a slow runner.
+    /// A stall detector, not a timing assertion. StoreKit syncs receipts
+    /// with its test server on every read, and one read has taken 11.5
+    /// seconds on a hosted runner, so 8 and 10 second limits failed there.
     nonisolated static let defaultTimeoutSeconds = 60
     /// Latched so one fixture never starts a second read behind a stuck one.
     private(set) var didTimeOut = false
