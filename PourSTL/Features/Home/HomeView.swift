@@ -140,12 +140,11 @@ struct HomeView: View {
 
     private var availabilityPicker: some View {
         AdaptiveSegmentedPicker(
-            title: "Availability",
+            title: "Filter drinks by availability",
             selection: $availability,
             options: AvailabilityFilter.allCases,
             optionTitle: { $0.rawValue }
         )
-        .accessibilityLabel("Filter drinks by availability")
     }
 
     // MARK: - Venue indicator
