@@ -168,6 +168,7 @@ struct AdaptiveSegmentedPicker<Selection: Hashable>: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .accessibilityLabel(title)
             }
         }
     }
