@@ -7,8 +7,8 @@ final class ProEntitlementLogicTests: XCTestCase {
 
     func testProductIDsStayInOneList() {
         XCTAssertEqual(ProProductID.ordered, [
-            "com.pourstl.app.pro.monthly",
-            "com.pourstl.app.pro.yearly",
+            "bar.pourstl.app.pro.monthly",
+            "bar.pourstl.app.pro.yearly",
         ])
         XCTAssertEqual(ProProductID.all, Set(ProProductID.ordered))
         XCTAssertEqual(ProProductID.privacyPolicyURL.absoluteString, "https://pourstl.com/privacy")
@@ -67,7 +67,7 @@ final class ProEntitlementLogicTests: XCTestCase {
 
     func testUnknownProductIsNotEntitled() {
         let snapshot = ProTransactionSnapshot(
-            productID: "com.pourstl.app.pro.lifetime",
+            productID: "bar.pourstl.app.pro.lifetime",
             revocationDate: nil,
             expirationDate: nil
         )

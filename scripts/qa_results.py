@@ -165,7 +165,7 @@ def main():
         f"- Device: {args.device}",
         f"- iOS Simulator runtime: {args.runtime}; selected Xcode SDK: {args.sdk}",
         f"- Xcode: {args.xcode}",
-        "- Bundle ID: `com.pourstl.app`",
+        "- Bundle ID: `bar.pourstl.app`",
         f"- XCTest summary: {'pass' if summary_ok else 'fail'}",
         "",
         "This report covers the simulator at the exact commit above. Physical camera, torch, real device lifecycle, and signed distribution still need iPhone testing before launch.",
