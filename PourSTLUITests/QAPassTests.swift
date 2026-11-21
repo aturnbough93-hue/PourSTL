@@ -249,7 +249,7 @@ final class QAPassTests: XCTestCase {
         app.buttons["Increase servings"].tap()
         XCTAssertTrue(labeled("Servings, 2").waitForExistence(timeout: 3))
         XCTAssertTrue(labeled("2 oz Gin").exists)
-        let units = app.segmentedControls["Display units, oz"]
+        let units = app.segmentedControls["Display units"]
         XCTAssertTrue(units.waitForExistence(timeout: 3))
         units.buttons["ml"].tap()
         XCTAssertTrue(labeled("59 ml Gin").waitForExistence(timeout: 3))
