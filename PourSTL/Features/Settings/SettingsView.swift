@@ -38,7 +38,6 @@ struct SettingsView: View {
                         options: AppAppearance.allCases,
                         optionTitle: { $0.displayName }
                     )
-                    .accessibilityLabel("Appearance, \(settings.appearance.displayName)")
                 }
 
                 Section("Measurement") {
@@ -48,7 +47,6 @@ struct SettingsView: View {
                         options: UnitPreference.allCases,
                         optionTitle: { $0.rawValue }
                     )
-                    .accessibilityLabel("Preferred units, \(settings.unit.rawValue)")
                 }
 
                 Section("Assistant") {

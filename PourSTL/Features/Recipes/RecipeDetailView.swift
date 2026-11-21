@@ -220,8 +220,6 @@ struct RecipeDetailView: View {
                     optionTitle: { $0.rawValue }
                 )
                 .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 110)
-                .accessibilityLabel("Display units, \(effectiveUnit.rawValue)")
-                .accessibilityAddTraits(.isButton)
             }
         }
         .padding(14)
