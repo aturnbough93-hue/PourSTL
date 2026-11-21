@@ -168,6 +168,9 @@ struct AdaptiveSegmentedPicker<Selection: Hashable>: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                // Segmented style does not publish the Picker title, so VoiceOver
+                // and the UI tests would not find this control by name.
+                .accessibilityLabel(title)
             }
         }
     }
