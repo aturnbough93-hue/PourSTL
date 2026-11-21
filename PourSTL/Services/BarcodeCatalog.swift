@@ -78,10 +78,10 @@ struct BarcodeInterruptionLatch: Equatable {
     /// True when a system interruption should keep the preview from starting.
     var isInterrupted: Bool { systemInterrupted && !stopPending }
 
-    /// Always records the system interruption. Whether the session is still running
-    /// is not an input: AVFoundation may already have stopped it, and that flag is
-    /// read after the hop onto the session queue. Only `stopPending` suppresses a re-arm.
-    mutating func noteBegan(stopPending: Bool) {
+    /// A queued notice from before our stop must not re-arm a restarted session.
+    /// A genuine current interruption still takes precedence over the old stop.
+    mutating func noteBegan(stopPending: Bool, sessionIsInterrupted: Bool) {
+        if self.stopPending && !stopPending && !sessionIsInterrupted { return }
         systemInterrupted = true
         self.stopPending = stopPending
     }
