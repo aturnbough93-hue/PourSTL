@@ -99,15 +99,19 @@ enum GlassIcon {
 // MARK: - Shared components
 
 struct PourSectionHeader: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     var trailing: String? = nil
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+        layout {
             Text(title)
                 .font(.pourTitle2)
                 .foregroundStyle(PourColor.textPrimary)
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
             if let trailing {
                 Text(trailing)
                     .font(.subheadline)
@@ -116,6 +120,56 @@ struct PourSectionHeader: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+struct AdaptiveSegmentedPicker<Selection: Hashable>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let title: String
+    @Binding var selection: Selection
+    let options: [Selection]
+    let optionTitle: (Selection) -> String
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(options, id: \.self) { option in
+                        Button {
+                            selection = option
+                        } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                Text(optionTitle(option))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                                if selection == option {
+                                    Image(systemName: "checkmark")
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            .font(.body)
+                            .foregroundStyle(PourColor.textPrimary)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .background(PourColor.surface, in: RoundedRectangle(cornerRadius: 12))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(optionTitle(option))
+                        .accessibilityAddTraits(selection == option ? [.isSelected] : [])
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(title)
+            } else {
+                Picker(title, selection: $selection) {
+                    ForEach(options, id: \.self) { option in
+                        Text(optionTitle(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+        }
     }
 }
 

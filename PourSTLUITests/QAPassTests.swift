@@ -428,6 +428,25 @@ final class QAPassTests: XCTestCase {
         capture("06-shopping-list")
     }
 
+    func testAX5RecipeActionsUseFullWidthAndScrollAway() throws {
+        launch(extra: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-deepLink=pourstl://recipe?name=Negroni"
+        ])
+        let scale = app.buttons["Scale"]
+        XCTAssertTrue(scale.waitForExistence(timeout: 10))
+        for _ in 0..<10 where !scale.isHittable { app.swipeUp() }
+        XCTAssertTrue(scale.isHittable)
+        XCTAssertGreaterThan(scale.frame.width, app.frame.width * 0.7,
+                             "Accessibility actions must not be squeezed into four columns")
+        capture("ax5-recipe-actions")
+        scale.tap()
+        let increase = app.buttons["Increase servings"]
+        XCTAssertTrue(increase.waitForExistence(timeout: 5))
+        for _ in 0..<4 where scale.isHittable { app.swipeUp() }
+        XCTAssertFalse(scale.isHittable, "AX5 actions must scroll away rather than cover recipe content")
+    }
+
     // MARK: - Helpers
 
     private func launch(extra: [String] = []) {

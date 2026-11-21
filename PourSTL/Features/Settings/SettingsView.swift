@@ -32,22 +32,22 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Appearance") {
-                    Picker("Appearance", selection: $settings.appearance) {
-                        ForEach(AppAppearance.allCases, id: \.self) {
-                            Text($0.displayName).tag($0)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    AdaptiveSegmentedPicker(
+                        title: "Appearance",
+                        selection: $settings.appearance,
+                        options: AppAppearance.allCases,
+                        optionTitle: { $0.displayName }
+                    )
                     .accessibilityLabel("Appearance, \(settings.appearance.displayName)")
                 }
 
                 Section("Measurement") {
-                    Picker("Preferred units", selection: $settings.unit) {
-                        ForEach(UnitPreference.allCases, id: \.self) {
-                            Text($0.rawValue).tag($0)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    AdaptiveSegmentedPicker(
+                        title: "Preferred units",
+                        selection: $settings.unit,
+                        options: UnitPreference.allCases,
+                        optionTitle: { $0.rawValue }
+                    )
                     .accessibilityLabel("Preferred units, \(settings.unit.rawValue)")
                 }
 
