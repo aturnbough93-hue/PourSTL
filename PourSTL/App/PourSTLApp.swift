@@ -102,7 +102,9 @@ struct PourSTLApp: App {
         _store = State(initialValue: PersistentStoreController())
         _settings = State(initialValue: settings)
         _router = State(initialValue: DeepLinkRouter())
-        _pro = State(initialValue: ProEntitlementStore.forAppLaunch(uiTesting: LaunchConfiguration.isUITesting))
+        _pro = State(initialValue: ProEntitlementStore.forAppLaunch(
+            uiTesting: LaunchConfiguration.isUITesting, testsWithPro: LaunchConfiguration.testsWithPro
+        ))
     }
 
     var body: some Scene {

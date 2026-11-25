@@ -25,6 +25,7 @@ enum LaunchConfiguration {
     }
 
     static var isUITesting: Bool { debugFlag("-uiTesting") }
+    static var testsWithPro: Bool { isUITesting && debugFlag("-uiTestingPro") }
 
     /// UI tests launch clean so `-demoInventory` can seed the empty store.
     static var usesEphemeralStore: Bool { isUITesting }
