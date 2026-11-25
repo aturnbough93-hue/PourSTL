@@ -85,7 +85,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.pourstl.app.pro.monthly",
+          "productID" : "bar.pourstl.app.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "PourSTL Pro Monthly",
           "subscriptionGroupID" : "21482001",
@@ -110,7 +110,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.pourstl.app.pro.yearly",
+          "productID" : "bar.pourstl.app.pro.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "PourSTL Pro Yearly",
           "subscriptionGroupID" : "21482001",

@@ -5,8 +5,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from build_website import (MARKER, MARKER_CONTENT, OLD_ORIGIN, REPOSITORY, build_site,
-                           deployment_settings, rewrite_metadata, validate_origin)
+from build_website import (CANONICAL_ORIGINS, MARKER, MARKER_CONTENT, OLD_ORIGIN, REPOSITORY,
+                           build_site, deployment_settings, rewrite_metadata, validate_origin)
 
 
 def fingerprints(directory):
@@ -124,6 +124,59 @@ class CloudflareBuildTests(unittest.TestCase):
             build_site(self.source, self.output, "https://example.com")
         self.assertEqual(keep.read_text(), "user work")
         self.assertEqual(outside_marker.read_text(), "Pour static website build v1\n")
+
+    def test_pourstl_pages_project_uses_custom_domain_without_site_url(self):
+        """Production build with only CF_PAGES_URL for the pourstl project."""
+        environment = {
+            "CF_PAGES_URL": "https://abc123.pourstl.pages.dev",
+            "CF_PAGES_BRANCH": "main",
+        }
+        self.assertNotIn("SITE_URL", environment)
+        self.assertEqual(CANONICAL_ORIGINS["pourstl.pages.dev"], "https://pourstl.com")
+        origin, preview = deployment_settings(environment)
+        self.assertEqual((origin, preview), ("https://pourstl.com", False))
+        build_site(self.source, self.output, origin, preview)
+        for name in ("index.html", "privacy.html", "try.html", "support.html"):
+            html = (self.output / name).read_text()
+            with self.subTest(page=name):
+                self.assertIn('rel="canonical" href="https://pourstl.com/', html)
+                self.assertIn('property="og:url" content="https://pourstl.com/', html)
+                self.assertIn('property="og:image" content="https://pourstl.com/assets/og-image.jpg"', html)
+                self.assertNotIn("pourstl.pages.dev", html)
+        sitemap = (self.output / "sitemap.xml").read_text()
+        robots = (self.output / "robots.txt").read_text()
+        self.assertIn("https://pourstl.com", sitemap)
+        self.assertNotIn("pourstl.pages.dev", sitemap)
+        self.assertIn("Sitemap: https://pourstl.com/sitemap.xml", robots)
+        self.assertNotIn("pourstl.pages.dev", robots)
+
+    def test_pourstl_preview_keeps_disallow_and_custom_canonical(self):
+        """Preview builds stay noindex, but the canonical origin is still pourstl.com."""
+        environment = {
+            "CF_PAGES_URL": "https://abc123.pourstl.pages.dev",
+            "CF_PAGES_BRANCH": "feature/review",
+        }
+        self.assertNotIn("SITE_URL", environment)
+        origin, preview = deployment_settings(environment)
+        self.assertEqual((origin, preview), ("https://pourstl.com", True))
+        build_site(self.source, self.output, origin, preview)
+        self.assertEqual((self.output / "robots.txt").read_text(), "User-agent: *\nDisallow: /\n")
+        html = (self.output / "index.html").read_text()
+        self.assertIn('rel="canonical" href="https://pourstl.com/"', html)
+        self.assertIn('property="og:url" content="https://pourstl.com/"', html)
+        self.assertIn('property="og:image" content="https://pourstl.com/assets/og-image.jpg"', html)
+        self.assertNotIn("pourstl.pages.dev", html)
+        self.assertIn("X-Robots-Tag: noindex, nofollow", (self.output / "_headers").read_text())
+
+    def test_other_pages_projects_keep_their_own_origin(self):
+        self.assertEqual(
+            deployment_settings({"CF_PAGES_URL": "https://abc123.barpour.pages.dev", "CF_PAGES_BRANCH": "main"}),
+            ("https://barpour.pages.dev", False),
+        )
+        self.assertEqual(
+            deployment_settings({"CF_PAGES_URL": "https://abc123.confirmed-pourstl.pages.dev", "CF_PAGES_BRANCH": "main"}),
+            ("https://confirmed-pourstl.pages.dev", False),
+        )
 
     def test_refuses_unrecognized_output_source_or_symlink_without_deleting_data(self):
         self.output.mkdir()

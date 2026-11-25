@@ -25,12 +25,12 @@ A Mac with Xcode and an installed iOS Simulator runtime is required. This is an 
    ditto -x -k PourSTL-Simulator.zip .
    xcrun simctl list devices booted
    xcrun simctl install booted PourSTL.app
-   xcrun simctl launch booted com.pourstl.app
+   xcrun simctl launch booted bar.pourstl.app
    ```
 
    If several simulators are booted, replace `booted` with the selected device's UDID from the list. If you see an architecture/runtime error, check the manifest and select a compatible simulator. Simulator apps cannot be opened directly on macOS.
 
-The downloadable Release app follows normal onboarding and saves data between launches. Automated test flags are disabled in Release. To reset the simulator app, use `xcrun simctl uninstall booted com.pourstl.app` and reinstall; this deletes that simulator's PourSTL data. To update without resetting, install the new app over the old one.
+The downloadable Release app follows normal onboarding and saves data between launches. Automated test flags are disabled in Release. To reset the simulator app, use `xcrun simctl uninstall booted bar.pourstl.app` and reinstall; this deletes that simulator's PourSTL data. To update without resetting, install the new app over the old one.
 
 The Release artifact does not carry Xcode's local StoreKit session. Subscription prices may be unavailable there until real App Store products exist. The free recipe, inventory, shopping, and timer functions remain usable.
 

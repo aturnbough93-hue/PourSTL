@@ -25,7 +25,8 @@
   :root { color-scheme: dark; --bg: #0A0A0C; --accent: #E8A87C; --text: #F7F7F8; --muted: #AEAEB2; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  main { max-width: 760px; margin: auto; padding: 48px 24px 80px; }
+  main { max-width: 760px; margin: auto; padding: 48px 24px 8px; }
+  footer { max-width: 760px; margin: auto; padding: 28px 24px 64px; font-size: 14px; }
   a { color: var(--accent); text-underline-offset: 4px; }
   h1 { font-size: clamp(34px, 7vw, 48px); line-height: 1.15; letter-spacing: -.03em; margin: 36px 0 16px; }
   h2 { font-size: 23px; margin: 32px 0 12px; }
@@ -38,7 +39,7 @@
 <main>
   <a href="/">← Back to PourSTL</a>
   <h1>Questions and support</h1>
-  <p>Updated November 12, 2026. PourSTL is in development for iPhone with iOS 17 or later. You can <a href="try.html">try the browser demo</a> now. A public App Store or TestFlight download is not available yet.</p>
+  <p>Updated November 12, 2026. PourSTL is in development for iPhone. You can <a href="try.html">try the browser demo</a> now. A public App Store or TestFlight download is not available yet.</p>
   <h2>A quick test to try</h2>
   <ol>
     <li>In the browser demo, open “Show ingredients” on smaller screens. Remove Campari from My Bar and watch the Negroni show a missing ingredient.</li>
@@ -62,5 +63,8 @@
   <p>The offline Bar Assistant can answer supported recipe and inventory questions from this device. Try “What can I make?” or “Scale Negroni for 4.” It uses local rules, so ask a specific recipe question if it cannot understand a request.</p>
   <p>The <a href="privacy.html">privacy page</a> describes how the current app, this website, and the browser demo handle data.</p>
 </main>
+<footer>
+  <p>PourSTL requires an iPhone running iOS 17 or later.</p>
+</footer>
 </body>
 </html>

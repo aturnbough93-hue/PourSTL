@@ -74,7 +74,7 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
 - `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
 - Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
-- PourSTL Pro upsell using StoreKit 2. The shared PourSTL scheme loads `PourSTL.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `PourSTL/Services/ProProductID.swift`: `com.pourstl.app.pro.monthly` and `com.pourstl.app.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
+- PourSTL Pro upsell using StoreKit 2. The shared PourSTL scheme loads `PourSTL.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `PourSTL/Services/ProProductID.swift`: `bar.pourstl.app.pro.monthly` and `bar.pourstl.app.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
 
 ### Planned (out of scope for this build)
 

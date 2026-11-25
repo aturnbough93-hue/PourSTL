@@ -3,8 +3,8 @@ import Foundation
 /// Placeholder StoreKit product identifiers for local testing.
 /// Change them here when App Store Connect products exist. Do not copy the IDs elsewhere.
 enum ProProductID {
-    static let monthly = "com.pourstl.app.pro.monthly"
-    static let yearly = "com.pourstl.app.pro.yearly"
+    static let monthly = "bar.pourstl.app.pro.monthly"
+    static let yearly = "bar.pourstl.app.pro.yearly"
 
     /// Display order: monthly, then yearly.
     static let ordered: [String] = [monthly, yearly]

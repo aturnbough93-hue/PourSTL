@@ -5,9 +5,10 @@ Cloudflare: python3 scripts/build_website.py (output: dist/).
 Local: SITE_URL=https://your-confirmed-domain.example python3 scripts/build_website.py
 
 SITE_URL is an optional production-origin override. The canonical origin is
-https://pourstl.com, and production uploads should pass that value. Otherwise
-CF_PAGES_URL identifies the Pages project; deployment hashes and branch prefixes
-are removed from its *.pages.dev hostname. Source metadata uses
+https://pourstl.com. When SITE_URL is unset, CF_PAGES_URL identifies the Pages
+project; deployment hashes and branch prefixes are removed from its
+*.pages.dev hostname. The pourstl project hostname maps to https://pourstl.com.
+Other projects keep their own *.pages.dev origin. Source metadata uses
 https://pourstl.com; the build rewrites that origin when the selected origin
 differs.
 """
@@ -23,6 +24,10 @@ from urllib.parse import urlsplit
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 OLD_ORIGIN = "https://pourstl.com"
+# Pages project hostnames whose public canonical origin is a custom domain.
+# Cloudflare builds for pourstl do not set SITE_URL, so the project hostname
+# must not become the canonical URL.
+CANONICAL_ORIGINS = {"pourstl.pages.dev": "https://pourstl.com"}
 EXTENSIONLESS_PAGES = ("privacy", "try", "support")
 MARKER = ".pourstl-generated-site"
 MARKER_CONTENT = "PourSTL static website build v1\n"
@@ -64,7 +69,8 @@ def deployment_settings(environment):
         labels = urlsplit(deployment_origin).hostname.split(".")
         if len(labels) < 3 or labels[-2:] != ["pages", "dev"]:
             raise ValueError("CF_PAGES_URL must identify a *.pages.dev deployment; use SITE_URL for a custom domain")
-        origin = "https://" + ".".join(labels[-3:])
+        project_host = ".".join(labels[-3:])
+        origin = CANONICAL_ORIGINS.get(project_host, "https://" + project_host)
     branch = environment.get("CF_PAGES_BRANCH", "")
     production_branch = environment.get("SITE_PRODUCTION_BRANCH", "main")
     preview = bool(branch and branch != production_branch)
