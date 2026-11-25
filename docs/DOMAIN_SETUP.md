@@ -42,10 +42,9 @@ Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and
   restrictions are present.
 
 Canonical and social metadata, robots, and the sitemap use `https://pourstl.com`.
-Deploy a reviewed commit with
-`SITE_URL=https://pourstl.com CF_PAGES_BRANCH=main python3 scripts/build_website.py`,
-then upload `dist` to project `pourstl` as documented in
-[the website README](../website/README.md). The app Privacy Policy link is
+Cloudflare deploys the `main` branch from GitHub to project `pourstl`.
+See [the website README](../website/README.md) to preview and verify changes.
+The app Privacy Policy link is
 `https://pourstl.com/privacy`. The site support page is `https://pourstl.com/support`.
 Do not add a redirect from the Pages hostname in this repo.
 

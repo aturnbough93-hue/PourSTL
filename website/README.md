@@ -30,28 +30,20 @@ or DNS changes. The site uses the security headers in `website/_headers`.
 | Canonical site | `https://pourstl.com` |
 | Assigned Pages hostname | `pourstl.pages.dev` |
 | Source repository | `aturnbough93-hue/PourSTL` |
-| Deployment method | Wrangler direct upload |
+| Deployment method | GitHub integration |
 | Production branch | `main` |
-| Local build command | `SITE_URL=https://pourstl.com python3 scripts/build_website.py` |
-| Upload directory | `dist` |
+| Cloudflare build command | `python3 scripts/build_website.py` |
+| Build output directory | `dist` |
 
-GitHub pushes run quality checks. This Pages project currently uses direct
-uploads; merging a PR does not automatically publish its website changes.
-No Cloudflare token is stored in the repository. Authenticate with Wrangler in
-your own environment, build the reviewed commit, and deploy:
+Cloudflare builds preview branches from GitHub and publishes changes to `main`
+to `pourstl.com`. Review the branch preview and GitHub quality checks before
+merging. To reproduce the production build locally, run:
 
 ```bash
-npx --yes wrangler@4.158.0 login --device --browser=false --scopes account:read user:read pages:write
 SITE_URL=https://pourstl.com CF_PAGES_BRANCH=main python3 scripts/build_website.py
-npx --yes wrangler@4.158.0 pages deploy dist --project-name pourstl --branch main --force
 ```
 
-In Wrangler 4.158, `--force` keeps this command on the existing Pages API rather
-than delegating to the newer Workers deployment path. It does not remove the
-project. Confirm the assigned hostname and account before deploying. Wrangler
-records the commit and reports if the working tree is dirty.
-
-The commands above write `https://pourstl.com` into public metadata. Source
+The build writes `https://pourstl.com` into public metadata. Source
 pages already use that origin. A build does not configure DNS, attach a custom
 domain, add a redirect, or provision its HTTPS certificate. A Cloudflare build
 that omits `SITE_URL` maps the `pourstl.pages.dev` project hostname, including
@@ -62,9 +54,8 @@ still overrides that mapping.
 `wrangler.toml` records the project name and generated output directory. The
 build is dependency-free Python; it copies public files and sets canonical,
 social-image, sitemap and robots URLs. A deployment hash or preview address is
-never used as the production canonical origin. For a separately configured
-Git-connected project, Cloudflare supplies `CF_PAGES_URL` and `CF_PAGES_BRANCH`;
-the build also supports those variables.
+never used as the production canonical origin. Cloudflare supplies
+`CF_PAGES_URL` and `CF_PAGES_BRANCH` for Git-connected builds.
 
 Use `SITE_URL` for the confirmed public origin. The default production branch is
 `main`; `SITE_PRODUCTION_BRANCH` overrides it if needed. Preview builds emit
