@@ -595,5 +595,7 @@
   storageNote();
   updateInventoryVisibility();
   $('workspace').hidden = false;
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('web-app-worker.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('web-app-worker.js', { scope: '/try' }).catch(() => {});
+  }
 })();
