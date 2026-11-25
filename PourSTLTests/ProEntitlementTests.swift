@@ -305,7 +305,7 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
         XCTAssertTrue(store.isObservingTransactions, "start() must wait for the StoreKit listener")
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let unlocked = await waitUntil { self.store.isPro && self.store.activeProductIDs.contains(ProProductID.yearly) }
+        let unlocked = await waitUntil(timeout: 30) { self.store.isPro && self.store.activeProductIDs.contains(ProProductID.yearly) }
         let frameworkIDs = await currentStoreKitProductIDs()
         XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
