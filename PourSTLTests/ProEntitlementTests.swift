@@ -142,14 +142,28 @@ final class ProEntitlementLogicTests: XCTestCase {
         XCTAssertNil(IngredientPackagePrice(price: 30, yield: 0).cost(for: 1))
     }
 
+    func testCostingKeepsBrandsSeparateAndRequiresMeasuredQuantities() {
+        let first = RecipeCostLine(ingredient: IngredientLine(name: "Beefeater", amount: 1, unit: "oz"))
+        let second = RecipeCostLine(ingredient: IngredientLine(name: "The Botanist", amount: 1, unit: "oz"))
+        let parts = RecipeCostLine(ingredient: IngredientLine(name: "Beefeater", amount: 2, unit: "parts"))
+        let bitters = RecipeCostLine(ingredient: IngredientLine(name: "Angostura", amount: 2, unit: "dashes"))
+        XCTAssertNotEqual(first.priceKey(currency: "USD"), second.priceKey(currency: "USD"))
+        XCTAssertNil(parts.quantity)
+        XCTAssertEqual(bitters.quantity, 2)
+        XCTAssertEqual(bitters.unit, "dashes")
+        XCTAssertFalse(bitters.usesVolume)
+    }
+
     func testBatchPrepCSVScalesIngredientsAndEscapesCells() {
         let recipe = Recipe(name: "Event, \"special\"")
         recipe.ingredients = [
             IngredientLine(name: "=test", amount: 1.5, unit: "oz", note: "stir, chill", isOptional: true),
+            IngredientLine(name: "Small pour", amount: 0.1, unit: "oz", position: 1),
         ]
         let csv = BatchPrepSheet.csv(for: recipe, servings: 100, unit: .oz)
         XCTAssertTrue(csv.contains("\"Event, \"\"special\"\"\",\"100\",\"'=test\",\"150 oz\",\"Yes\",\"stir, chill\""))
         XCTAssertTrue(csv.hasSuffix("\r\n"))
+        XCTAssertTrue(BatchPrepSheet.csv(for: recipe, servings: 6, unit: .oz).contains("\"Small pour\",\"0.6 oz\""))
     }
 
     func testPurchaseResultsMapToVisibleStates() {

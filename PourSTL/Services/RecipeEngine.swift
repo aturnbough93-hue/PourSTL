@@ -39,24 +39,33 @@ struct RecipeCostLine {
         let unit = ingredient.measure.unit
         guard BarUnit.primaryVolumeUnits.contains(unit) || unit == .teaspoon else { return nil }
         if unit == .milliliter { return ingredient.amount }
-        return unit.ouncesPerUnit.map { ingredient.amount * $0 * 29.5735 }
+        return ingredient.measure.milliliters
     }
 
+    var usesVolume: Bool { volumeInMilliliters != nil }
+
     var unit: String {
-        if volumeInMilliliters != nil { return "ml" }
+        if usesVolume { return "ml" }
         let unit = ingredient.measure.unit
-        return unit == .each ? "units" : unit.displayName
+        return unit == .each ? "units" : Measure.pluralized(unit, amount: 2)
+    }
+
+    var quantity: Decimal? {
+        let amount = volumeInMilliliters ?? ingredient.amount
+        let unit = ingredient.measure.unit
+        guard amount.isFinite, amount > 0, amount <= 1_000_000_000,
+              unit != .topUp, unit != .part, unit != .rinse else { return nil }
+        return Decimal(amount)
     }
 
     func priceKey(currency: String) -> String {
-        "\(currency)|\(unit)|\(ingredient.canonicalName)"
+        // Stock matching groups brands by spirit. Costing must preserve brand identity.
+        "\(currency)|\(unit)|\(IngredientNormalizer.normalize(ingredient.name))"
     }
 
     func cost(in prices: [String: IngredientPackagePrice], currency: String) -> Decimal? {
-        let amount = volumeInMilliliters ?? ingredient.amount
-        guard amount.isFinite, amount > 0, amount <= 1_000_000_000,
-              ingredient.measure.unit != .topUp else { return nil }
-        return prices[priceKey(currency: currency)]?.cost(for: Decimal(amount))
+        guard let quantity else { return nil }
+        return prices[priceKey(currency: currency)]?.cost(for: quantity)
     }
 }
 
@@ -66,11 +75,20 @@ enum BatchPrepSheet {
         let rows = recipe.sortedIngredients.map { line in
             [
                 recipe.name, String(servings), line.name,
-                line.measure.scaled(by: Double(servings)).formatted(for: unit),
+                prepMeasure(line.measure.scaled(by: Double(servings)).converted(to: unit)),
                 line.isOptional ? "Yes" : "No", line.note ?? "",
             ]
         }
         return ([header] + rows).map { $0.map(cell).joined(separator: ",") }.joined(separator: "\r\n") + "\r\n"
+    }
+
+    private static func prepMeasure(_ measure: Measure) -> String {
+        if measure.unit == .topUp { return measure.unit.displayName }
+        let format = FloatingPointFormatStyle<Double>(locale: Locale(identifier: "en_US_POSIX"))
+            .grouping(.never).precision(.fractionLength(0...12))
+        let amount = measure.amount.formatted(format)
+        let label = Measure.pluralized(measure.unit, amount: measure.amount)
+        return label.isEmpty ? amount : "\(amount) \(label)"
     }
 
     private static func cell(_ value: String) -> String {

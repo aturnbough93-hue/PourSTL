@@ -61,6 +61,7 @@ private struct RecipeServiceTools: View {
                 }
             }
             .pickerStyle(.navigationLink)
+            .accessibilityIdentifier("pro-batch-servings")
             if !ProGate.isLocked(.batchExport, isPro: entitlement.isPro) {
                 Button("Export prep sheet (CSV)", systemImage: "square.and.arrow.up") { exporting = true }
                     .disabled(recipe.sortedIngredients.isEmpty)
@@ -88,7 +89,7 @@ private struct RecipeServiceTools: View {
             }
             ForEach(ingredients) { ingredient in
                 let line = RecipeCostLine(ingredient: ingredient)
-                if ingredient.amount > 0 && ingredient.measure.unit != .topUp {
+                if line.quantity != nil {
                     let key = line.priceKey(currency: currency)
                     NavigationLink {
                         IngredientPriceEditor(line: line, currency: currency, existing: settings.ingredientPrices[key])
@@ -96,6 +97,7 @@ private struct RecipeServiceTools: View {
                         LabeledContent(ingredient.name, value: line.cost(in: settings.ingredientPrices, currency: currency)
                             .map(money) ?? "Add price")
                     }
+                    .accessibilityIdentifier("costing-ingredient-\(ingredient.position)")
                 } else {
                     LabeledContent(ingredient.name, value: "Unmeasured")
                 }
@@ -135,10 +137,16 @@ private struct IngredientPriceEditor: View {
             Section {
                 TextField("Package price (\(currency))", text: $price)
                     .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("ingredient-package-price")
                 TextField("Package yield (\(line.unit))", text: $yield)
                     .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("ingredient-package-yield")
             } footer: {
-                Text("For a bottle, use its volume. For other ingredients, enter how many \(line.unit) the package provides.")
+                if line.usesVolume {
+                    Text("Enter the usable package volume in milliliters. A standard 750 ml bottle has a yield of 750.")
+                } else {
+                    Text("Enter how many \(line.unit) you get from the package.")
+                }
             }
             if existing != nil {
                 Button("Remove saved price", role: .destructive) {
