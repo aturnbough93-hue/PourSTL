@@ -35,6 +35,14 @@ struct IngredientPackagePrice: Codable {
 struct RecipeCostLine {
     let ingredient: IngredientLine
 
+    // These names refer to the same product, unlike the interchangeable
+    // ingredients grouped together by the inventory matcher.
+    private static let productAliases = [
+        "angostura": "angostura bitters",
+        "ango": "angostura bitters",
+        "peychauds": "peychauds bitters",
+    ]
+
     private var volumeInMilliliters: Double? {
         let unit = ingredient.measure.unit
         guard BarUnit.primaryVolumeUnits.contains(unit) || unit == .teaspoon else { return nil }
@@ -54,13 +62,13 @@ struct RecipeCostLine {
         let amount = volumeInMilliliters ?? ingredient.amount
         let unit = ingredient.measure.unit
         guard amount.isFinite, amount > 0, amount <= 1_000_000_000,
-              unit != .topUp, unit != .part, unit != .rinse else { return nil }
+              unit != .topUp, unit != .part else { return nil }
         return Decimal(amount)
     }
 
     func priceKey(currency: String) -> String {
-        // Stock matching groups brands by spirit. Costing must preserve brand identity.
-        "\(currency)|\(unit)|\(IngredientNormalizer.normalize(ingredient.name))"
+        let name = IngredientNormalizer.normalize(ingredient.name)
+        return "\(currency)|\(unit)|\(Self.productAliases[name] ?? name)"
     }
 
     func cost(in prices: [String: IngredientPackagePrice], currency: String) -> Decimal? {

@@ -191,6 +191,7 @@ struct Measure: Equatable {
         switch unit {
         case .barspoon: return amount == 1 ? "barspoon" : "barspoons"
         case .dash: return amount == 1 ? "dash" : "dashes"
+        case .rinse: return amount == 1 ? "rinse" : "rinses"
         case .splash: return amount == 1 ? "splash" : "splashes"
         case .drop: return amount == 1 ? "drop" : "drops"
         case .pinch: return amount == 1 ? "pinch" : "pinches"

@@ -147,11 +147,24 @@ final class ProEntitlementLogicTests: XCTestCase {
         let second = RecipeCostLine(ingredient: IngredientLine(name: "The Botanist", amount: 1, unit: "oz"))
         let parts = RecipeCostLine(ingredient: IngredientLine(name: "Beefeater", amount: 2, unit: "parts"))
         let bitters = RecipeCostLine(ingredient: IngredientLine(name: "Angostura", amount: 2, unit: "dashes"))
+        let fullName = RecipeCostLine(ingredient: IngredientLine(name: "Angostura Bitters", amount: 2, unit: "dashes"))
+        let orange = RecipeCostLine(ingredient: IngredientLine(name: "Angostura Orange", amount: 2, unit: "dashes"))
         XCTAssertNotEqual(first.priceKey(currency: "USD"), second.priceKey(currency: "USD"))
+        XCTAssertEqual(bitters.priceKey(currency: "USD"), fullName.priceKey(currency: "USD"))
+        XCTAssertNotEqual(bitters.priceKey(currency: "USD"), orange.priceKey(currency: "USD"))
         XCTAssertNil(parts.quantity)
         XCTAssertEqual(bitters.quantity, 2)
         XCTAssertEqual(bitters.unit, "dashes")
         XCTAssertFalse(bitters.usesVolume)
+    }
+
+    func testCostingAcceptsCountedRinses() {
+        let counted = RecipeCostLine(ingredient: IngredientLine(name: "Absinthe", amount: 1, unit: "rinse"))
+        let unmeasured = RecipeCostLine(ingredient: IngredientLine(name: "Absinthe", amount: 0, unit: "rinse"))
+        let prices = [counted.priceKey(currency: "USD"): IngredientPackagePrice(price: 20, yield: 100)]
+        XCTAssertEqual(counted.unit, "rinses")
+        XCTAssertEqual(counted.cost(in: prices, currency: "USD"), Decimal(string: "0.2"))
+        XCTAssertNil(unmeasured.cost(in: prices, currency: "USD"))
     }
 
     func testBatchPrepCSVScalesIngredientsAndEscapesCells() {
