@@ -401,10 +401,7 @@ final class QAPassTests: XCTestCase {
         let price = app.textFields["ingredient-package-price"]
         let yield = app.textFields["ingredient-package-yield"]
         XCTAssertTrue(price.waitForExistence(timeout: 5))
-        if app.buttons["Remove saved price"].exists {
-            app.buttons["Remove saved price"].tap()
-            ingredient.tap()
-        }
+        XCTAssertFalse(app.buttons["Remove saved price"].exists)
         price.tap()
         price.typeText("30")
         yield.tap()

@@ -27,6 +27,20 @@ enum LaunchConfiguration {
     static var isUITesting: Bool { debugFlag("-uiTesting") }
     static var testsWithPro: Bool { isUITesting && debugFlag("-uiTestingPro") }
 
+    static var settingsDefaults: UserDefaults {
+        #if DEBUG
+        if testsWithPro {
+            let suite = "bar.pourstl.app.pro-ui-tests"
+            if let defaults = UserDefaults(suiteName: suite) {
+                defaults.removePersistentDomain(forName: suite)
+                return defaults
+            }
+            preconditionFailure("Could not initialize Pro UI test settings.")
+        }
+        #endif
+        return .standard
+    }
+
     /// UI tests launch clean so `-demoInventory` can seed the empty store.
     static var usesEphemeralStore: Bool { isUITesting }
 

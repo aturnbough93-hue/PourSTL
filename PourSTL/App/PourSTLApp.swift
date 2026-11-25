@@ -95,7 +95,7 @@ struct PourSTLApp: App {
     @State private var pro: ProEntitlementStore
 
     init() {
-        let settings = AppSettings()
+        let settings = AppSettings(defaults: LaunchConfiguration.settingsDefaults)
         if LaunchConfiguration.isUITesting {
             settings.hasCompletedOnboarding = true
         }
