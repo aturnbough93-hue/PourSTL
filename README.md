@@ -74,7 +74,7 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
 - `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
 - Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
-- PourSTL Pro upsell using StoreKit 2. The shared PourSTL scheme loads `PourSTL.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `PourSTL/Services/ProProductID.swift`: `com.pourstl.app.pro.monthly` and `com.pourstl.app.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
+- PourSTL Pro upsell using StoreKit 2. The shared PourSTL scheme loads `PourSTL.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `PourSTL/Services/ProProductID.swift`: `bar.pourstl.app.pro.monthly` and `bar.pourstl.app.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
 
 ### Planned (out of scope for this build)
 
@@ -106,7 +106,7 @@ project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 
 ## Browser testing
 
-Open `try.html` from the local website server to test six classic recipes,
-inventory matching, scaling, and shopping/restocking. The demo saves only in
-that browser and has a Reset demo action. It does not share state with the
-iPhone app or replace native-device testing.
+Open [PourSTL Web](https://pourstl.com/try) or serve `website/try.html` locally.
+Use the seeded catalog, save custom recipes and favorites, stock My Bar, and
+manage a shopping list. The web app saves data in the browser. See the
+[website guide](website/README.md) for offline and deployment checks.

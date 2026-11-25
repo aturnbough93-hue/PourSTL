@@ -1,6 +1,6 @@
 name: PourSTL
 options:
-  bundleIdPrefix: com.pourstl.app
+  bundleIdPrefix: bar.pourstl.app
   createIntermediateGroups: true
 targets:
   PourSTL:
@@ -38,13 +38,13 @@ targets:
           UIApplicationSupportsMultipleScenes: false
           UISceneConfigurations: {}
         CFBundleURLTypes:
-          - CFBundleURLName: com.pourstl.app.deeplink
+          - CFBundleURLName: bar.pourstl.app.deeplink
             CFBundleURLSchemes:
               - pourstl
               - pour
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.pourstl.app
+        PRODUCT_BUNDLE_IDENTIFIER: bar.pourstl.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
@@ -68,7 +68,7 @@ targets:
       - sdk: StoreKitTest.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.pourstl.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: bar.pourstl.app.tests
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
   PourSTLUITests:
@@ -81,7 +81,7 @@ targets:
       - target: PourSTL
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.pourstl.app.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: bar.pourstl.app.uitests
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: PourSTL
