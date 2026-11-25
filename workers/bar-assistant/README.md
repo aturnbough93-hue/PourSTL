@@ -49,6 +49,9 @@ in the Cloudflare account. Trace identity uses the fixed agent name
 caller's random conversation ID.
 
 When deploying this Worker, configure a high-entropy `BAR_ASSISTANT_TOKEN` as a
-Worker secret in the same Workers AI account. After deployment, submit a test
-question and look for the `invoke_agent pourstl-bar-assistant` turn and its
-`chat` span in the [Cloudflare Agents dashboard](https://dash.cloudflare.com/?to=/:account/agents).
+Worker secret in the same Workers AI account. After deployment, send two test
+questions with the same random conversation ID and a third with a new ID. In the
+[Cloudflare Agents dashboard](https://dash.cloudflare.com/?to=/:account/agents),
+confirm that the first two turns share a session and the third starts a separate
+session. Each turn should have one `invoke_agent pourstl-bar-assistant` span
+with a nested `chat` span.
