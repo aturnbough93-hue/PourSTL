@@ -249,7 +249,7 @@ final class QAPassTests: XCTestCase {
         app.buttons["Increase servings"].tap()
         XCTAssertTrue(labeled("Servings, 2").waitForExistence(timeout: 3))
         XCTAssertTrue(labeled("2 oz Gin").exists)
-        let units = app.segmentedControls["Display units, oz"]
+        let units = app.segmentedControls["Display units"]
         XCTAssertTrue(units.waitForExistence(timeout: 3))
         units.buttons["ml"].tap()
         XCTAssertTrue(labeled("59 ml Gin").waitForExistence(timeout: 3))
@@ -377,6 +377,49 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(app.buttons["Increase servings"].exists, "Core recipes must remain accessible for free")
     }
 
+    func testCostingAndBatchPrepRequiresPro() {
+        launch()
+        openNegroni()
+        openServiceTools()
+        XCTAssertTrue(app.navigationBars["PourSTL Pro"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["Export prep sheet (CSV)"].exists)
+        app.navigationBars["PourSTL Pro"].buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Increase servings"].exists)
+    }
+
+    func testProCanAddPriceAndOpenBatchPrep() {
+        launch(extra: ["-uiTestingPro"])
+        openNegroni()
+        openServiceTools()
+        let tools = app.navigationBars["Costing & Batch Prep"]
+        XCTAssertTrue(tools.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Export prep sheet (CSV)"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["pro-batch-servings"].firstMatch.exists)
+        let ingredient = app.descendants(matching: .any)["costing-ingredient-0"].firstMatch
+        XCTAssertTrue(ingredient.waitForExistence(timeout: 5))
+        ingredient.tap()
+        let price = app.textFields["ingredient-package-price"]
+        let yield = app.textFields["ingredient-package-yield"]
+        XCTAssertTrue(price.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Remove saved price"].exists)
+        price.tap()
+        price.typeText("30")
+        yield.tap()
+        yield.typeText("750")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(tools.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "ingredient lines priced")).firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Priced per drink")).firstMatch.exists)
+    }
+
+    private func openServiceTools() {
+        let tools = app.buttons["Costing & Batch Prep"]
+        for _ in 0..<5 where !tools.isHittable { app.swipeUp() }
+        XCTAssertTrue(tools.isHittable)
+        tools.tap()
+    }
+
     func testCaptureTestingScreenshots() throws {
         launch()
         XCTAssertTrue(labeled("What can I make, 7 drinks").waitForExistence(timeout: 15))
@@ -426,6 +469,25 @@ final class QAPassTests: XCTestCase {
         alert.buttons["Add"].tap()
         XCTAssertTrue(app.staticTexts["Orange peel"].waitForExistence(timeout: 5))
         capture("06-shopping-list")
+    }
+
+    func testAX5RecipeActionsUseFullWidthAndScrollAway() throws {
+        launch(extra: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-deepLink=pourstl://recipe?name=Negroni"
+        ])
+        let scale = app.buttons["Scale"]
+        XCTAssertTrue(scale.waitForExistence(timeout: 10))
+        for _ in 0..<10 where !scale.isHittable { app.swipeUp() }
+        XCTAssertTrue(scale.isHittable)
+        XCTAssertGreaterThan(scale.frame.width, app.frame.width * 0.7,
+                             "Accessibility actions must not be squeezed into four columns")
+        capture("ax5-recipe-actions")
+        scale.tap()
+        let increase = app.buttons["Increase servings"]
+        XCTAssertTrue(increase.waitForExistence(timeout: 5))
+        for _ in 0..<4 where scale.isHittable { app.swipeUp() }
+        XCTAssertFalse(scale.isHittable, "AX5 actions must scroll away rather than cover recipe content")
     }
 
     // MARK: - Helpers

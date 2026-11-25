@@ -13,10 +13,98 @@ struct RecipeMatch {
     var isAlmost: Bool { !canMake && missing.count <= 2 }
 }
 
-/// Serving range used by the recipe screen and the on-device assistant.
+/// The recipe screen also offers an extended range to Pro subscribers.
 enum RecipeScaling {
     static let minimumServings = 1
     static let maximumServings = 24
+    static let proMaximumServings = 200
+}
+
+struct IngredientPackagePrice: Codable {
+    let price: Decimal
+    let yield: Decimal
+
+    func cost(for quantity: Decimal) -> Decimal? {
+        guard !price.isNaN, !yield.isNaN, !quantity.isNaN,
+              price >= 0, yield > 0, quantity > 0 else { return nil }
+        let cost = price / yield * quantity
+        return cost.isNaN ? nil : cost
+    }
+}
+
+struct RecipeCostLine {
+    let ingredient: IngredientLine
+
+    // These names refer to the same product, unlike the interchangeable
+    // ingredients grouped together by the inventory matcher.
+    private static let productAliases = [
+        "angostura": "angostura bitters",
+        "ango": "angostura bitters",
+        "peychauds": "peychauds bitters",
+    ]
+
+    private var volumeInMilliliters: Double? {
+        let unit = ingredient.measure.unit
+        guard BarUnit.primaryVolumeUnits.contains(unit) || unit == .teaspoon else { return nil }
+        if unit == .milliliter { return ingredient.amount }
+        return ingredient.measure.milliliters
+    }
+
+    var usesVolume: Bool { volumeInMilliliters != nil }
+
+    var unit: String {
+        if usesVolume { return "ml" }
+        let unit = ingredient.measure.unit
+        return unit == .each ? "units" : Measure.pluralized(unit, amount: 2)
+    }
+
+    var quantity: Decimal? {
+        let amount = volumeInMilliliters ?? ingredient.amount
+        let unit = ingredient.measure.unit
+        guard amount.isFinite, amount > 0, amount <= 1_000_000_000,
+              unit != .topUp, unit != .part else { return nil }
+        return Decimal(amount)
+    }
+
+    func priceKey(currency: String) -> String {
+        let name = IngredientNormalizer.normalize(ingredient.name)
+        return "\(currency)|\(unit)|\(Self.productAliases[name] ?? name)"
+    }
+
+    func cost(in prices: [String: IngredientPackagePrice], currency: String) -> Decimal? {
+        guard let quantity else { return nil }
+        return prices[priceKey(currency: currency)]?.cost(for: quantity)
+    }
+}
+
+enum BatchPrepSheet {
+    static func csv(for recipe: Recipe, servings: Int, unit: UnitPreference) -> String {
+        let header = ["Recipe", "Servings", "Ingredient", "Batch measure", "Optional", "Ingredient note"]
+        let rows = recipe.sortedIngredients.map { line in
+            [
+                recipe.name, String(servings), line.name,
+                prepMeasure(line.measure.scaled(by: Double(servings)).converted(to: unit)),
+                line.isOptional ? "Yes" : "No", line.note ?? "",
+            ]
+        }
+        return ([header] + rows).map { $0.map(cell).joined(separator: ",") }.joined(separator: "\r\n") + "\r\n"
+    }
+
+    private static func prepMeasure(_ measure: Measure) -> String {
+        if measure.unit == .topUp { return measure.unit.displayName }
+        let format = FloatingPointFormatStyle<Double>(locale: Locale(identifier: "en_US_POSIX"))
+            .grouping(.never).precision(.fractionLength(0...12))
+        let amount = measure.amount.formatted(format)
+        let label = Measure.pluralized(measure.unit, amount: measure.amount)
+        return label.isEmpty ? amount : "\(amount) \(label)"
+    }
+
+    private static func cell(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let needsPrefix = trimmed.first.map { "=+-@".contains($0) } ?? false
+        let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+        return "\"\(needsPrefix ? "'" : "")\(escaped)\""
+    }
 }
 
 enum RecipeEngine {

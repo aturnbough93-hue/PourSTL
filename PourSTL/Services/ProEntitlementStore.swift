@@ -55,14 +55,19 @@ final class ProEntitlementStore {
         self.observesTransactionUpdates = observesTransactionUpdates
     }
 
-    /// UI navigation tests use an explicitly free account. Their app process
+    /// UI navigation tests use an explicitly free or paid fixture. Their app process
     /// must not inherit receipts from StoreKit unit tests on the same simulator.
     /// Release always uses the real App Store, regardless of launch arguments.
-    static func forAppLaunch(uiTesting: Bool) -> ProEntitlementStore {
+    static func forAppLaunch(uiTesting: Bool, testsWithPro: Bool = false) -> ProEntitlementStore {
         #if DEBUG
         if uiTesting {
             return ProEntitlementStore(
-                loadEntitlements: { [] }, restorePurchases: {},
+                loadEntitlements: {
+                    testsWithPro ? [
+                        ProTransactionSnapshot(productID: ProProductID.monthly, revocationDate: nil, expirationDate: nil),
+                    ] : []
+                },
+                restorePurchases: {},
                 observesTransactionUpdates: false
             )
         }

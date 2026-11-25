@@ -32,23 +32,21 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Appearance") {
-                    Picker("Appearance", selection: $settings.appearance) {
-                        ForEach(AppAppearance.allCases, id: \.self) {
-                            Text($0.displayName).tag($0)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityLabel("Appearance, \(settings.appearance.displayName)")
+                    AdaptiveSegmentedPicker(
+                        title: "Appearance",
+                        selection: $settings.appearance,
+                        options: AppAppearance.allCases,
+                        optionTitle: { $0.displayName }
+                    )
                 }
 
                 Section("Measurement") {
-                    Picker("Preferred units", selection: $settings.unit) {
-                        ForEach(UnitPreference.allCases, id: \.self) {
-                            Text($0.rawValue).tag($0)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityLabel("Preferred units, \(settings.unit.rawValue)")
+                    AdaptiveSegmentedPicker(
+                        title: "Preferred units",
+                        selection: $settings.unit,
+                        options: UnitPreference.allCases,
+                        optionTitle: { $0.rawValue }
+                    )
                 }
 
                 Section("Assistant") {
@@ -138,5 +136,6 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             }
         }
+        .preferredColorScheme(settings.appearance.colorScheme)
     }
 }

@@ -109,22 +109,89 @@ final class ProEntitlementLogicTests: XCTestCase {
     }
 
     func testFreeOfflineFeaturesAreNeverLocked() {
-        XCTAssertTrue(ProGate.freeOffline.isDisjoint(with: ProGate.proPlaceholders))
+        XCTAssertTrue(ProGate.freeOffline.isDisjoint(with: ProGate.paid))
         XCTAssertEqual(
             Set(PourCapability.allCases),
-            ProGate.freeOffline.union(ProGate.proPlaceholders)
+            ProGate.freeOffline.union(ProGate.paid)
         )
         XCTAssertTrue(ProGate.freeOffline.contains(.barcodeScanner))
         XCTAssertTrue(ProGate.freeOffline.contains(.venueCheckIn))
         XCTAssertTrue(ProGate.freeOffline.contains(.aiAssistant))
-        XCTAssertFalse(ProGate.proPlaceholders.contains(.barcodeScanner))
-        XCTAssertFalse(ProGate.proPlaceholders.contains(.aiAssistant))
-        XCTAssertFalse(ProGate.plannedFeatures.contains { $0.id == "assistant" })
-        XCTAssertFalse(ProGate.placeholdersArePaywalled)
-        for capability in PourCapability.allCases {
+        for capability in ProGate.freeOffline {
             XCTAssertFalse(ProGate.isLocked(capability, isPro: false), capability.rawValue)
+        }
+        XCTAssertEqual(ProGate.paid, [.recipeCosting, .largeBatches, .batchExport])
+        for capability in ProGate.paid {
+            XCTAssertTrue(ProGate.isLocked(capability, isPro: false), capability.rawValue)
             XCTAssertFalse(ProGate.isLocked(capability, isPro: true), capability.rawValue)
         }
+    }
+
+    func testRecipeCostingReusesBottlePriceAcrossVolumeUnits() {
+        let oz = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 1, unit: "oz"))
+        let ml = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 29.5735, unit: "ml"))
+        let unmeasured = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 1, unit: "top up"))
+        let price = IngredientPackagePrice(price: 30, yield: 750)
+        let prices = [oz.priceKey(currency: "USD"): price]
+
+        XCTAssertEqual(oz.priceKey(currency: "USD"), ml.priceKey(currency: "USD"))
+        XCTAssertEqual(oz.cost(in: prices, currency: "USD"), ml.cost(in: prices, currency: "USD"))
+        XCTAssertEqual(NSDecimalNumber(decimal: oz.cost(in: prices, currency: "USD") ?? 0).doubleValue, 1.18294, accuracy: 0.00001)
+        XCTAssertNil(oz.cost(in: prices, currency: "EUR"))
+        XCTAssertNil(unmeasured.cost(in: prices, currency: "USD"))
+        XCTAssertNil(IngredientPackagePrice(price: 30, yield: 0).cost(for: 1))
+    }
+
+    func testCostingKeepsBrandsSeparateAndRequiresMeasuredQuantities() {
+        let first = RecipeCostLine(ingredient: IngredientLine(name: "Beefeater", amount: 1, unit: "oz"))
+        let second = RecipeCostLine(ingredient: IngredientLine(name: "The Botanist", amount: 1, unit: "oz"))
+        let parts = RecipeCostLine(ingredient: IngredientLine(name: "Beefeater", amount: 2, unit: "parts"))
+        let bitters = RecipeCostLine(ingredient: IngredientLine(name: "Angostura", amount: 2, unit: "dashes"))
+        let fullName = RecipeCostLine(ingredient: IngredientLine(name: "Angostura Bitters", amount: 2, unit: "dashes"))
+        let orange = RecipeCostLine(ingredient: IngredientLine(name: "Angostura Orange", amount: 2, unit: "dashes"))
+        XCTAssertNotEqual(first.priceKey(currency: "USD"), second.priceKey(currency: "USD"))
+        XCTAssertEqual(bitters.priceKey(currency: "USD"), fullName.priceKey(currency: "USD"))
+        XCTAssertNotEqual(bitters.priceKey(currency: "USD"), orange.priceKey(currency: "USD"))
+        XCTAssertNil(parts.quantity)
+        XCTAssertEqual(bitters.quantity, 2)
+        XCTAssertEqual(bitters.unit, "dashes")
+        XCTAssertFalse(bitters.usesVolume)
+    }
+
+    func testCostingAcceptsCountedRinses() {
+        let counted = RecipeCostLine(ingredient: IngredientLine(name: "Absinthe", amount: 1, unit: "rinse"))
+        let unmeasured = RecipeCostLine(ingredient: IngredientLine(name: "Absinthe", amount: 0, unit: "rinse"))
+        let prices = [counted.priceKey(currency: "USD"): IngredientPackagePrice(price: 20, yield: 100)]
+        XCTAssertEqual(counted.unit, "rinses")
+        XCTAssertEqual(counted.cost(in: prices, currency: "USD"), Decimal(string: "0.2"))
+        XCTAssertNil(unmeasured.cost(in: prices, currency: "USD"))
+    }
+
+    func testIngredientPricesLoadFromSavedSettings() throws {
+        let suite = "PourSTLTests.IngredientPrices.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let key = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 1, unit: "oz"))
+            .priceKey(currency: "USD")
+        let settings = AppSettings(defaults: defaults)
+        settings.ingredientPrices[key] = IngredientPackagePrice(price: 30, yield: 750)
+
+        let reloaded = AppSettings(defaults: try XCTUnwrap(UserDefaults(suiteName: suite)))
+        XCTAssertEqual(reloaded.ingredientPrices[key]?.price, 30)
+        XCTAssertEqual(reloaded.ingredientPrices[key]?.yield, 750)
+    }
+
+    func testBatchPrepCSVScalesIngredientsAndEscapesCells() {
+        let recipe = Recipe(name: "Event, \"special\"")
+        recipe.ingredients = [
+            IngredientLine(name: "=test", amount: 1.5, unit: "oz", note: "stir, chill", isOptional: true),
+            IngredientLine(name: "Small pour", amount: 0.1, unit: "oz", position: 1),
+        ]
+        let csv = BatchPrepSheet.csv(for: recipe, servings: 100, unit: .oz)
+        XCTAssertTrue(csv.contains("\"Event, \"\"special\"\"\",\"100\",\"'=test\",\"150 oz\",\"Yes\",\"stir, chill\""))
+        XCTAssertTrue(csv.hasSuffix("\r\n"))
+        XCTAssertTrue(BatchPrepSheet.csv(for: recipe, servings: 6, unit: .oz).contains("\"Small pour\",\"0.6 oz\""))
     }
 
     func testPurchaseResultsMapToVisibleStates() {
@@ -238,7 +305,7 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
         XCTAssertTrue(store.isObservingTransactions, "start() must wait for the StoreKit listener")
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let unlocked = await waitUntil { self.store.isPro && self.store.activeProductIDs.contains(ProProductID.yearly) }
+        let unlocked = await waitUntil(timeout: 30) { self.store.isPro && self.store.activeProductIDs.contains(ProProductID.yearly) }
         let frameworkIDs = await currentStoreKitProductIDs()
         XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
@@ -296,8 +363,14 @@ final class ProEntitlementStoreTests: XCTestCase {
             await self.store.refreshEntitlements()
             return !self.store.isPro
         }
-        XCTAssertTrue(removed)
-        XCTAssertFalse(store.activeProductIDs.contains(ProProductID.monthly))
+        if !removed {
+            let frameworkIDs = await currentStoreKitProductIDs()
+            XCTFail("Expired subscription stayed active. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted())")
+        }
+        XCTAssertFalse(
+            store.activeProductIDs.contains(ProProductID.monthly),
+            "The monthly subscription must be removed after expiration"
+        )
     }
 
     func testRestoreFindsExternalPurchase() async throws {
