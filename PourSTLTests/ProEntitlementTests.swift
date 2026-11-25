@@ -415,34 +415,29 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
     }
 
-    /// The condition races the deadline, so one call that never returns
-    /// cannot hold the test past its timeout. It may still return after
-    /// tearDown, so a condition must capture the store, not read self.store.
-    /// The deadline cuts a condition off mid-read, so it has to leave room
-    /// for several reads.
+    /// Stop starting new polls when the polling window closes. Each
+    /// in-flight condition gets its own stall limit, so a poll started near
+    /// the end of the window can still finish normally.
     private func waitUntil(
-        timeout: TimeInterval = TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds),
         _ condition: @escaping @MainActor () async -> Bool
     ) async throws -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        var checkingCondition = false
-        let met = await raceAgainstDeadline(nanoseconds: UInt64(timeout * 1_000_000_000)) { @MainActor in
-            while !Task.isCancelled {
-                checkingCondition = true
-                let matched = await condition()
-                checkingCondition = false
-                if matched { return true }
-                guard Date() < deadline else { break }
-                try? await Task.sleep(nanoseconds: 200_000_000)
+        let limit = StoreKitEntitlementReader.defaultTimeoutSeconds
+        let deadline = Date().addingTimeInterval(TimeInterval(limit))
+        while Date() < deadline {
+            guard let matched = await raceAgainstDeadline(
+                nanoseconds: UInt64(limit) * 1_000_000_000,
+                operation: condition
+            ) else {
+                entitlementReadIsStuck = true
+                Self.storeKitStalled = true
+                throw StoreKitFixtureFailure("StoreKit condition did not finish within \(limit) seconds")
             }
-            return false
+            if matched { return true }
+            if Date() < deadline {
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
         }
-        if met == nil, checkingCondition {
-            entitlementReadIsStuck = true
-            Self.storeKitStalled = true
-            throw StoreKitFixtureFailure("StoreKit condition did not finish within \(Int(timeout)) seconds")
-        }
-        return met ?? false
+        return false
     }
 
     /// nil means the read did not finish. That failure is recorded once here.
