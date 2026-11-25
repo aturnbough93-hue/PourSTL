@@ -171,8 +171,8 @@ final class ProEntitlementStoreTests: XCTestCase {
     /// fail at once, so a StoreKit service that stays stuck costs one limit
     /// instead of one per test.
     private static var storeKitStalled = false
-    /// Set when the first sync or a start() did not finish. That failure is
-    /// already recorded, and tearDown must not queue another read behind it.
+    /// A StoreKit timeout has already failed this fixture. Teardown still
+    /// clears the test service, but must avoid queuing another entitlement read.
     private var entitlementReadIsStuck = false
 
     private enum FirstEntitlementSync {
@@ -260,9 +260,7 @@ final class ProEntitlementStoreTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        // Read currentEntitlements on the main actor while the listener is
-        // still attached. Stopping first leaves a cancelled consumer in next(),
-        // and that is what wedged this read for the rest of the suite.
+        // Keep the store subscribed until the fixture has checked cleanup.
         defer {
             store?.stop()
             store = nil
@@ -284,8 +282,8 @@ final class ProEntitlementStoreTests: XCTestCase {
         var remaining = latest
         let deadline = Date().addingTimeInterval(TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds))
         // A subscription status sync that storekitd started before the clear
-        // can finish after it and restore the cleared subscription. Later
-        // reads never drop it, so the loop clears again before each read.
+        // can finish after it and restore the cleared subscription. Clear
+        // again before confirming that the verified entitlement is gone.
         while let products = latest, !products.isEmpty, Date() < deadline {
             print("StoreKit still reported \(products.sorted()) after clearTransactions(); clearing again")
             session.clearTransactions()
@@ -323,7 +321,7 @@ final class ProEntitlementStoreTests: XCTestCase {
         XCTAssertFalse(store.isPro)
         XCTAssertTrue(store.isObservingTransactions, "start() must wait for the StoreKit listener")
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let unlocked = await waitUntil { [store = self.store!] in
+        let unlocked = try await waitUntil { [store = self.store!] in
             store.isPro && store.activeProductIDs.contains(ProProductID.yearly)
         }
         let frameworkIDs = await currentStoreKitProductIDs() ?? []
@@ -333,7 +331,7 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testUITestingStoreDoesNotInheritStoreKitTransactions() async throws {
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let purchased = await waitUntil { [store = self.store!] in
+        let purchased = try await waitUntil { [store = self.store!] in
             await store.refreshEntitlements()
             return store.isPro
         }
@@ -341,7 +339,7 @@ final class ProEntitlementStoreTests: XCTestCase {
 
         let uiStore = ProEntitlementStore.forAppLaunch(uiTesting: true)
         defer { uiStore.stop() }
-        await uiStore.start()
+        try await start(uiStore)
         #if DEBUG
         XCTAssertTrue(uiStore.hasResolvedEntitlements)
         XCTAssertFalse(uiStore.isObservingTransactions)
@@ -361,7 +359,7 @@ final class ProEntitlementStoreTests: XCTestCase {
         let relaunched = ProEntitlementStore()
         defer { relaunched.stop() }
         try await start(relaunched)
-        let unlocked = await waitUntil {
+        let unlocked = try await waitUntil {
             if relaunched.isPro { return true }
             await relaunched.refreshEntitlements()
             return relaunched.isPro
@@ -373,13 +371,13 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testExpiredSubscriptionRemovesEntitlement() async throws {
         _ = try await session.buyProduct(identifier: ProProductID.monthly)
-        let unlocked = await waitUntil { [store = self.store!] in
+        let unlocked = try await waitUntil { [store = self.store!] in
             await store.refreshEntitlements()
             return store.isPro
         }
         XCTAssertTrue(unlocked)
         try session.expireSubscription(productIdentifier: ProProductID.monthly)
-        let removed = await waitUntil { [store = self.store!] in
+        let removed = try await waitUntil { [store = self.store!] in
             await store.refreshEntitlements()
             return !store.isPro
         }
@@ -395,7 +393,7 @@ final class ProEntitlementStoreTests: XCTestCase {
 
     func testRestoreFindsExternalPurchase() async throws {
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let present = await waitUntil { [store = self.store!] in
+        let present = try await waitUntil { [store = self.store!] in
             await store.refreshEntitlements()
             return store.isPro
         }
@@ -425,15 +423,24 @@ final class ProEntitlementStoreTests: XCTestCase {
     private func waitUntil(
         timeout: TimeInterval = TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds),
         _ condition: @escaping @MainActor () async -> Bool
-    ) async -> Bool {
+    ) async throws -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
+        var checkingCondition = false
         let met = await raceAgainstDeadline(nanoseconds: UInt64(timeout * 1_000_000_000)) { @MainActor in
             while !Task.isCancelled {
-                if await condition() { return true }
+                checkingCondition = true
+                let matched = await condition()
+                checkingCondition = false
+                if matched { return true }
                 guard Date() < deadline else { break }
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
             return false
+        }
+        if met == nil, checkingCondition {
+            entitlementReadIsStuck = true
+            Self.storeKitStalled = true
+            throw StoreKitFixtureFailure("StoreKit condition did not finish within \(Int(timeout)) seconds")
         }
         return met ?? false
     }
@@ -445,6 +452,7 @@ final class ProEntitlementStoreTests: XCTestCase {
             await Self.storeKitProductIDs()
         }
         if ids == nil, !hadTimedOut {
+            entitlementReadIsStuck = true
             Self.storeKitStalled = true
             XCTFail("Transaction.currentEntitlements did not finish within \(StoreKitEntitlementReader.defaultTimeoutSeconds) seconds in this test's StoreKit fixture")
         }
