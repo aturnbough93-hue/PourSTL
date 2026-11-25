@@ -401,7 +401,6 @@
     const selected = state.selected;
     state = incoming;
     if (App.resolveRecipe(selected, state.customRecipes)) state.selected = selected;
-    if (editor.open && editorID && !state.customRecipes.some(recipe => recipe.id === editorID)) editor.close();
     render();
   });
 
@@ -502,6 +501,10 @@
       return;
     }
     const existing = state.customRecipes.findIndex(item => item.id === recipe.id);
+    if (existing === -1 && state.customRecipes.length >= App.maxCustomRecipes) {
+      $('editor-error').textContent = 'You’ve reached the limit of 250 custom recipes in this browser.';
+      return;
+    }
     if (existing === -1) state.customRecipes.push(recipe);
     else state.customRecipes[existing] = recipe;
     state = App.validateState({ ...state, selected: recipe.id });
@@ -515,7 +518,13 @@
     feedback(recipe.name + ' saved.');
   });
   $('delete-recipe').addEventListener('click', () => {
-    const recipe = currentRecipe();
+    const recipe = state.customRecipes.find(item => item.id === editorID);
+    if (!recipe) {
+      editor.close();
+      $('new-recipe').focus();
+      feedback('Recipe already deleted.');
+      return;
+    }
     if (!window.confirm('Delete ' + recipe.name + ' from your saved recipes?')) return;
     state = App.validateState({ ...state, customRecipes: state.customRecipes.filter(item => item.id !== editorID) });
     render();
