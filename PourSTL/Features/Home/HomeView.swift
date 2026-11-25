@@ -139,13 +139,12 @@ struct HomeView: View {
     }
 
     private var availabilityPicker: some View {
-        Picker("Availability", selection: $availability) {
-            ForEach(AvailabilityFilter.allCases, id: \.self) { option in
-                Text(option.rawValue).tag(option)
-            }
-        }
-        .pickerStyle(.segmented)
-        .accessibilityLabel("Filter drinks by availability")
+        AdaptiveSegmentedPicker(
+            title: "Filter drinks by availability",
+            selection: $availability,
+            options: AvailabilityFilter.allCases,
+            optionTitle: { $0.rawValue }
+        )
     }
 
     // MARK: - Venue indicator
