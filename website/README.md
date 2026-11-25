@@ -13,6 +13,10 @@ python3 -m http.server 8080
 
 Use the HTTP server so root-relative links and icons resolve correctly. No
 package installation is required; images and scripts are served locally.
+This server exposes the app as `/try.html`, not Pages' clean `/try` route, so
+the service worker's `/try` cache entry cannot be installed and the Home Screen
+start URL does not resolve. Use the Cloudflare Pages branch preview to verify
+the clean app route, offline cache, and Home Screen install.
 
 ## Cloudflare Pages
 
