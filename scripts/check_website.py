@@ -262,6 +262,7 @@ class WebsiteChecks(unittest.TestCase):
             r"@media\s*\(\s*max-width:\s*860px\s*\)\s*\{[^@]*?\.nav-status\s*\{[^}]*display:\s*none",
         )
         self.assertIn('href="#plans" class="btn btn-ghost">Compare Free &amp; Pro</a>', homepage)
+        self.assertIn('<a href="#get">iPhone app availability</a>', homepage)
 
     def test_ios_requirement_stays_in_the_footer(self):
         requirement = "PourSTL requires an iPhone running iOS 17 or later."
