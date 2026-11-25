@@ -148,7 +148,7 @@ struct ProUpsellView: View {
                     .disabled(controlsDisabled)
                     .opacity(controlsDisabled ? 0.6 : 1)
                     .accessibilityLabel(offer.title)
-                    .accessibilityHint("Starts an App Store subscription. Today’s features stay free.")
+                    .accessibilityHint("Starts a PourSTL Pro subscription through the App Store.")
                     .accessibilityAddTraits(.isButton)
                 }
             } else if store.productsState == .unavailable {

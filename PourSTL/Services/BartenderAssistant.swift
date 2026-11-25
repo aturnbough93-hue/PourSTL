@@ -598,7 +598,7 @@ struct LocalBartenderAssistant: BartenderAssistant {
             throw AssistantAnswerError.couldNotAnswer
         }
         let lead = servings > maximum
-            ? "The recipe screen scales up to \(RecipeScaling.maximumServings) servings, so this stops there.\n\n"
+            ? "The Bar Assistant scales up to \(RecipeScaling.maximumServings) servings. For larger batches, open the recipe screen and use PourSTL Pro.\n\n"
             : ""
         return reply(lead + spec(for: recipe, factor: factor, unit: library.preferredUnit, includeInstructions: includeInstructions), followUps: [
             "What can I make?",
