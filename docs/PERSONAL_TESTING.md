@@ -1,6 +1,6 @@
 # Test PourSTL
 
-The canonical website is **https://pourstl.com**, with the browser demo at **https://pourstl.com/try**. The browser demo works on a phone or computer without a Mac, Apple Developer account, or native installation. It saves data in that browser; it does not sync with the native app.
+Open [PourSTL Web](https://pourstl.com/try) from a phone or computer. The web app works without an account and stores recipes, favorites, inventory, and shopping data in that browser. On iPhone, use Safari’s Share menu and choose Add to Home Screen for an app icon.
 
 ## Download the native simulator app
 

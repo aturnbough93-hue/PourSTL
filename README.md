@@ -106,7 +106,7 @@ project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 
 ## Browser testing
 
-Open `try.html` from the local website server to test six classic recipes,
-inventory matching, scaling, and shopping/restocking. The demo saves only in
-that browser and has a Reset demo action. It does not share state with the
-iPhone app or replace native-device testing.
+Open [PourSTL Web](https://pourstl.com/try) or serve `website/try.html` locally.
+Use the seeded catalog, save custom recipes and favorites, stock My Bar, and
+manage a shopping list. The web app saves data in the browser. See the
+[website guide](website/README.md) for offline and deployment checks.
