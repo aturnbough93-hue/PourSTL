@@ -390,6 +390,21 @@
   const rows = $('editor-ingredients');
   const unitNames = { each: 'count', topUp: 'to top', ml: 'mL' };
 
+  window.addEventListener('storage', event => {
+    if (event.key !== storageKey && event.key !== null) return;
+    let incoming;
+    try {
+      incoming = event.newValue ? App.validateState(JSON.parse(event.newValue)) : App.defaults();
+    } catch (_) {
+      return;
+    }
+    const selected = state.selected;
+    state = incoming;
+    if (App.resolveRecipe(selected, state.customRecipes)) state.selected = selected;
+    if (editor.open && editorID && !state.customRecipes.some(recipe => recipe.id === editorID)) editor.close();
+    render();
+  });
+
   function editorField(labelText, input) {
     const label = node('label', '', labelText);
     label.append(input);
