@@ -30,6 +30,9 @@ Cloudflare Pages hosts project **pourstl**. The canonical site is
 **https://pourstl.com**. See
 [website/README.md](website/README.md) for the project settings and build.
 
+The standalone [Cloudflare Bar Assistant Worker](workers/bar-assistant/README.md)
+provides an authenticated endpoint for general bartending questions.
+
 See [docs/HANDOFF.md](docs/HANDOFF.md) for current delivery status and resuming work.
 See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,
 and prioritized release/product roadmap. Native changes must pass simulator and

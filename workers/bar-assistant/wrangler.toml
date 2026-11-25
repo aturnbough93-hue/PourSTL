@@ -1,0 +1,11 @@
+name = "pourstl-bar-assistant"
+main = "src/index.ts"
+compatibility_date = "2026-11-05"
+compatibility_flags = ["nodejs_compat"]
+send_metrics = false
+
+[ai]
+binding = "AI"
+
+[observability.traces]
+enabled = true

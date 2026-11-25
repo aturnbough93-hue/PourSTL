@@ -1,0 +1,27 @@
+{
+  "name": "pourstl-bar-assistant",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "format:check": "prettier --check src test *.json README.md",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.ts",
+    "build": "wrangler deploy --dry-run --outdir dist"
+  },
+  "dependencies": {
+    "@ai-sdk/provider": "4.0.39",
+    "agents": "0.34.0",
+    "ai": "7.0.181"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "miniflare": "5.20261123.1-beta",
+    "prettier": "3.10.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.168.0"
+  }
+}
