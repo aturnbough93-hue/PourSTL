@@ -167,6 +167,21 @@ final class ProEntitlementLogicTests: XCTestCase {
         XCTAssertNil(unmeasured.cost(in: prices, currency: "USD"))
     }
 
+    func testIngredientPricesLoadFromSavedSettings() throws {
+        let suite = "PourSTLTests.IngredientPrices.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let key = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 1, unit: "oz"))
+            .priceKey(currency: "USD")
+        let settings = AppSettings(defaults: defaults)
+        settings.ingredientPrices[key] = IngredientPackagePrice(price: 30, yield: 750)
+
+        let reloaded = AppSettings(defaults: try XCTUnwrap(UserDefaults(suiteName: suite)))
+        XCTAssertEqual(reloaded.ingredientPrices[key]?.price, 30)
+        XCTAssertEqual(reloaded.ingredientPrices[key]?.yield, 750)
+    }
+
     func testBatchPrepCSVScalesIngredientsAndEscapesCells() {
         let recipe = Recipe(name: "Event, \"special\"")
         recipe.ingredients = [
