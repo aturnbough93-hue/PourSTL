@@ -38,14 +38,14 @@
 <main>
   <a href="/">← Back to PourSTL</a>
   <h1>Your bar, on your device.</h1>
-  <p>Updated November 12, 2026. This page describes the current development version of PourSTL, this website, and its browser demo. It will be updated before features that change data handling are released.</p>
+  <p>Updated November 25, 2026. This page describes the PourSTL iPhone app, this website, and the browser demo.</p>
   <h2>The current iPhone app</h2>
   <p>PourSTL stores recipes, ingredient lists, inventory, shopping lists, favorites, venue names and check-in state, and preferences locally. Venue check-in is a label you select in the app; it does not use your location. The current code does not include an account service, advertising SDK, analytics SDK, or a network service for uploading this data.</p>
   <p>When you use the Share action, recipe text goes to the app or person you select in the iOS share sheet. That destination handles the shared text under its own privacy practices.</p>
   <h2>Offline Bar Assistant</h2>
   <p>The Bar Assistant uses rules to answer supported questions from recipes and inventory on your device. Questions and replies stay in the app’s memory while the assistant is open; they are not uploaded, saved to the recipe database, or sent to an AI provider. It does not record your voice or search the web.</p>
-  <h2>Purchases in development</h2>
-  <p>The current project includes purchase, restore, and subscription-entitlement flows using Apple’s StoreKit. The shared development scheme uses a local StoreKit test configuration; these simulated purchases do not charge you. Live App Store products and a public subscription are not available yet.</p>
+  <h2>Pro subscription and tools</h2>
+  <p>Ingredient prices and package yields are stored on your iPhone. Exporting a prep sheet shares the recipe name, servings, ingredients, quantities, and ingredient notes with the destination you choose.</p>
   <p>When live purchases are enabled, Apple will process payments under its own privacy practices. PourSTL’s StoreKit implementation reads product and verified transaction information to determine access; it does not receive card details or upload recipes, inventory, or shopping lists. The free tools keep working offline with no subscription.</p>
   <h2>Backups and removal</h2>
   <p>Local storage does not mean a separate backup. Device backups may include app data, depending on your Apple settings. The current app does not provide cloud sync or a complete export-and-restore feature. Removing the app removes its local data; copies in device backups and anything you shared elsewhere are managed separately.</p>

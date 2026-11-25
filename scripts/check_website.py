@@ -242,13 +242,15 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn("support@", lowered)
         self.assertNotIn("@example.com", lowered)
 
-    def test_parked_homepage_does_not_offer_pro_or_a_competing_status_button(self):
+    def test_homepage_explains_both_tiers_and_links_to_the_demo(self):
         homepage = self.sources[SITE / "index.html"]
-        self.assertNotIn('href="#pro"', homepage)
-        self.assertNotIn('id="pro"', homepage)
+        plans = re.search(r'<section id="plans".*?</section>', homepage, flags=re.DOTALL)
+        self.assertIsNotNone(plans)
+        for label in ("<h3>Free</h3>", "<h3>PourSTL Pro</h3>", "24 servings", "200 servings", "Recipe costing", "CSV prep sheets"):
+            self.assertIn(label, plans.group(0))
+        self.assertIn('class="btn btn-primary" href="try.html">Open the browser demo', homepage)
         self.assertNotIn("hero-photo", homepage)
         self.assertNotIn(">App status<", homepage)
-        self.assertGreaterEqual(homepage.count("iPhone app status"), 2)
         self.assertEqual(homepage.count(">Related builds<"), 1)
         self.assertIn(
             '<span class="eyebrow"><span class="eyebrow-text">Built for service ·&nbsp;Private by default</span></span>',
@@ -259,7 +261,7 @@ class WebsiteChecks(unittest.TestCase):
             homepage,
             r"@media\s*\(\s*max-width:\s*860px\s*\)\s*\{[^@]*?\.nav-status\s*\{[^}]*display:\s*none",
         )
-        self.assertIn('class="btn btn-ghost">iPhone app status</a>', homepage)
+        self.assertIn('href="#plans" class="btn btn-ghost">Compare Free &amp; Pro</a>', homepage)
 
     def test_ios_requirement_stays_in_the_footer(self):
         requirement = "PourSTL requires an iPhone running iOS 17 or later."

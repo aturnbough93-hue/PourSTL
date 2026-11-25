@@ -305,6 +305,22 @@
   .phone.sm { width: 264px; }
   .phone.sm .phone-screen { min-height: 520px; }
 
+  .plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .plan {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: clamp(22px, 4vw, 36px);
+  }
+  .plan.pro { border-color: var(--accent); }
+  .plan h3 { font-size: 26px; margin-bottom: 10px; }
+  .plan p, .plan li { color: var(--text-secondary); }
+  .plan ul { margin-top: 18px; padding-left: 20px; }
+  .plan li + li { margin-top: 9px; }
+  .plan strong { color: var(--text-primary); }
+  .plan-note { color: var(--text-secondary); margin-top: 18px; }
+  @media (max-width: 680px) {
+    .plan-grid { grid-template-columns: 1fr; }
+  }
+
   /* Principles strip */
   .principles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   .prin {
@@ -329,13 +345,6 @@
   .cta-final { text-align: center; }
   .cta-final h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 16px; }
   .cta-final p { color: var(--text-secondary); font-size: 17px; margin-bottom: 30px; }
-  .appstore-btn {
-    display: inline-flex; align-items: center; gap: 12px;
-    background: var(--surface-secondary); border: 1px solid var(--border-strong);
-    border-radius: 14px; padding: 12px 22px;
-  }
-  .appstore-btn .as-small { font-size: 11px; color: var(--text-secondary); }
-  .appstore-btn .as-big { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
   .soon-note { margin-top: 14px; font-size: 13px; color: var(--text-tertiary); }
 
   footer { border-top: 1px solid var(--border); padding: 40px 0 56px; }
@@ -403,6 +412,7 @@
     </a>
     <div class="nav-links">
       <a href="#features">Features</a>
+      <a href="#plans">Free &amp; Pro</a>
       <a href="#screens">Screens</a>
       <a href="#bar">Bar</a>
       <a href="#history">History</a>
@@ -418,6 +428,7 @@
   <div class="nav-menu" id="nav-menu">
     <a href="try.html">Try PourSTL in your browser</a>
     <a href="#features">Features</a>
+    <a href="#plans">Free &amp; Pro</a>
     <a href="#screens">Screens</a>
     <a href="#bar">Bar</a>
     <a href="#history">History</a>
@@ -431,10 +442,10 @@
     <div>
       <span class="eyebrow"><span class="eyebrow-text">Built for service ·&nbsp;Private by default</span></span>
       <h1>The bar tool that keeps up with <em>service</em>.</h1>
-      <p class="hero-sub">PourSTL is a native bartender's assistant: a library of classic specs in your pocket, instant "what can I make" matching against your actual bottles, one-hand scaling, and a timer you can feel. Fast, precise, calm under pressure.</p>
+      <p class="hero-sub">PourSTL helps home bartenders and working bars find cocktail recipes, match drinks to ingredients on hand, and prep for service. Look up a spec, scale it, or start a haptic timer on your iPhone.</p>
       <div class="hero-ctas">
         <a href="try.html" class="btn btn-primary">Try PourSTL in your browser</a>
-        <a href="#get" class="btn btn-ghost">iPhone app status</a>
+        <a href="#plans" class="btn btn-ghost">Compare Free &amp; Pro</a>
       </div>
       <div class="hero-badges">
         <span class="badge"><span class="dot"></span>Works fully offline</span>
@@ -492,7 +503,7 @@
           </div>
         </div>
       </div>
-      <p class="preview-note">Illustrative app preview · iPhone app in development</p>
+      <p class="preview-note">Illustrative app preview</p>
     </div>
   </div>
 </header>
@@ -787,7 +798,7 @@
       <div class="prin">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 109 9 9 9 0 01-9-9z"/><path d="M12 3a9 9 0 019 9h-9V3z"/></svg>
         <h3>Designed for accessibility</h3>
-        <p>VoiceOver labels, Dynamic Type, and Reduce Motion support are built in. Device and assistive-technology testing remains part of release preparation.</p>
+        <p>VoiceOver labels, Dynamic Type, and Reduce Motion support help you use PourSTL with your iPhone’s accessibility settings.</p>
       </div>
       <div class="prin">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.5A8.5 8.5 0 119.5 3.6a7 7 0 0010.9 10.9z"/></svg>
@@ -795,6 +806,37 @@
         <p>Designed for a dark bar at 1am — warm copper on near-black, with a fully supported light appearance.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="plans" aria-labelledby="plans-title">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 id="plans-title">Free for everyday pours. Pro for bigger service.</h2>
+      <p>Use Free to find and make drinks. Choose Pro when you need to estimate ingredient spend or hand a prep sheet to someone else.</p>
+    </div>
+    <div class="plan-grid">
+      <article class="plan">
+        <h3>Free</h3>
+        <p>The cocktail library and tools for your home bar or daily shift.</p>
+        <ul>
+          <li>Browse classic recipes, create your own, and save favorites.</li>
+          <li>Track ingredients and bottles by barcode or manual entry. See what you can make and add missing ingredients to a shopping list.</li>
+          <li>Scale batches up to <strong>24 servings</strong>, switch between oz and ml, and use haptic timers.</li>
+          <li>Ask the offline Bar Assistant about recipes, inventory, and supported substitutions. Keep a local venue check-in.</li>
+        </ul>
+      </article>
+      <article class="plan pro">
+        <h3>PourSTL Pro</h3>
+        <p>Everything in Free, plus tools for pricing and prepping drinks at volume.</p>
+        <ul>
+          <li><strong>Recipe costing.</strong> Enter package prices and yields once to reuse them across recipes. See the estimated ingredient cost per drink and per batch.</li>
+          <li><strong>Batches up to 200 servings.</strong> Set your guest count and see the scaled quantities in your preferred units.</li>
+          <li><strong>CSV prep sheets.</strong> Export scaled quantities, ingredient notes, and optional items to share with your crew or open in a spreadsheet.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="plan-note">PourSTL Pro is an optional iPhone subscription. Public downloads and purchases open with the App Store release.</p>
   </div>
 </section>
 
@@ -806,19 +848,19 @@
     </div>
     <details>
       <summary>Can I download PourSTL today?</summary>
-      <p>You can <a href="try.html">try six recipes in your browser</a> now, with inventory matching, scaling, and a shopping list. This browser demo is separate from the iPhone app, which is still in development. A public App Store or TestFlight link has not been announced. <a href="https://github.com/aturnbough93-hue/PourSTL">Follow the project on GitHub</a> for release updates.</p>
+      <p>The iPhone download will be linked here when PourSTL is available on the App Store. You can <a href="try.html">try six recipes in your browser</a> today with inventory matching, scaling, and a shopping list.</p>
     </details>
     <details>
       <summary>What works without an account or connection?</summary>
-      <p>The core stores recipes, inventory, favorites, shopping lists, venue check-ins, and preferences on your device. Search, matching, scaling, timers, and barcode scanning run locally. The camera reads barcodes on the device; images are not stored or sent. The offline Bar Assistant answers supported recipe and inventory questions using the same local library. Cloud sync, voice search, and team features are planned.</p>
+      <p>Recipes, inventory, favorites, shopping lists, venue check-ins, preferences, and ingredient prices are stored on the iPhone. Search, matching, scaling, timers, barcode scanning, and the Bar Assistant run on the device. Starting or restoring a Pro subscription uses Apple’s App Store.</p>
     </details>
     <details>
       <summary>What can the Bar Assistant help with?</summary>
-      <p>In the iPhone development build, ask what you can make, which ingredients a recipe is missing, how to scale a recipe, or about supported substitutions. Answers follow rules using recipes and inventory on your phone. It does not contact an AI service or search the web, and it cannot check allergies or guarantee that a substitution suits your guest.</p>
+      <p>Ask what you can make, which ingredients a recipe is missing, how to scale a recipe, or about supported substitutions. The assistant answers using the recipes and inventory on your phone. Check ingredients and substitutions with your guests before serving.</p>
     </details>
     <details>
-      <summary>Is PourSTL Pro available to purchase?</summary>
-      <p>Pro purchase and restore flows are being tested with Apple’s local StoreKit configuration. A public subscription is not available yet. Recipes, inventory, shopping lists, timers, barcode scanning, and venue check-in remain free. The browser demo has no purchases.</p>
+      <summary>What does the Pro cost estimate include?</summary>
+      <p>Pro totals the recipe ingredients you’ve priced and flags any unpriced or unmeasured lines. Add labor, waste, and unlisted garnishes separately when setting a menu price.</p>
     </details>
     <details>
       <summary>Does “can make” check amounts or allergies?</summary>
@@ -833,13 +875,10 @@
 
 <section class="cta-final" id="get">
   <div class="wrap">
-    <h2>Ready when the rush hits.</h2>
-    <p>PourSTL is in active development for iPhone. The repo is where it happens.</p>
-    <a class="appstore-btn" href="https://github.com/aturnbough93-hue/PourSTL">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5L2 12l6 7M16 5l6 7-6 7M14 3l-4 18"/></svg>
-      <span style="text-align:left"><span class="as-small">Currently in development</span><br><span class="as-big">View on GitHub</span></span>
-    </a>
-    <p class="soon-note">No public App Store or TestFlight download is available yet. Follow development on GitHub.</p>
+    <h2>Try a pour in your browser.</h2>
+    <p>Stock your bar, pick a classic, and see how PourSTL helps you get to the first pour.</p>
+    <a class="btn btn-primary" href="try.html">Open the browser demo</a>
+    <p class="soon-note">The public iPhone download opens with the App Store release.</p>
   </div>
 </section>
 
@@ -855,6 +894,7 @@
       <div class="foot-links">
         <a href="try.html">Try PourSTL</a>
         <a href="#features">Features</a>
+        <a href="#plans">Free &amp; Pro</a>
         <a href="#screens">Screens</a>
         <a href="#bar">Bar</a>
         <a href="#history">History</a>
