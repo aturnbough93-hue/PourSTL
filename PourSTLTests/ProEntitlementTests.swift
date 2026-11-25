@@ -244,18 +244,23 @@ final class ProEntitlementStoreTests: XCTestCase {
         }
     }
 
-    /// start() reads currentEntitlements with no limit of its own. The task
-    /// keeps the store alive if it returns late; the caller still stops it.
     private func start(_ store: ProEntitlementStore) async throws {
+        try await bounded("ProEntitlementStore.start()") { await store.start() }
+    }
+
+    private func bounded(
+        _ description: String,
+        _ operation: @escaping @MainActor () async -> Void
+    ) async throws {
         let limit = StoreKitEntitlementReader.defaultTimeoutSeconds
         let finished: Bool? = await raceAgainstDeadline(nanoseconds: UInt64(limit) * 1_000_000_000) {
-            await store.start()
+            await operation()
             return true
         }
         guard finished != nil else {
             entitlementReadIsStuck = true
             Self.storeKitStalled = true
-            throw StoreKitFixtureFailure("ProEntitlementStore.start() did not finish within \(limit) seconds")
+            throw StoreKitFixtureFailure("\(description) did not finish within \(limit) seconds")
         }
     }
 
@@ -392,19 +397,21 @@ final class ProEntitlementStoreTests: XCTestCase {
     }
 
     func testRestoreFindsExternalPurchase() async throws {
+        let store = self.store!
         _ = try await session.buyProduct(identifier: ProProductID.yearly)
-        let present = try await waitUntil { [store = self.store!] in
+        let present = try await waitUntil { [store] in
             await store.refreshEntitlements()
             return store.isPro
         }
         XCTAssertTrue(present)
-        await store.restore()
+        try await bounded("ProEntitlementStore.restore()") { await store.restore() }
         XCTAssertEqual(store.restoreStatus, .restored)
         XCTAssertTrue(store.isPro)
     }
 
     func testRestoreWithNoSubscription() async throws {
-        await store.restore()
+        let store = self.store!
+        try await bounded("ProEntitlementStore.restore()") { await store.restore() }
         XCTAssertEqual(store.restoreStatus, .nothingToRestore)
         XCTAssertFalse(store.isPro)
     }
