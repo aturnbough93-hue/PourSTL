@@ -114,7 +114,7 @@
       remove.setAttribute('aria-label', 'Remove ' + name + ' from shopping list');
       remove.addEventListener('click', () => {
         state.shopping = state.shopping.filter(item => item !== id);
-        renderShopping();
+        render();
         save();
         $('shopping-name').focus({ preventScroll: true });
         feedback(name + ' removed from shopping list.');
