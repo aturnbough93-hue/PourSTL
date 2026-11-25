@@ -109,22 +109,47 @@ final class ProEntitlementLogicTests: XCTestCase {
     }
 
     func testFreeOfflineFeaturesAreNeverLocked() {
-        XCTAssertTrue(ProGate.freeOffline.isDisjoint(with: ProGate.proPlaceholders))
+        XCTAssertTrue(ProGate.freeOffline.isDisjoint(with: ProGate.paid))
         XCTAssertEqual(
             Set(PourCapability.allCases),
-            ProGate.freeOffline.union(ProGate.proPlaceholders)
+            ProGate.freeOffline.union(ProGate.paid)
         )
         XCTAssertTrue(ProGate.freeOffline.contains(.barcodeScanner))
         XCTAssertTrue(ProGate.freeOffline.contains(.venueCheckIn))
         XCTAssertTrue(ProGate.freeOffline.contains(.aiAssistant))
-        XCTAssertFalse(ProGate.proPlaceholders.contains(.barcodeScanner))
-        XCTAssertFalse(ProGate.proPlaceholders.contains(.aiAssistant))
-        XCTAssertFalse(ProGate.plannedFeatures.contains { $0.id == "assistant" })
-        XCTAssertFalse(ProGate.placeholdersArePaywalled)
-        for capability in PourCapability.allCases {
+        for capability in ProGate.freeOffline {
             XCTAssertFalse(ProGate.isLocked(capability, isPro: false), capability.rawValue)
+        }
+        XCTAssertEqual(ProGate.paid, [.recipeCosting, .largeBatches, .batchExport])
+        for capability in ProGate.paid {
+            XCTAssertTrue(ProGate.isLocked(capability, isPro: false), capability.rawValue)
             XCTAssertFalse(ProGate.isLocked(capability, isPro: true), capability.rawValue)
         }
+    }
+
+    func testRecipeCostingReusesBottlePriceAcrossVolumeUnits() {
+        let oz = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 1, unit: "oz"))
+        let ml = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 29.5735, unit: "ml"))
+        let unmeasured = RecipeCostLine(ingredient: IngredientLine(name: "Gin", amount: 1, unit: "top up"))
+        let price = IngredientPackagePrice(price: 30, yield: 750)
+        let prices = [oz.priceKey(currency: "USD"): price]
+
+        XCTAssertEqual(oz.priceKey(currency: "USD"), ml.priceKey(currency: "USD"))
+        XCTAssertEqual(oz.cost(in: prices, currency: "USD"), ml.cost(in: prices, currency: "USD"))
+        XCTAssertEqual(NSDecimalNumber(decimal: oz.cost(in: prices, currency: "USD") ?? 0).doubleValue, 1.18294, accuracy: 0.00001)
+        XCTAssertNil(oz.cost(in: prices, currency: "EUR"))
+        XCTAssertNil(unmeasured.cost(in: prices, currency: "USD"))
+        XCTAssertNil(IngredientPackagePrice(price: 30, yield: 0).cost(for: 1))
+    }
+
+    func testBatchPrepCSVScalesIngredientsAndEscapesCells() {
+        let recipe = Recipe(name: "Event, \"special\"")
+        recipe.ingredients = [
+            IngredientLine(name: "=test", amount: 1.5, unit: "oz", note: "stir, chill", isOptional: true),
+        ]
+        let csv = BatchPrepSheet.csv(for: recipe, servings: 100, unit: .oz)
+        XCTAssertTrue(csv.contains("\"Event, \"\"special\"\"\",\"100\",\"'=test\",\"150 oz\",\"Yes\",\"stir, chill\""))
+        XCTAssertTrue(csv.hasSuffix("\r\n"))
     }
 
     func testPurchaseResultsMapToVisibleStates() {

@@ -1,10 +1,197 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
+
+private struct RecipeServiceTools: View {
+    let recipe: Recipe
+    @Binding var servings: Int
+    let unit: UnitPreference
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(AppSettings.self) private var settings
+    @Environment(ProEntitlementStore.self) private var entitlement
+    @State private var exporting = false
+    @State private var exportError = false
+
+    private var currency: String { locale.currency?.identifier ?? "USD" }
+    private var activeServings: Int { min(max(servings, 1), RecipeScaling.proMaximumServings) }
+    private var batchSize: Binding<Int> {
+        Binding(get: { activeServings }, set: { servings = $0 })
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if entitlement.isPro {
+                    batchSection
+                    costingSection
+                }
+            }
+            .navigationTitle("Costing & Batch Prep")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .fileExporter(
+                isPresented: $exporting,
+                document: entitlement.isPro ? BatchPrepDocument(
+                    content: BatchPrepSheet.csv(for: recipe, servings: activeServings, unit: unit)
+                ) : nil,
+                contentType: .commaSeparatedText,
+                defaultFilename: "PourSTL Batch Prep"
+            ) { result in
+                if case .failure = result { exportError = true }
+            }
+            .alert("Prep sheet couldn’t be exported", isPresented: $exportError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Choose another location and try again.")
+            }
+        }
+    }
+
+    private var batchSection: some View {
+        Section {
+            Picker("Servings", selection: batchSize) {
+                ForEach(RecipeScaling.minimumServings...RecipeScaling.proMaximumServings, id: \.self) { count in
+                    Text(count.formatted()).tag(count)
+                }
+            }
+            .pickerStyle(.navigationLink)
+            if !ProGate.isLocked(.batchExport, isPro: entitlement.isPro) {
+                Button("Export prep sheet (CSV)", systemImage: "square.and.arrow.up") { exporting = true }
+                    .disabled(recipe.sortedIngredients.isEmpty)
+            }
+        } header: {
+            Text("Batch prep")
+        } footer: {
+            Text("The prep sheet includes scaled ingredient measures, optional ingredients, and ingredient notes.")
+        }
+    }
+
+    private var costingSection: some View {
+        let ingredients = recipe.sortedIngredients
+        let costs = ingredients.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
+        let perDrink = costs.reduce(Decimal.zero, +)
+        let isComplete = !ingredients.isEmpty && costs.count == ingredients.count
+        return Section {
+            if !costs.isEmpty {
+                LabeledContent(isComplete ? "Per drink" : "Priced per drink", value: money(perDrink))
+                LabeledContent(isComplete ? "Batch total" : "Priced batch subtotal", value: money(perDrink * Decimal(activeServings)))
+            }
+            if !isComplete {
+                Text("\(costs.count) of \(ingredients.count) ingredient lines priced")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(ingredients) { ingredient in
+                let line = RecipeCostLine(ingredient: ingredient)
+                if ingredient.amount > 0 && ingredient.measure.unit != .topUp {
+                    let key = line.priceKey(currency: currency)
+                    NavigationLink {
+                        IngredientPriceEditor(line: line, currency: currency, existing: settings.ingredientPrices[key])
+                    } label: {
+                        LabeledContent(ingredient.name, value: line.cost(in: settings.ingredientPrices, currency: currency)
+                            .map(money) ?? "Add price")
+                    }
+                } else {
+                    LabeledContent(ingredient.name, value: "Unmeasured")
+                }
+            }
+        } header: {
+            Text("Ingredient costing")
+        } footer: {
+            Text("Enter what you paid for each package and its usable yield. Prices are saved on this device and reused in recipes with the same ingredient and unit. Estimates cover priced ingredient lines, including optional ones when priced. Add labor, waste, and unlisted garnishes separately.")
+        }
+    }
+
+    private func money(_ amount: Decimal) -> String {
+        amount.formatted(.currency(code: currency).locale(locale))
+    }
+}
+
+private struct IngredientPriceEditor: View {
+    let line: RecipeCostLine
+    let currency: String
+    let existing: IngredientPackagePrice?
+
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @State private var price = ""
+    @State private var yield = ""
+
+    private var package: IngredientPackagePrice? {
+        let strategy = Decimal.FormatStyle(locale: locale).parseStrategy
+        guard let price = try? strategy.parse(price), let yield = try? strategy.parse(yield),
+              (0...1_000_000_000).contains(price), (0.000001...1_000_000_000).contains(yield) else { return nil }
+        return IngredientPackagePrice(price: price, yield: yield)
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Package price (\(currency))", text: $price)
+                    .keyboardType(.decimalPad)
+                TextField("Package yield (\(line.unit))", text: $yield)
+                    .keyboardType(.decimalPad)
+            } footer: {
+                Text("For a bottle, use its volume. For other ingredients, enter how many \(line.unit) the package provides.")
+            }
+            if existing != nil {
+                Button("Remove saved price", role: .destructive) {
+                    settings.ingredientPrices.removeValue(forKey: line.priceKey(currency: currency))
+                    dismiss()
+                }
+            }
+        }
+        .navigationTitle(line.ingredient.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    guard let package else { return }
+                    settings.ingredientPrices[line.priceKey(currency: currency)] = package
+                    dismiss()
+                }
+                .disabled(package == nil)
+            }
+        }
+        .onAppear {
+            guard let existing else { return }
+            let format = Decimal.FormatStyle(locale: locale).grouping(.never).precision(.fractionLength(0...12))
+            price = existing.price.formatted(format)
+            yield = existing.yield.formatted(format)
+        }
+    }
+}
+
+private struct BatchPrepDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.commaSeparatedText]
+    let content: String
+
+    init(content: String) {
+        self.content = content
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents,
+              let content = String(data: data, encoding: .utf8) else { throw CocoaError(.fileReadCorruptFile) }
+        self.content = content
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(content.utf8))
+    }
+}
 
 struct RecipeDetailView: View {
     @Bindable var recipe: Recipe
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
+    @Environment(ProEntitlementStore.self) private var entitlement
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var inventory: [InventoryItem]
@@ -14,6 +201,8 @@ struct RecipeDetailView: View {
     @State private var unitOverride: UnitPreference? = nil
     @State private var showTimer = false
     @State private var showEdit = false
+    @State private var showServiceTools = false
+    @State private var showPro = false
     @State private var addedToList = false
     @State private var shoppingConfirmationTask: Task<Void, Never>?
     @State private var showSaveError = false
@@ -21,7 +210,12 @@ struct RecipeDetailView: View {
 
     private var effectiveUnit: UnitPreference { unitOverride ?? settings.unit }
     private var match: RecipeMatch { RecipeEngine.match(recipe, inventory: inventory) }
-    private var scaleFactor: Double { Double(servings) }
+    private var maximumServings: Int {
+        ProGate.isLocked(.largeBatches, isPro: entitlement.isPro)
+            ? RecipeScaling.maximumServings : RecipeScaling.proMaximumServings
+    }
+    private var activeServings: Int { min(servings, maximumServings) }
+    private var scaleFactor: Double { Double(activeServings) }
     private var adaptiveRow: AnyLayout {
         dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
@@ -42,6 +236,7 @@ struct RecipeDetailView: View {
                     instructionsSection
                     if !recipe.isCustom { variationAction }
                     shoppingAction
+                    serviceToolsAction
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 16)
@@ -71,6 +266,14 @@ struct RecipeDetailView: View {
         .sheet(isPresented: $showTimer) { TimerSheet(recipeName: recipe.name) }
         .sheet(isPresented: $showEdit) {
             RecipeEditorView(recipe: recipe, makingVariation: !recipe.isCustom)
+        }
+        .sheet(isPresented: $showServiceTools) {
+            RecipeServiceTools(recipe: recipe, servings: $servings, unit: effectiveUnit)
+        }
+        .sheet(isPresented: $showPro) { ProUpsellView() }
+        .onChange(of: maximumServings) { _, limit in
+            servings = min(servings, limit)
+            if !entitlement.isPro { showServiceTools = false }
         }
         .alert(saveErrorTitle, isPresented: $showSaveError) {
             Button("OK", role: .cancel) {}
@@ -166,7 +369,7 @@ struct RecipeDetailView: View {
     private var scalingControls: some View {
         adaptiveRow {
             VStack(alignment: .leading, spacing: 4) {
-                Text(servings == 1 ? "Servings" : "Batch of \(servings)")
+                Text(activeServings == 1 ? "Servings" : "Batch of \(activeServings)")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(PourColor.textSecondary)
                 HStack(spacing: 4) {
@@ -184,24 +387,24 @@ struct RecipeDetailView: View {
                     .accessibilityLabel("Decrease servings")
                     .accessibilityAddTraits(.isButton)
 
-                    Text("\(servings)")
+                    Text("\(activeServings)")
                         .font(.title3.weight(.semibold).monospacedDigit())
                         .foregroundStyle(PourColor.textPrimary)
                         .frame(minWidth: 32)
-                        .accessibilityLabel("Servings, \(servings)")
+                        .accessibilityLabel("Servings, \(activeServings)")
                         .accessibilityAddTraits(.updatesFrequently)
 
                     Button {
-                        if servings < RecipeScaling.maximumServings { servings += 1 }
+                        if servings < maximumServings { servings += 1 }
                         Haptics.selection()
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundStyle(servings < RecipeScaling.maximumServings ? PourColor.accent : PourColor.textTertiary)
+                            .foregroundStyle(servings < maximumServings ? PourColor.accent : PourColor.textTertiary)
                             .frame(minWidth: 44, minHeight: 44)
                             .contentShape(Rectangle())
                     }
-                    .disabled(servings >= RecipeScaling.maximumServings)
+                    .disabled(servings >= maximumServings)
                     .accessibilityLabel("Increase servings")
                     .accessibilityAddTraits(.isButton)
                 }
@@ -424,11 +627,27 @@ struct RecipeDetailView: View {
             "• \($0.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)) \($0.name)"
         }
         return """
-        \(recipe.name) — serves \(servings)
+        \(recipe.name) — serves \(activeServings)
         \(lines.joined(separator: "\n"))
 
         \(recipe.instructions)
         """
+    }
+
+    private var serviceToolsAction: some View {
+        Button {
+            if ProGate.isLocked(.recipeCosting, isPro: entitlement.isPro) {
+                showPro = true
+            } else {
+                showServiceTools = true
+            }
+        } label: {
+            Label("Costing & Batch Prep", systemImage: entitlement.isPro ? "chart.bar" : "lock")
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .tint(PourColor.accent)
+        .accessibilityHint(entitlement.isPro ? "Opens service tools" : "Requires PourSTL Pro")
     }
 
     private func actionButton(_ symbol: String, label: String, selected: Bool = false, action: @escaping () -> Void) -> some View {

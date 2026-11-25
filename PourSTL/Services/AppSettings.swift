@@ -39,12 +39,22 @@ final class AppSettings {
         didSet { defaults.set(checkedInVenueID, forKey: Keys.venue) }
     }
 
+    var ingredientPrices: [String: IngredientPackagePrice] {
+        didSet {
+            if let data = try? JSONEncoder().encode(ingredientPrices) {
+                defaults.set(data, forKey: Keys.ingredientPrices)
+            }
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.appearance = AppAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .system
         self.unit = UnitPreference(rawValue: defaults.string(forKey: Keys.unit) ?? "") ?? .oz
         self.hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
         self.checkedInVenueID = defaults.string(forKey: Keys.venue)
+        self.ingredientPrices = defaults.data(forKey: Keys.ingredientPrices)
+            .flatMap { try? JSONDecoder().decode([String: IngredientPackagePrice].self, from: $0) } ?? [:]
     }
 
     private enum Keys {
@@ -52,5 +62,6 @@ final class AppSettings {
         static let unit = "pour.unit"
         static let onboarding = "pour.onboardingDone"
         static let venue = "pour.checkedInVenueID"
+        static let ingredientPrices = "pour.ingredientPrices"
     }
 }

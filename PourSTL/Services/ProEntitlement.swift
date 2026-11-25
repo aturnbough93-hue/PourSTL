@@ -29,7 +29,7 @@ enum ProEntitlementDecision {
     }
 }
 
-/// Capabilities that exist in the app today, plus the planned Pro surfaces.
+/// Launch capabilities and their access tier.
 enum PourCapability: String, CaseIterable, Equatable {
     case recipes
     case inventory
@@ -41,48 +41,35 @@ enum PourCapability: String, CaseIterable, Equatable {
     case barcodeScanner
     case venueCheckIn
     case aiAssistant
-    case aiVideo
-    case costingExport
-    case sharedTeams
-    case cloudSync
+    case recipeCosting
+    case largeBatches
+    case batchExport
 }
 
-struct ProPlannedFeature: Identifiable, Equatable {
+struct ProFeature: Identifiable, Equatable {
     let id: String
     let symbol: String
     let text: String
 }
 
-/// What a missing purchase is allowed to hide.
-/// Free offline tools, including barcode scanning, stay available.
-/// Pro placeholders are not paywalled in this build because they are not shipped.
 enum ProGate {
-    static let placeholdersArePaywalled = false
-
     static let freeOffline: Set<PourCapability> = [
         .recipes, .inventory, .shoppingList, .timers, .customRecipes,
         .search, .settings, .barcodeScanner, .venueCheckIn, .aiAssistant,
     ]
 
-    static let proPlaceholders: Set<PourCapability> = [
-        .aiVideo, .costingExport, .sharedTeams, .cloudSync,
+    static let paid: Set<PourCapability> = [
+        .recipeCosting, .largeBatches, .batchExport,
     ]
 
-    static let plannedFeatures: [ProPlannedFeature] = [
-        ProPlannedFeature(id: "video", symbol: "video", text: "AI video generation for technique demos"),
-        ProPlannedFeature(id: "costing", symbol: "square.stack.3d.up", text: "Bottle-level tracking, costing and export"),
-        ProPlannedFeature(id: "teams", symbol: "person.2", text: "Shared inventory and venue teams"),
-        ProPlannedFeature(id: "cloud", symbol: "icloud", text: "CloudKit sync across devices"),
+    static let features: [ProFeature] = [
+        ProFeature(id: "costing", symbol: "chart.bar", text: "Estimate ingredient cost per drink and per batch"),
+        ProFeature(id: "batches", symbol: "square.resize", text: "Plan batches of up to 200 servings"),
+        ProFeature(id: "export", symbol: "square.and.arrow.up", text: "Export ingredient quantities as a CSV prep sheet"),
     ]
 
     static func isLocked(_ capability: PourCapability, isPro: Bool) -> Bool {
-        if freeOffline.contains(capability) {
-            return false
-        }
-        guard placeholdersArePaywalled, proPlaceholders.contains(capability) else {
-            return false
-        }
-        return !isPro
+        paid.contains(capability) && !isPro
     }
 }
 

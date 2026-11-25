@@ -74,14 +74,15 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
 - `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
 - Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
-- PourSTL Pro upsell using StoreKit 2. The shared PourSTL scheme loads `PourSTL.storekit` so purchase, restore, and entitlement checks run locally. Placeholder product IDs live in `PourSTL/Services/ProProductID.swift`: `bar.pourstl.app.pro.monthly` and `bar.pourstl.app.pro.yearly`. Recipes, inventory, shopping, timers, barcode scanning, and venue check-in stay free with no purchase and no network. Live App Store products are not registered.
+- Free includes the recipe library, recipe editing, inventory, barcode scanning, shopping, timers, venue check-in, and scaling up to 24 servings.
+- PourSTL Pro adds recipe ingredient costing with reusable package prices, scaling up to 200 servings, and CSV batch prep sheets. Price data stays on the device. The StoreKit 2 product IDs are `bar.pourstl.app.pro.monthly` and `bar.pourstl.app.pro.yearly`. The shared scheme uses `PourSTL.storekit` for local testing. Configure the matching products in App Store Connect before selling Pro.
 
 ### Planned (out of scope for this build)
 
 - CloudKit sync, Sign in with Apple. Charging customers still needs Apple Developer enrollment and App Store Connect products; the local StoreKit configuration does not create those.
 - Voice search (Speech framework), agentic commands
 - Live Activities / widgets
-- AI video generation, venue QR onboarding, shift/team workflows, inventory costing/export
+- AI video generation, venue QR onboarding, shift/team workflows
 
 ## Accessibility checklist (spot-checked per spec)
 

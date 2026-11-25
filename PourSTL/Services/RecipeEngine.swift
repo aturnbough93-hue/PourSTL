@@ -13,10 +13,72 @@ struct RecipeMatch {
     var isAlmost: Bool { !canMake && missing.count <= 2 }
 }
 
-/// Serving range used by the recipe screen and the on-device assistant.
+/// The recipe screen also offers an extended range to Pro subscribers.
 enum RecipeScaling {
     static let minimumServings = 1
     static let maximumServings = 24
+    static let proMaximumServings = 200
+}
+
+struct IngredientPackagePrice: Codable {
+    let price: Decimal
+    let yield: Decimal
+
+    func cost(for quantity: Decimal) -> Decimal? {
+        guard !price.isNaN, !yield.isNaN, !quantity.isNaN,
+              price >= 0, yield > 0, quantity > 0 else { return nil }
+        let cost = price / yield * quantity
+        return cost.isNaN ? nil : cost
+    }
+}
+
+struct RecipeCostLine {
+    let ingredient: IngredientLine
+
+    private var volumeInMilliliters: Double? {
+        let unit = ingredient.measure.unit
+        guard BarUnit.primaryVolumeUnits.contains(unit) || unit == .teaspoon else { return nil }
+        if unit == .milliliter { return ingredient.amount }
+        return unit.ouncesPerUnit.map { ingredient.amount * $0 * 29.5735 }
+    }
+
+    var unit: String {
+        if volumeInMilliliters != nil { return "ml" }
+        let unit = ingredient.measure.unit
+        return unit == .each ? "units" : unit.displayName
+    }
+
+    func priceKey(currency: String) -> String {
+        "\(currency)|\(unit)|\(ingredient.canonicalName)"
+    }
+
+    func cost(in prices: [String: IngredientPackagePrice], currency: String) -> Decimal? {
+        let amount = volumeInMilliliters ?? ingredient.amount
+        guard amount.isFinite, amount > 0, amount <= 1_000_000_000,
+              ingredient.measure.unit != .topUp else { return nil }
+        return prices[priceKey(currency: currency)]?.cost(for: Decimal(amount))
+    }
+}
+
+enum BatchPrepSheet {
+    static func csv(for recipe: Recipe, servings: Int, unit: UnitPreference) -> String {
+        let header = ["Recipe", "Servings", "Ingredient", "Batch measure", "Optional", "Ingredient note"]
+        let rows = recipe.sortedIngredients.map { line in
+            [
+                recipe.name, String(servings), line.name,
+                line.measure.scaled(by: Double(servings)).formatted(for: unit),
+                line.isOptional ? "Yes" : "No", line.note ?? "",
+            ]
+        }
+        return ([header] + rows).map { $0.map(cell).joined(separator: ",") }.joined(separator: "\r\n") + "\r\n"
+    }
+
+    private static func cell(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let needsPrefix = trimmed.first.map { "=+-@".contains($0) } ?? false
+        let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+        return "\"\(needsPrefix ? "'" : "")\(escaped)\""
+    }
 }
 
 enum RecipeEngine {
