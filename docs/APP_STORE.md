@@ -27,7 +27,7 @@ PourSTL keeps recipes, bar inventory, and ingredient prices on your iPhone. An a
 
 ## Before submission
 
-- Capture screenshots from the signed candidate showing Home and My Bar, a scaled recipe, and Pro costing and batch prep. Verify Apple’s screenshot requirements for the selected devices.
+- Capture screenshots of the release interface showing Home and My Bar, a scaled recipe, and Pro costing and batch prep. Follow [Apple’s screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications) for the selected devices.
 - Confirm the age-rating questionnaire for alcohol references, export compliance, privacy answers, support contact, build number, and the legal URLs in App Store Connect.
 - Verify purchase, restore and expiration on Apple’s sandbox using the configured products. Verify barcode scanning, haptics and accessibility on a physical iPhone.
 - For Andrew’s direct install, use a registered iPhone and an ad hoc provisioning profile with the matching distribution signing identity. See [Apple’s ad hoc provisioning instructions](https://developer.apple.com/help/account/provisioning-profiles/create-an-ad-hoc-provisioning-profile/) and [the testing guide](PERSONAL_TESTING.md).
