@@ -327,13 +327,14 @@ final class BartenderAssistantTests: XCTestCase {
         XCTAssertFalse(reply.text.hasPrefix("Daiquiri"))
     }
 
-    func testScalingClampsToRecipeScreenMaximum() async throws {
+    func testScalingClampsToAssistantMaximumAndPointsToPro() async throws {
         let negroni = recipe(name: "Negroni", lines: [("Gin", 1, "oz", false)])
         let library = AssistantLibrary(recipes: [negroni], inventory: [], preferredUnit: .oz)
         let reply = try await LocalBartenderAssistant().answer("Scale the Negroni for 40", in: library)
         assertOnDevice(reply)
         let expected = Measure(amount: 1, unit: .ounce).scaled(by: Double(RecipeScaling.maximumServings)).formatted(for: .oz)
-        XCTAssertTrue(reply.text.contains("recipe screen"))
+        XCTAssertTrue(reply.text.contains("open the recipe screen and use PourSTL Pro"))
+        XCTAssertTrue(reply.text.contains("up to \(RecipeScaling.proMaximumServings) servings"))
         XCTAssertTrue(reply.text.contains("\(RecipeScaling.maximumServings) servings"))
         XCTAssertTrue(reply.text.contains("\(expected) Gin"))
     }
@@ -363,7 +364,7 @@ final class BartenderAssistantTests: XCTestCase {
         }
         let capped = try await LocalBartenderAssistant().answer("How do I make a Negroni for 40?", in: library)
         XCTAssertTrue(capped.text.contains("\(RecipeScaling.maximumServings) oz Gin"))
-        XCTAssertTrue(capped.text.contains("stops there"))
+        XCTAssertTrue(capped.text.contains("The Bar Assistant scales up to \(RecipeScaling.maximumServings) servings"))
     }
 
     func testDuplicateRecipeNamesRequireRenamingInsteadOfChoosingFirst() async throws {

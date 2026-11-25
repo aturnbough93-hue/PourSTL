@@ -93,7 +93,7 @@ struct ProUpsellView: View {
                 .font(.pourTitle)
                 .foregroundStyle(PourColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("A subscription is optional. Everything available today is free and works offline.")
+            Text("Price your drinks and plan bigger batches for service and events.")
                 .font(.body)
                 .foregroundStyle(PourColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -102,7 +102,7 @@ struct ProUpsellView: View {
 
     private var featureList: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ForEach(ProGate.plannedFeatures) { feature in
+            ForEach(ProGate.features) { feature in
                 Label {
                     Text(feature.text)
                 } icon: {
@@ -113,7 +113,7 @@ struct ProUpsellView: View {
                 .foregroundStyle(PourColor.textSecondary)
                 .accessibilityLabel(feature.text)
             }
-            Text("These features are planned. Everything available today is free and works offline.")
+            Text("Recipes, inventory, shopping, timers, and scaling up to 24 servings are included free.")
                 .font(.caption)
                 .foregroundStyle(PourColor.textTertiary)
                 .multilineTextAlignment(.center)
@@ -148,7 +148,7 @@ struct ProUpsellView: View {
                     .disabled(controlsDisabled)
                     .opacity(controlsDisabled ? 0.6 : 1)
                     .accessibilityLabel(offer.title)
-                    .accessibilityHint("Starts an App Store subscription. Today’s features stay free.")
+                    .accessibilityHint("Starts a PourSTL Pro subscription through the App Store.")
                     .accessibilityAddTraits(.isButton)
                 }
             } else if store.productsState == .unavailable {
