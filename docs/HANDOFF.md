@@ -16,7 +16,7 @@ Product positioning: PourSTL is a bartending app, with connected features planne
 
 ## Hosting
 
-- The canonical site **https://pourstl.com** is served by the GitHub-connected Cloudflare Pages project **pourstl**, including `/privacy` and `/support`. Cloudflare builds branch previews and deploys `main` to production. See the website README for the build settings and verification steps.
+- The canonical site **https://pourstl.com** is served by the GitHub-connected Cloudflare Pages project **pourstl**, including the browser app at `/try` and the `/privacy` and `/support` pages. Cloudflare builds branch previews and deploys `main` to production. See the website README for the build settings and verification steps.
 - **https://pourstl.com** is registered with **IONOS SE** and is already the canonical public URL. This repo does not change DNS or add redirects. The assigned Pages hostname stays `pourstl.pages.dev` and is not the canonical URL.
 - Wrangler currently has account/user read and Pages write permissions. An earlier zone-create attempt failed with missing `com.cloudflare.api.account.zone.create`. This change does not edit DNS or nameservers.
 - Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and `matt.ns.cloudflare.com`. The earlier IONOS nameservers were `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, and `ns1122.ui-dns.de`.
@@ -53,14 +53,14 @@ it cannot leak into the free UI scenario. **The final UI rerun must pass before
 release/merge.** A draft simulator prerelease has verified assets attached but
 is not public yet.
 
-Local website checks pass: 10 static, 9 Cloudflare build and 10 demo logic tests.
-The PourSTL site and 1200×630 social image passed 108 live browser checks on the
-working Pages address, including desktop/mobile layouts, demo interactions,
-assets, security headers, unknown 404, and metadata.
+PourSTL Web opens from the homepage and works without an account. It uses the
+native seed catalog and saves custom recipes, favorites, inventory, shopping,
+and preferences in the browser. The service worker provides offline access
+after it caches the app. See the website README for build and verification steps.
 
 See [personal testing](PERSONAL_TESTING.md) for the downloadable simulator build
 and manual checklist. The owner currently has neither a Mac nor an Apple
-Developer account. The browser demo works on iPhone now; native simulator apps
+Developer account. PourSTL Web runs in a browser. Native simulator apps
 need a Mac with Xcode. Physical iPhone installation needs Xcode provisioning or
 an Apple Developer/TestFlight release. No iPhone installer or TestFlight link
 has been delivered.

@@ -9,6 +9,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import re
 import subprocess
+import sys
 import unittest
 from urllib.parse import unquote, urlsplit
 import xml.etree.ElementTree as ET
@@ -242,13 +243,14 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn("support@", lowered)
         self.assertNotIn("@example.com", lowered)
 
-    def test_homepage_explains_both_tiers_and_links_to_the_demo(self):
+    def test_homepage_explains_both_tiers_and_links_to_the_web_app(self):
         homepage = self.sources[SITE / "index.html"]
         plans = re.search(r'<section id="plans".*?</section>', homepage, flags=re.DOTALL)
         self.assertIsNotNone(plans)
         for label in ("<h3>Free</h3>", "<h3>PourSTL Pro</h3>", "24 servings", "200 servings", "Recipe costing", "CSV prep sheets"):
             self.assertIn(label, plans.group(0))
-        self.assertIn('class="btn btn-primary" href="try.html">Open the browser demo', homepage)
+        self.assertIn('class="btn btn-primary" href="try.html">Open web app', homepage)
+        self.assertIn('href="try.html" class="btn btn-primary">Open web app', homepage)
         self.assertNotIn("hero-photo", homepage)
         self.assertNotIn(">App status<", homepage)
         self.assertEqual(homepage.count(">Related builds<"), 1)
@@ -266,7 +268,7 @@ class WebsiteChecks(unittest.TestCase):
 
     def test_ios_requirement_stays_in_the_footer(self):
         requirement = "PourSTL requires an iPhone running iOS 17 or later."
-        for name in ("index.html", "privacy.html", "try.html", "support.html"):
+        for name in ("index.html", "privacy.html", "support.html"):
             source = self.sources[SITE / name]
             with self.subTest(page=name):
                 footer = re.search(r"<footer\b[^>]*>.*?</footer>", source, flags=re.IGNORECASE | re.DOTALL)
@@ -280,12 +282,16 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn("iOS 17", eyebrow.group(0))
         self.assertNotIn("· ·", eyebrow.group(0))
         self.assertTrue(eyebrow.group(0).startswith('<span class="eyebrow"><span class="eyebrow-text">Built for service'))
+        self.assertNotIn("requires an iPhone", self.sources[SITE / "try.html"])
+
+    def test_web_catalog_stays_in_sync_with_native_recipes(self):
+        subprocess.run([sys.executable, str(SITE.parent / "scripts/export_web_catalog.py"), "--check"], check=True)
 
     def test_website_privacy_discloses_optional_host_analytics(self):
         privacy = self.sources[SITE / "privacy.html"]
         homepage = self.sources[SITE / "index.html"]
         self.assertIn("cookieless Web Analytics", privacy)
-        self.assertIn("does not upload your recipes, inventory, shopping list, or browser demo state", privacy)
+        self.assertIn("does not upload your recipes, inventory, shopping list, or favorites", privacy)
         self.assertIn("cookieless website usage analytics", homepage)
         self.assertNotIn("does not add analytics", privacy)
         self.assertNotIn("website has no analytics scripts", homepage)

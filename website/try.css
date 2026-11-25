@@ -723,6 +723,143 @@ dialog p {
   display: none!important;
 }
 
+.workspace {
+  align-items: start;
+}
+
+.workspace > .panel {
+  width: 100%;
+}
+
+.inventory-list, .recipe-list {
+  max-height: min(50vh, 500px);
+  overflow: auto;
+  padding: 4px;
+  scrollbar-color: var(--border) var(--panel);
+}
+
+.inventory-option, .shopping-item span {
+  overflow-wrap: anywhere;
+}
+
+.filters {
+  flex-wrap: wrap;
+}
+
+.inline-form {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.inline-form input, #inventory-search, #recipe-form input:not([type=checkbox]),
+#recipe-form textarea, #recipe-form select, #timer-seconds {
+  background: var(--panel);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 16px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+}
+
+.inline-form input {
+  flex: 1;
+}
+
+#inventory-search {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.shopping-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.shopping-actions button {
+  min-height: 44px;
+}
+
+.detail-actions {
+  margin: 0 0 12px;
+}
+
+#favorite[aria-pressed=true] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ingredient-note {
+  display: block;
+  color: var(--muted);
+  font-size: .85em;
+}
+
+.recipe-timer {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 18px;
+}
+
+.recipe-timer h2 {
+  font-size: 21px;
+}
+
+#timer-seconds {
+  width: 5.5rem;
+}
+
+#timer-display {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+#recipe-dialog {
+  width: min(95vw, 620px);
+  max-height: 88dvh;
+  overflow-y: auto;
+}
+
+#recipe-form, #recipe-form label {
+  display: grid;
+  gap: 8px;
+}
+
+#recipe-form fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0;
+  min-width: 0;
+  padding: 12px;
+}
+
+.editor-line {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+#recipe-form .editor-line label:has(input[type=checkbox]) {
+  display: flex;
+  align-items: center;
+}
+
+#recipe-form .dialog-actions {
+  flex-wrap: wrap;
+}
+
+#editor-error:empty, #timer-display:empty {
+  display: none;
+}
+
 @media (max-width:1200px) {
   .workspace {
     grid-template-columns: minmax(220px,.85fr) minmax(250px,1fr) minmax(360px,1.65fr);

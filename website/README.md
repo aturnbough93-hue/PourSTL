@@ -119,15 +119,15 @@ the static page uses inline presentation styles; inline scripts are blocked.
 `python3 -m http.server` does not apply these headers. Check the real deployed
 response headers after publishing.
 
-## Interactive testing surface
+## PourSTL Web
 
-`try.html` is a working six-recipe browser demo, with local inventory, search,
-matching, serving/unit controls, and a deduplicated shopping/restocking flow.
-Its state lives only in that browser; it does not sync with the native app.
-Reset demo requests confirmation and clears this demo state. Clipboard failures
-show selectable recipe text instead of claiming a successful copy. The current
-CSP allows Cloudflare Web Analytics and still blocks other remote APIs.
+`/try` opens the web app. It includes the native recipe catalog, custom recipes,
+favorites, recipe matching, inventory, shopping, scaling, and a prep timer.
+It saves state in the browser and migrates existing demo inventory and shopping data.
+Its service worker caches the app after the first load. A production build
+versions the cache using the static site's content.
 
-Run its logic regression suite with `node scripts/test_demo.cjs`. On production,
-test `/try` at `https://pourstl.com/try`. Opening a browser demo does not
-validate native persistence, haptics, iOS sharing, or StoreKit.
+Use `python3 scripts/export_web_catalog.py` to refresh the browser catalog after
+changing the native seed recipes. Run `node scripts/test_demo.cjs` for app logic
+and `python3 scripts/check_website.py` for website checks. Verify the public CTA
+at https://pourstl.com and the app at https://pourstl.com/try.

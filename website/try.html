@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0A0A0C">
-  <title>Try PourSTL — Your bar. Your next drink.</title>
-  <meta name="description" content="Try PourSTL in your browser: stock a starter bar, explore six classic cocktail recipes, scale servings, and build a shopping list. No account needed.">
+  <title>PourSTL Web — Recipes, My Bar, and Shopping</title>
+  <meta name="description" content="Use PourSTL in your browser to find drinks, manage your bar, save custom recipes, scale servings, and make a shopping list. No account needed.">
   <link rel="canonical" href="https://pourstl.com/try.html">
-  <meta property="og:title" content="Try PourSTL — Your bar. Your next drink.">
-  <meta property="og:description" content="Try PourSTL in your browser: stock a starter bar, explore six classic cocktail recipes, scale servings, and build a shopping list. No account needed.">
+  <meta property="og:title" content="PourSTL Web — Recipes, My Bar, and Shopping">
+  <meta property="og:description" content="Find drinks, manage your bar, save custom recipes, and make a shopping list with PourSTL Web.">
   <meta property="og:image" content="https://pourstl.com/assets/og-image.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -16,12 +16,14 @@
   <meta property="og:url" content="https://pourstl.com/try.html">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Try PourSTL — Your bar. Your next drink.">
-  <meta name="twitter:description" content="Try PourSTL in your browser: stock a starter bar, explore six classic cocktail recipes, scale servings, and build a shopping list. No account needed.">
+  <meta name="twitter:title" content="PourSTL Web — Recipes, My Bar, and Shopping">
+  <meta name="twitter:description" content="Find drinks, manage your bar, save custom recipes, and make a shopping list with PourSTL Web.">
   <meta name="twitter:image" content="https://pourstl.com/assets/og-image.jpg">
   <link rel="icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="app.webmanifest">
   <link rel="stylesheet" href="try.css">
+  <script src="recipe-catalog.js" defer></script>
   <script src="demo-core.js" defer></script>
   <script src="try.js" defer></script>
 </head>
@@ -29,38 +31,65 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="app-header">
     <a class="brand" href="./" aria-label="PourSTL home"><img src="assets/brand-icon.png" alt="" width="44" height="44">PourSTL</a>
-    <div class="header-actions"><a href="./" aria-label="Back to PourSTL">Home</a><button type="button" id="reset" class="primary">Reset demo</button></div>
+    <div class="header-actions"><a href="./">Website</a></div>
   </header>
   <main id="main" tabindex="-1">
     <div class="intro">
       <h1>Your bar. Your next drink.</h1>
-      <p class="lead">Explore six classics, stock your bar, and scale a recipe.</p>
-      <p class="local-note" id="storage-note">Browser demo · saved on this browser</p>
+      <p class="lead">Find a cocktail, stock your bar, or write your own recipe.</p>
+      <p class="local-note" id="storage-note">Saved in this browser</p>
     </div>
-    <noscript><p class="notice">This browser demo needs JavaScript. You can still <a href="./">explore PourSTL’s features</a> on the main website.</p></noscript>
+    <noscript><p class="notice">PourSTL Web needs JavaScript. <a href="./">Explore PourSTL’s features</a> on the main website.</p></noscript>
     <div class="workspace" id="workspace" hidden>
       <section class="panel bar-panel" aria-labelledby="bar-title">
         <div class="bar-heading"><h2 id="bar-title">My Bar</h2><button type="button" id="inventory-toggle" class="text-button" aria-expanded="false" aria-controls="inventory-controls">Show ingredients</button></div>
         <div id="inventory-controls">
-          <p class="section-note">Stock the ingredients you have.</p>
+          <form id="stock-form" class="inline-form">
+            <label class="sr-only" for="stock-name">Ingredient to stock</label>
+            <input id="stock-name" name="ingredient" maxlength="80" placeholder="Ingredient to stock" required>
+            <button type="submit" class="secondary">Stock</button>
+          </form>
+          <label for="inventory-search" class="sr-only">Filter ingredients</label>
+          <input id="inventory-search" type="search" placeholder="Filter ingredients">
+          <button type="button" class="text-button" id="starter-bar">Stock a starter bar</button>
           <div id="inventory" class="inventory-list"></div>
+          <p id="inventory-empty" class="section-note" hidden>No matching ingredients.</p>
         </div>
         <section class="shopping-section" aria-labelledby="shopping-title">
           <h2 id="shopping-title">Shopping list</h2>
+          <form id="shopping-form" class="inline-form">
+            <label class="sr-only" for="shopping-name">Item to buy</label>
+            <input id="shopping-name" name="ingredient" maxlength="80" placeholder="Item to buy" required>
+            <button type="submit" class="secondary">Add</button>
+          </form>
           <p class="section-note" id="shopping-empty">No ingredients added yet.</p>
           <ul id="shopping" class="shopping-list"></ul>
         </section>
+        <section class="recipe-timer" aria-labelledby="timer-title">
+          <h2 id="timer-title">Prep timer</h2>
+          <div class="recipe-actions">
+            <label for="timer-seconds">Seconds</label>
+            <input id="timer-seconds" inputmode="numeric" type="number" min="1" max="3600" value="20" required>
+            <button type="button" id="timer-start" class="secondary">Start timer</button>
+            <button type="button" id="timer-stop" class="secondary" hidden>Stop timer</button>
+          </div>
+          <p id="timer-display" role="timer" aria-live="off"></p>
+        </section>
       </section>
       <section class="panel recipes-panel" aria-labelledby="recipes-title">
-        <h2 id="recipes-title">Recipes</h2>
+        <div class="bar-heading"><h2 id="recipes-title">Recipes</h2><button type="button" id="new-recipe" class="text-button">New recipe</button></div>
         <label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="sr-only">Search recipes or ingredients</span><input id="search" type="search" placeholder="Search recipes" autocomplete="off"></label>
-        <div class="filters" role="group" aria-label="Filter recipes by availability"><button type="button" id="all-filter" aria-pressed="true">All drinks</button><button type="button" id="ready-filter" aria-pressed="false">Can make</button></div>
+        <div class="filters" role="group" aria-label="Filter recipes"><button type="button" id="all-filter" aria-pressed="true">All drinks</button><button type="button" id="ready-filter" aria-pressed="false">Can make</button><button type="button" id="favorites-filter" aria-pressed="false">Favorites</button></div>
         <div id="recipes" class="recipe-list"></div>
         <div id="no-results" class="empty-results" hidden><p>No matching drinks.</p><button type="button" id="clear-filters" class="text-button">Clear search and filters</button></div>
       </section>
       <section class="panel detail-panel" aria-labelledby="recipe-title">
         <div id="recipe-media" class="recipe-media"></div>
         <div class="recipe-heading"><h2 id="recipe-title" tabindex="-1">Negroni</h2><p id="recipe-meta" class="section-note"></p><p id="recipe-status" class="recipe-status"></p></div>
+        <div class="recipe-actions detail-actions">
+          <button type="button" class="secondary" id="favorite" aria-pressed="false">Favorite</button>
+          <button type="button" class="secondary" id="edit-recipe" hidden>Edit recipe</button>
+        </div>
         <div class="measure-controls">
           <span class="control-label" id="servings-label">Servings</span>
           <div class="stepper" role="group" aria-labelledby="servings-label"><button type="button" id="less" aria-label="Decrease servings">−</button><output id="servings" aria-label="Number of servings">1</output><button type="button" id="more" aria-label="Increase servings">+</button></div>
@@ -70,16 +99,32 @@
         <dl id="ingredients" class="ingredients"></dl>
         <div class="method"><h2>Method</h2><p id="instructions"></p><p id="garnish" class="garnish"></p></div>
         <div class="recipe-actions"><button type="button" id="copy" class="primary"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="12" height="14" rx="2"/><rect x="3" y="8" width="12" height="14" rx="2"/></svg><span>Copy recipe</span></button><button type="button" id="add-missing" class="secondary">No missing ingredients</button></div>
-        <p class="limits">Ingredient presence only. Amounts and allergens are not checked.</p>
+        <p class="limits">Ingredient matching checks what’s in stock. Check quantities and allergens before serving.</p>
       </section>
     </div>
     <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
     <div id="manual-copy" class="manual-copy" hidden><label for="recipe-copy">Copy recipe text</label><textarea id="recipe-copy" readonly rows="8"></textarea><button type="button" id="close-copy" class="secondary">Close</button></div>
-    <p class="demo-footer">Six recipes for browser testing. This demo is separate from the iPhone app and does not sync with it. <a href="privacy.html">Privacy details</a> · <a href="support.html">Support</a></p>
+    <p class="demo-footer"><a href="privacy.html">Privacy</a> · <a href="support.html">Support</a> · <button type="button" id="reset" class="text-button">Clear app data</button></p>
   </main>
-  <footer class="site-footer">
-    <p>PourSTL requires an iPhone running iOS 17 or later.</p>
-  </footer>
-  <dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Reset your browser demo?</h2><p>This clears this demo’s bar and shopping list from this browser and restores the starter ingredients. It does not change the iPhone app.</p><div class="dialog-actions"><button type="button" id="cancel-reset" class="secondary">Keep my bar</button><button type="button" id="confirm-reset" class="primary">Reset demo</button></div></dialog>
+  <dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Clear PourSTL Web data?</h2><p>This deletes your bar, shopping list, favorites, and custom recipes from this browser.</p><div class="dialog-actions"><button type="button" id="cancel-reset" class="secondary">Keep my data</button><button type="button" id="confirm-reset" class="primary">Clear app data</button></div></dialog>
+  <dialog id="recipe-dialog" aria-labelledby="editor-title">
+    <h2 id="editor-title">New recipe</h2>
+    <form id="recipe-form" method="dialog">
+      <label>Recipe name<input id="editor-name" maxlength="80" required></label>
+      <label>Instructions<textarea id="editor-instructions" maxlength="1500" rows="4" required></textarea></label>
+      <fieldset><legend>Ingredients</legend><div id="editor-ingredients"></div><button type="button" id="add-line" class="secondary">Add ingredient</button></fieldset>
+      <div class="recipe-actions">
+        <label>Glass<input id="editor-glass" maxlength="40"></label>
+        <label>Method<input id="editor-method" maxlength="40"></label>
+      </div>
+      <label>Garnish<input id="editor-garnish" maxlength="100"></label>
+      <p id="editor-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" id="delete-recipe" class="secondary" hidden>Delete recipe</button>
+        <button type="button" id="cancel-recipe" class="secondary">Cancel</button>
+        <button type="submit" class="primary">Save recipe</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>
