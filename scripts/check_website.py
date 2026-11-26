@@ -140,6 +140,12 @@ class WebsiteChecks(unittest.TestCase):
         self.assertNotIn("href", attrs)
         self.assertIn("recipes", page.ids)
 
+    def test_try_css_custom_properties_are_defined(self):
+        css = (SITE / "try.css").read_text()
+        defined = set(re.findall(r"(--[a-z0-9-]+)\s*:", css))
+        referenced = set(re.findall(r"var\(\s*(--[a-z0-9-]+)\s*\)", css))
+        self.assertEqual(referenced - defined, set(), "Undefined CSS custom properties in try.css")
+
     def test_scripts_are_compatible_with_self_only_csp(self):
         for path, page in self.pages.items():
             with self.subTest(page=path.name):
