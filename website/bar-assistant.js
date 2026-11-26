@@ -176,7 +176,7 @@
   ];
 
   const PRIVACY_PHRASES = [
-    'upload', 'send my', 'send this', 'the cloud', 'to cloud', 'cloud sync', 'cloud ai',
+    'upload', 'send my', 'send this', 'to the cloud', 'in the cloud', 'to cloud', 'cloud sync', 'cloud ai', 'cloud server',
     'internet', 'chatgpt', 'openai',
     'api key', 'off this device', 'off the phone', 'remote model', 'remote server',
     'who can see', 'is this private', 'privacy', 'train a model', 'go online',
