@@ -1,4 +1,7 @@
 'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Demo = require('../website/demo-core.js');
@@ -153,4 +156,188 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(state.selected, 'martini');
   assert.deepEqual(Demo.purchase(state, 'gin').inventory, state.inventory);
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
+});
+
+function bootTryPage({ compact = false, singleColumn = false } = {}) {
+  const siteDir = path.join(__dirname, '..', 'website');
+  const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
+  const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
+
+  const doc = { activeElement: null };
+  class FakeElement {
+    constructor(tag, id = '', className = '') {
+      this.tagName = tag.toUpperCase();
+      this.id = id;
+      this.className = className;
+      this.hidden = false;
+      this.disabled = false;
+      this.checked = false;
+      this.value = '';
+      this.textContent = '';
+      this.children = [];
+      this.parentNode = null;
+      this.dataset = {};
+      this.style = {};
+      this.attributes = new Map();
+      this.listeners = new Map();
+      this.focusCount = 0;
+      this.classList = {
+        toggle: (name, force) => {
+          const classes = new Set(this.className.split(/\s+/).filter(Boolean));
+          const add = force === undefined ? !classes.has(name) : Boolean(force);
+          if (add) classes.add(name);
+          else classes.delete(name);
+          this.className = [...classes].join(' ');
+        },
+      };
+    }
+    get firstElementChild() { return this.children[0] || null; }
+    get lastElementChild() { return this.children[this.children.length - 1] || null; }
+    setAttribute(name, value) { this.attributes.set(name, String(value)); }
+    getAttribute(name) { return this.attributes.get(name) ?? null; }
+    addEventListener(type, listener) {
+      if (!this.listeners.has(type)) this.listeners.set(type, []);
+      this.listeners.get(type).push(listener);
+    }
+    remove() {
+      if (!this.parentNode) return;
+      this.parentNode.children = this.parentNode.children.filter(child => child !== this);
+      this.parentNode = null;
+    }
+    append(...nodes) {
+      for (const node of nodes) {
+        if (typeof node === 'string') continue;
+        node.remove();
+        node.parentNode = this;
+        this.children.push(node);
+      }
+    }
+    prepend(...nodes) {
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const node = nodes[i];
+        if (typeof node === 'string') continue;
+        node.remove();
+        node.parentNode = this;
+        this.children.unshift(node);
+      }
+    }
+    replaceChildren(...nodes) {
+      for (const child of this.children) child.parentNode = null;
+      this.children = [];
+      this.append(...nodes);
+    }
+    contains(target) {
+      let current = target;
+      while (current) {
+        if (current === this) return true;
+        current = current.parentNode;
+      }
+      return false;
+    }
+    focus() {
+      doc.activeElement = this;
+      this.focusCount += 1;
+    }
+    querySelector(selector) {
+      const classMatch = /^\.([a-z0-9-]+)$/i.exec(selector);
+      for (const child of this.children) {
+        if (classMatch && child.className.split(/\s+/).includes(classMatch[1])) return child;
+        const found = child.querySelector(selector);
+        if (found) return found;
+      }
+      return null;
+    }
+  }
+
+  const byId = new Map();
+  for (const id of ids) {
+    const el = new FakeElement('div', id);
+    if (id === 'workspace' || id === 'manual-copy') el.hidden = true;
+    byId.set(id, el);
+  }
+  const barPanel = new FakeElement('section', '', 'panel bar-panel');
+  const recipesPanel = new FakeElement('section', '', 'panel recipes-panel');
+  const detailPanel = new FakeElement('section', '', 'panel detail-panel');
+  barPanel.append(byId.get('bar-title'), byId.get('inventory-toggle'), byId.get('inventory-controls'));
+  byId.get('workspace').append(barPanel, recipesPanel, detailPanel);
+
+  const root = new FakeElement('body');
+  root.append(byId.get('workspace'));
+
+  doc.body = root;
+  doc.getElementById = id => byId.get(id) || null;
+  doc.querySelector = selector => root.querySelector(selector);
+  doc.createElement = tag => new FakeElement(tag);
+  doc.createElementNS = (_ns, tag) => new FakeElement(tag);
+  doc.createTextNode = text => ({ textContent: String(text), remove() {}, parentNode: null });
+
+  const mediaQueries = new Map();
+  const makeMediaQuery = (query, initial) => {
+    const listeners = [];
+    const mql = {
+      media: query,
+      matches: initial,
+      addEventListener(type, fn) { if (type === 'change') listeners.push(fn); },
+      setMatches(next) {
+        this.matches = next;
+        for (const fn of listeners) fn({ matches: next, media: query });
+      },
+    };
+    mediaQueries.set(query, mql);
+    return mql;
+  };
+
+  const storage = new Map();
+  const win = {
+    document: doc,
+    navigator: {},
+    localStorage: {
+      getItem: key => (storage.has(key) ? storage.get(key) : null),
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: key => storage.delete(key),
+    },
+    matchMedia(query) {
+      if (mediaQueries.has(query)) return mediaQueries.get(query);
+      if (query.includes('1000px')) return makeMediaQuery(query, compact);
+      if (query.includes('700px')) return makeMediaQuery(query, singleColumn);
+      return makeMediaQuery(query, false);
+    },
+    addEventListener() {},
+    setInterval: () => 0,
+    clearInterval() {},
+    confirm: () => true,
+    crypto: globalThis.crypto,
+  };
+  win.window = win;
+
+  const context = vm.createContext(win);
+  for (const file of ['recipe-catalog.js', 'demo-core.js', 'try.js']) {
+    vm.runInContext(fs.readFileSync(path.join(siteDir, file), 'utf8'), context, { filename: file });
+  }
+  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries };
+}
+
+test('/try starts cleanly and orders panels for desktop and single-column viewports', () => {
+  const desktop = bootTryPage({ compact: false, singleColumn: false });
+  assert.equal(desktop.byId.get('workspace').hidden, false);
+  assert.equal(desktop.byId.get('workspace').firstElementChild, desktop.barPanel);
+  assert.ok(desktop.byId.get('recipes').children.length >= 31);
+
+  const phone = bootTryPage({ compact: true, singleColumn: true });
+  assert.equal(phone.byId.get('workspace').hidden, false);
+  assert.equal(phone.byId.get('workspace').lastElementChild, phone.barPanel);
+
+  // Breakpoint toggle moves My Bar between end and start while preserving focus inside it.
+  const toggle = desktop.byId.get('inventory-toggle');
+  toggle.focus();
+  const focusBefore = toggle.focusCount;
+  const singleColumn = desktop.mediaQueries.get('(max-width: 700px)');
+  singleColumn.setMatches(true);
+  assert.equal(desktop.byId.get('workspace').lastElementChild, desktop.barPanel);
+  assert.equal(desktop.doc.activeElement, toggle);
+  assert.ok(toggle.focusCount > focusBefore);
+
+  singleColumn.setMatches(false);
+  assert.equal(desktop.byId.get('workspace').firstElementChild, desktop.barPanel);
+  assert.equal(desktop.doc.activeElement, toggle);
 });
