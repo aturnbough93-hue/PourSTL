@@ -61,8 +61,8 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - SwiftData persistence (recipes, ingredient lines, inventory, shopping list, venues, favorites)
 - ~30 seeded classic cocktails with measures in oz, dashes, parts, barspoons, countables
 - Home: real-time recipe search across name/ingredient/tag, filter chips, "What can I make" module driven by inventory, drink-card grid, pull-to-refresh
-- Recipe detail: right-aligned monospaced measures, sticky action bar (favorite / scale / timer / share), scaling up to 24 servings, oz ⇄ ml conversion incl. dashes and barspoons, per-recipe unit toggle, one-tap "add missing to shopping list"
-- My Bar: categorized inventory, in/out-of-stock toggles, low-stock flag, search, quick-add missing recipe ingredients, barcode scan with confirm-before-add
+- Recipe detail: right-aligned monospaced measures, sticky action bar (favorite / scale / timer / share), scaling up to 24 servings, oz ⇄ ml conversion incl. dashes and barspoons, per-recipe unit toggle, one-tap "add missing to shopping list". Unstocked required ingredients are marked **Missing**; optional ingredients show **Optional** or **Optional · not stocked**.
+- My Bar: categorized inventory, in/out-of-stock toggles, low-stock flag, search, quick-add missing recipe ingredients, barcode scan with confirm-before-add. Categories appear in section headings, not on each row; an ingredient shows a matching alias when it differs from its normalized name (for example, London Dry Gin shows `gin`).
 - Barcode scan stays on device: camera when the device allows it, a small offline bottle catalog, manual code entry when the camera is missing or denied, and the existing add-item sheet plus ingredient normalization when a code is unknown
 - Shopping list with purchased tracking
 - Local venues: create a venue, check in/out, and persist the selected workplace

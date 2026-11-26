@@ -134,6 +134,23 @@ Its service worker caches the app after the first load and is scoped to `/try`,
 not the marketing or support pages. A production build versions the cache
 using the static site's content.
 
+When verifying `/try` on a Pages preview, check these flows:
+
+- At phone widths (700px and below), recipe search and results come before the
+  recipe detail and My Bar. **My Bar & tools** jumps to the bar panel;
+  **Back to recipes** in the detail returns focus to the selected result.
+- With no search text, an empty **Favorites** filter explains how to save a
+  favorite and offers **Browse all drinks**. An empty **Can make** filter
+  prompts you to stock ingredients and offers **Open My Bar**. A search with
+  no results offers **Clear search and filters** instead.
+- In recipe detail, look for **Missing** beside each unstocked required
+  ingredient. In the custom recipe editor at 320px, check that the **Optional**
+  checkbox is visible and usable.
+- On desktop, check that **Ingredient to stock** stays visible above the My Bar
+  input while you type. On desktop and mobile, **Seconds** and **Start timer**
+  should switch to **Time left** and **Stop timer** while the prep timer runs.
+  When it finishes, the setup controls return with **Time’s up**.
+
 Use `python3 scripts/export_web_catalog.py` to refresh the browser catalog after
 changing the native seed recipes. Run `node scripts/test_demo.cjs` for app logic
 and `python3 scripts/check_website.py` for website checks. Verify the public CTA
