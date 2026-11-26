@@ -98,6 +98,32 @@ test('shopping shared ingredient is listed once across recipes', () => {
   assert.equal(state.shopping.length, 4);
 });
 
+test('Rye in My Bar satisfies rye whiskey without matching unrelated ingredients', () => {
+  const bar = {
+    ...Demo.defaults(),
+    inventory: ['sweet-vermouth', 'angostura-bitters', 'absinthe', 'sugar-cubes', 'peychauds-bitters'],
+  };
+  const stocked = Demo.addIngredient(bar, 'Rye', 'inventory');
+  const flour = Demo.addIngredient(bar, 'Rye Flour', 'inventory');
+  for (const recipe of ['manhattan', 'sazerac']) {
+    assert.equal(Demo.matchRecipe(recipe, stocked.inventory).canMake, true, recipe);
+    assert.deepEqual(Demo.addMissing(stocked, recipe).shopping, [], recipe);
+    assert.deepEqual(Demo.addMissing(flour, recipe).shopping, ['rye-whiskey'], recipe);
+  }
+  assert.deepEqual(Demo.addMissing(stocked, 'old-fashioned').shopping, ['bourbon']);
+});
+
+test('saved Rye in My Bar survives reloading as rye whiskey', () => {
+  const saved = {
+    ...Demo.defaults(),
+    ingredientNames: ['Rye'],
+    inventory: ['rye', 'sweet-vermouth', 'angostura-bitters'],
+  };
+  const reloaded = Demo.validateState(saved);
+  assert.deepEqual(reloaded.inventory, ['rye-whiskey', 'sweet-vermouth', 'angostura-bitters']);
+  assert.deepEqual(Demo.addMissing(reloaded, 'manhattan').shopping, []);
+});
+
 test('scaling and conversion retain small/countable native units', () => {
   assert.equal(Demo.formatMeasure(2, 'oz', 1, 'ml'), '59.147 ml');
   assert.equal(Demo.formatMeasure(0.75, 'oz', 3, 'ml'), '66.54 ml');
