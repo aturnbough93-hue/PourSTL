@@ -418,7 +418,8 @@
     const text = normalizeQuestion(raw);
     if (!text) return { type: 'empty' };
     if (PRIVACY_PHRASES.some(phrase => text.includes(phrase))) return { type: 'privacy' };
-    if (DIETARY_MARKERS.some(marker => text.includes(marker))) {
+    const dietaryText = text.replace(/\bextra virgin\b/g, '');
+    if (DIETARY_MARKERS.some(marker => dietaryText.includes(marker))) {
       return { type: 'unsupportedDietaryRequest' };
     }
     if (['help', 'help me', 'help please'].includes(text)
