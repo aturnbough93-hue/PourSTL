@@ -7,7 +7,6 @@
   --muted: #AEAEB2;
   --accent: #E8A87C;
   --green: #70DD8B;
-  --red: #FFB4AC;
 }
 
 * {
@@ -612,18 +611,6 @@ h2 {
   margin: 8px 0 0;
 }
 
-.site-footer {
-  font-size: 14px;
-  color: var(--muted);
-  max-width: 1600px;
-  margin: 8px auto 16px;
-  padding: 0 22px 12px;
-}
-
-.site-footer p {
-  margin: 0;
-}
-
 .demo-footer a {
   color: var(--accent);
 }
@@ -984,9 +971,6 @@ dialog p {
   }
   main {
     padding: 24px 14px;
-  }
-  .site-footer {
-    padding: 0 14px 12px;
   }
   .intro {
     margin: 0 2px 22px;
