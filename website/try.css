@@ -1190,6 +1190,19 @@ dialog p {
   .measure-controls {
     gap: 8px;
   }
+  #recipe-dialog {
+    padding-inline: 16px;
+  }
+  .editor-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .editor-line > label:has(.line-note),
+  .editor-line > .text-button {
+    grid-column: 1 / -1;
+  }
+  .editor-line > .text-button {
+    justify-self: end;
+  }
 }
 
 @media (prefers-reduced-motion:no-preference) {
