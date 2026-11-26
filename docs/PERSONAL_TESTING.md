@@ -6,7 +6,7 @@ Open [PourSTL Web](https://pourstl.com/try) from a phone or computer. The web ap
 
 A Mac with Xcode and an installed iOS Simulator runtime is required. This is an unsigned **iOS Simulator** app, not an iPhone installation or TestFlight build.
 
-1. Download **PourSTL-Personal-Testing.zip** from the [personal testing prerelease](https://github.com/aturnbough93-hue/PourSTL/releases/tag/personal-testing-2026-11-12). For a newer successful CI build, open [Quality checks in GitHub Actions](https://github.com/aturnbough93-hue/PourSTL/actions/workflows/ci.yml), choose the desired commit, and download **PourSTL-Simulator** from Artifacts. Actions downloads may require GitHub sign-in and repository access.
+1. Open [Quality checks in GitHub Actions](https://github.com/aturnbough93-hue/PourSTL/actions/workflows/ci.yml), choose a successful run for the desired commit, and download **PourSTL-Simulator** from Artifacts. Actions downloads may require GitHub sign-in and repository access.
 2. Extract the artifact. It contains `PourSTL-Simulator.zip`, `build-manifest.json`, and this guide. The manifest records the source commit, Release configuration, native platform, minimum OS, SDK, Xcode version, test counts, archive SHA-256, and actual architectures. The archive supports Apple Silicon (`arm64`) and Intel (`x86_64`) simulators.
 3. On the Mac, open Xcode → Settings → Components and install an iOS runtime at least as new as `minimumOSVersion` in the manifest. Prefer the runtime used by that run's Xcode. Open Simulator and boot an iPhone.
 4. In Terminal, change to the extracted artifact directory, verify and extract the app, then install it:
