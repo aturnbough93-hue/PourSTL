@@ -35,7 +35,8 @@ answers general bartending questions with Workers AI at
 `POST https://assistant.pourstl.com/v1/assistant/turn`. It requires a bearer
 token and is deployed separately from Cloudflare Pages. Neither the iPhone app
 nor PourSTL Web calls it, and it has no access to their local data. Cloudflare
-Agent Tracing records each AI turn, including the question and answer.
+Agent Tracing is configured to capture every AI turn, including the question
+and answer.
 
 See [docs/HANDOFF.md](docs/HANDOFF.md) for current delivery status and resuming work.
 See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,

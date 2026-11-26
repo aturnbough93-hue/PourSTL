@@ -40,8 +40,9 @@ credentials.
 
 ## Cloudflare tracing
 
-The Worker uses Workers AI through AI SDK v7. Workers tracing samples every
-request at Cloudflare's default rate of 100%. Each model turn records messages.
+The Worker uses Workers AI through AI SDK v7. Workers tracing uses Cloudflare's
+[default sampling rate of 100%](https://developers.cloudflare.com/workers/observability/traces/#head-based-sampling).
+Message recording is enabled for every model turn.
 Tool payload recording is enabled, but no tools are configured. Messages include
 the system prompt, caller question, and model answer, so do not send personal or
 confidential information. Trace identity uses the fixed agent name
