@@ -40,7 +40,12 @@ def yaml_fields(text):
     for index, entry in enumerate(entries):
         key, value = entry.groups()
         end = entries[index + 1].start() if index + 1 < len(entries) else len(text)
-        fields[key] = value.strip().strip("\"'") if value else text[entry.end():end].strip("\n")
+        quoted = re.match(r"""^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*')(?=[ \t]*(?:$|[ \t]#))""", value)
+        if quoted:
+            fields[key] = quoted.group(1)[1:-1]
+        else:
+            value = re.split(r"(?:^|[ \t]+)#", value, maxsplit=1)[0].strip()
+            fields[key] = value or text[entry.end():end].strip("\n")
     return fields
 
 
@@ -191,6 +196,28 @@ class ReleaseChecks(unittest.TestCase):
         previous = yaml_fields(yaml_fields(app_spec(base)["settings"])["base"])["CURRENT_PROJECT_VERSION"]
         current = self.settings["CURRENT_PROJECT_VERSION"]
         self.assertGreater(int(current), int(previous), f"Build number must increase from {previous} at {self.base_ref}")
+
+
+class YamlFieldTests(unittest.TestCase):
+    def test_inline_comments_after_scalars(self):
+        fields = yaml_fields(
+            'CURRENT_PROJECT_VERSION: "5" # TestFlight\n'
+            "MARKETING_VERSION: 1.0.0 # Release\n"
+            'DoubleQuoted: "value # retained" # comment\n'
+            "SingleQuoted: 'value # retained' # comment\n"
+            "URL: https://example.test/path#fragment # comment\n"
+        )
+        self.assertEqual(fields, {
+            "CURRENT_PROJECT_VERSION": "5",
+            "MARKETING_VERSION": "1.0.0",
+            "DoubleQuoted": "value # retained",
+            "SingleQuoted": "value # retained",
+            "URL": "https://example.test/path#fragment",
+        })
+
+    def test_inline_comment_before_nested_block(self):
+        fields = yaml_fields("settings: # App settings\n  CURRENT_PROJECT_VERSION: 5\n")
+        self.assertEqual(yaml_fields(fields["settings"]), {"CURRENT_PROJECT_VERSION": "5"})
 
 
 if __name__ == "__main__":
