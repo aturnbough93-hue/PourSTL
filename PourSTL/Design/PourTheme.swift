@@ -47,7 +47,6 @@ enum PourColor {
 // MARK: - Typography
 
 extension Font {
-    static let pourLargeTitle = Font.largeTitle.weight(.bold)
     static let pourTitle = Font.title.weight(.semibold)
     static let pourTitle2 = Font.title2.weight(.semibold)
     /// Ingredient measures: medium weight, tabular figures, right-aligned by callers.
