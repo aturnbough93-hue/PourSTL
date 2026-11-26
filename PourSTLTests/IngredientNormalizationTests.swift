@@ -29,6 +29,17 @@ final class IngredientNormalizationTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testMyBarRowSubtitleOnlyShowsDistinctMatchingAliases() {
+        let gin = InventoryItem(name: "London Dry Gin", category: .spirits)
+        let bourbon = InventoryItem(name: "Bourbon", category: .spirits)
+        XCTAssertEqual(MyBarView.rowSubtitle(for: gin), "gin")
+        XCTAssertNil(MyBarView.rowSubtitle(for: bourbon))
+
+        gin.canonicalOverride = "old tom gin"
+        XCTAssertEqual(MyBarView.rowSubtitle(for: gin), "old tom gin")
+    }
+
     func testSweetVermouthAliases() {
         for name in ["Sweet Vermouth", "Vermouth Rosso", "Carpano Antica", "Dolin Rouge", "Red Vermouth"] {
             XCTAssertEqual(IngredientNormalizer.canonicalName(for: name), "sweet vermouth", "\(name)")
