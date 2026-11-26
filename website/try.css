@@ -336,6 +336,10 @@ h2 {
   gap: 10px;
 }
 
+.bar-jump {
+  display: none;
+}
+
 .recipe-button {
   width: 100%;
   display: flex;
@@ -1044,6 +1048,16 @@ dialog p {
   .recipes-panel h2 {
     margin-bottom: 13px;
   }
+  .bar-jump {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 8px;
+    color: var(--accent);
+  }
+  #bar-title {
+    scroll-margin-top: 18px;
+  }
   .recipe-list {
     gap: 8px;
   }
@@ -1060,7 +1074,12 @@ dialog p {
     font-size: 13px;
   }
   .filters {
+    gap: 8px;
     margin-bottom: 14px;
+  }
+  .filters button {
+    font-size: 15px;
+    padding-inline: 5px;
   }
   .detail-panel {
     scroll-margin-top: 18px;
