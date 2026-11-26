@@ -29,25 +29,24 @@ enum PourColor {
     static let border = adaptive(dark: 0xFFFFFF, light: 0x000000, darkAlpha: 0.10, lightAlpha: 0.08)
 
     /// Warm copper — primary accent.
-    static let accent = adaptive(dark: 0xE8A87C, light: 0xA8602C)
+    static let accent = adaptive(dark: 0xE8A87C, light: 0x8A4820)
     /// Copper for fills (paired with dark text).
     static let accentFill = adaptive(dark: 0xE8A87C, light: 0xD98A5A)
     /// Soft gold, used sparingly.
-    static let gold = adaptive(dark: 0xD4AF37, light: 0x9A7A1F)
+    static let gold = adaptive(dark: 0xD4AF37, light: 0x806418)
 
     static let textPrimary = adaptive(dark: 0xF7F7F8, light: 0x1A1A1D)
     static let textSecondary = adaptive(dark: 0xAEAEB2, light: 0x54545A)
-    static let textTertiary = adaptive(dark: 0x8E8E93, light: 0x77777D)
+    static let textTertiary = adaptive(dark: 0x8E8E93, light: 0x626268)
 
-    static let canMake = adaptive(dark: 0x32D74B, light: 0x21853A)
-    static let almost = adaptive(dark: 0xFF9F0A, light: 0xB2500A)
+    static let canMake = adaptive(dark: 0x32D74B, light: 0x17652A)
+    static let almost = adaptive(dark: 0xFF9F0A, light: 0x914008)
     static let destructive = adaptive(dark: 0xFF453A, light: 0xD70015)
 }
 
 // MARK: - Typography
 
 extension Font {
-    static let pourLargeTitle = Font.largeTitle.weight(.bold)
     static let pourTitle = Font.title.weight(.semibold)
     static let pourTitle2 = Font.title2.weight(.semibold)
     /// Ingredient measures: medium weight, tabular figures, right-aligned by callers.
@@ -99,15 +98,19 @@ enum GlassIcon {
 // MARK: - Shared components
 
 struct PourSectionHeader: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     var trailing: String? = nil
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+        layout {
             Text(title)
                 .font(.pourTitle2)
                 .foregroundStyle(PourColor.textPrimary)
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
             if let trailing {
                 Text(trailing)
                     .font(.subheadline)
@@ -116,6 +119,57 @@ struct PourSectionHeader: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+struct AdaptiveSegmentedPicker<Selection: Hashable>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let title: String
+    @Binding var selection: Selection
+    let options: [Selection]
+    let optionTitle: (Selection) -> String
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(options, id: \.self) { option in
+                        Button {
+                            selection = option
+                        } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                Text(optionTitle(option))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                                if selection == option {
+                                    Image(systemName: "checkmark")
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            .font(.body)
+                            .foregroundStyle(PourColor.textPrimary)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .background(PourColor.surface, in: RoundedRectangle(cornerRadius: 12))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(optionTitle(option))
+                        .accessibilityAddTraits(selection == option ? [.isSelected] : [])
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(title)
+            } else {
+                Picker(title, selection: $selection) {
+                    ForEach(options, id: \.self) { option in
+                        Text(optionTitle(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel(title)
+            }
+        }
     }
 }
 

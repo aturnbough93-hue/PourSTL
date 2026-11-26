@@ -40,20 +40,6 @@ enum BarUnit: String, CaseIterable, Codable {
     /// Units that follow the user's preferred oz/ml display unit.
     static let primaryVolumeUnits: Set<BarUnit> = [.ounce, .milliliter, .cup, .jigger, .pony, .shot, .tablespoon]
 
-    /// Small bar measures that convert arithmetically but display natively.
-    static let nativeBarUnits: Set<BarUnit> = [.dash, .barspoon, .teaspoon, .splash, .drop]
-
-    var isConvertible: Bool { ouncesPerUnit != nil }
-    var isPart: Bool { self == .part }
-    var isCountable: Bool {
-        switch self {
-        case .each, .cube, .slice, .wedge, .wheel, .sprig, .twist, .leaf, .piece, .scoop:
-            return true
-        default:
-            return false
-        }
-    }
-
     var displayName: String {
         switch self {
         case .ounce: return "oz"
@@ -142,8 +128,6 @@ struct Measure: Equatable {
             && (amount > 0 || unit == .topUp || unit == .rinse)
     }
 
-    var isConvertible: Bool { unit.isConvertible }
-
     func scaled(by factor: Double) -> Measure {
         Measure(amount: amount * factor, unit: unit)
     }
@@ -191,6 +175,7 @@ struct Measure: Equatable {
         switch unit {
         case .barspoon: return amount == 1 ? "barspoon" : "barspoons"
         case .dash: return amount == 1 ? "dash" : "dashes"
+        case .rinse: return amount == 1 ? "rinse" : "rinses"
         case .splash: return amount == 1 ? "splash" : "splashes"
         case .drop: return amount == 1 ? "drop" : "drops"
         case .pinch: return amount == 1 ? "pinch" : "pinches"

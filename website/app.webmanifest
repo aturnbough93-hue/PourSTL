@@ -1,0 +1,14 @@
+{
+  "id": "/try",
+  "name": "PourSTL",
+  "short_name": "PourSTL",
+  "start_url": "/try",
+  "scope": "/try",
+  "display": "standalone",
+  "background_color": "#0A0A0C",
+  "theme_color": "#0A0A0C",
+  "icons": [
+    { "src": "assets/app-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/app-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

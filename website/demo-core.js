@@ -1,177 +1,208 @@
 (function (root, factory) {
   'use strict';
-  const api = factory();
-  if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.PourDemo = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./recipe-catalog.js'));
+  } else {
+    root.PourWeb = factory(pourRecipeCatalog);
+  }
+})(globalThis, function (catalog) {
   'use strict';
 
-  function freeze(value) {
-    Object.values(value).forEach(child => {
-      if (child && typeof child === 'object') freeze(child);
-    });
-    return Object.freeze(value);
-  }
-
-  const inventory = freeze([
-    { id: 'gin', name: 'Gin', category: 'Spirits' },
-    { id: 'campari', name: 'Campari', category: 'Liqueurs & modifiers' },
-    { id: 'sweet-vermouth', name: 'Sweet vermouth', category: 'Liqueurs & modifiers' },
-    { id: 'white-rum', name: 'White rum', category: 'Spirits' },
-    { id: 'bourbon', name: 'Bourbon', category: 'Spirits' },
-    { id: 'tequila', name: 'Blanco tequila', category: 'Spirits' },
-    { id: 'dry-vermouth', name: 'Dry vermouth', category: 'Liqueurs & modifiers' },
-    { id: 'orange-liqueur', name: 'Orange liqueur', category: 'Liqueurs & modifiers' },
-    { id: 'lime-juice', name: 'Lime juice', category: 'Citrus & syrups' },
-    { id: 'lemon-juice', name: 'Lemon juice', category: 'Citrus & syrups' },
-    { id: 'simple-syrup', name: 'Simple syrup', category: 'Citrus & syrups' },
-    { id: 'sugar-cubes', name: 'Sugar cubes', category: 'Citrus & syrups' },
-    { id: 'angostura-bitters', name: 'Angostura bitters', category: 'Bitters' }
+  const ingredientAliases = new Map([
+    ['london-dry-gin', 'gin'], ['blanco-tequila', 'tequila'],
+    ['sugar-cube', 'sugar-cubes'], ['mint-leaves', 'mint'],
+    ['angostura', 'angostura-bitters'], ['peychauds', 'peychauds-bitters'],
   ]);
+  const volumeUnits = ['oz', 'ml'];
+  const countUnits = {
+    each: ['', ''], dash: ['dash', 'dashes'], cube: ['cube', 'cubes'],
+    twist: ['twist', 'twists'], wedge: ['wedge', 'wedges'], pinch: ['pinch', 'pinches'],
+    leaf: ['leaf', 'leaves'], barspoon: ['barspoon', 'barspoons'], part: ['part', 'parts'],
+    sprig: ['sprig', 'sprigs'], rinse: ['rinse', 'rinses'], scoop: ['scoop', 'scoops'],
+    slice: ['slice', 'slices'],
+  };
+  const units = [...volumeUnits, ...Object.keys(countUnits), 'topUp'];
+  const starterInventory = ['gin', 'campari', 'sweet-vermouth'];
+  const maxCustomRecipes = 250;
 
-  function ingredient(id, name, amount, unit = 'oz', optional = false) {
-    return { id, name, amount, unit, optional };
+  function normalize(value) {
+    return String(value || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().trim();
   }
 
-  // These six specs mirror PourSTL/Services/SeedData.swift. Matching is based on
-  // required ingredients, not bottle quantities, equipment, garnish, or allergies.
-  const recipes = freeze([
-    {
-      id: 'negroni', name: 'Negroni', glass: 'Rocks', method: 'Stirred',
-      image: 'assets/negroni.webp',
-      instructions: 'Add gin, Campari and sweet vermouth to a mixing glass with ice. Stir until chilled. Strain over a large ice cube in a rocks glass. Garnish with an orange twist.',
-      garnish: 'Orange twist', tags: ['gin', 'bitter', 'stirred', 'classic', 'equal parts'],
-      ingredients: [ingredient('gin', 'Gin', 1), ingredient('campari', 'Campari', 1), ingredient('sweet-vermouth', 'Sweet Vermouth', 1), ingredient('orange-twist', 'Orange Twist', 1, 'twist', true)]
-    },
-    {
-      id: 'martini', name: 'Martini', glass: 'Martini', method: 'Stirred', image: null,
-      instructions: 'Add gin and vermouth to a mixing glass filled with ice. Stir until well chilled, about 20 seconds. Strain into a chilled martini glass. Express a lemon twist over the surface, or garnish with olives.',
-      garnish: 'Lemon twist or olives', tags: ['gin', 'stirred', 'spirit-forward', 'classic', 'up'],
-      ingredients: [ingredient('gin', 'London Dry Gin', 2.5), ingredient('dry-vermouth', 'Dry Vermouth', 0.5), ingredient('orange-bitters', 'Orange Bitters', 1, 'dash', true)]
-    },
-    {
-      id: 'daiquiri', name: 'Daiquiri', glass: 'Coupe', method: 'Shaken', image: 'assets/daiquiri.webp',
-      instructions: 'Shake rum, lime juice and simple syrup with ice until well chilled. Double-strain into a chilled coupe. No garnish needed.',
-      garnish: null, tags: ['rum', 'shaken', 'sour', 'classic', 'citrus'],
-      ingredients: [ingredient('white-rum', 'White Rum', 2), ingredient('lime-juice', 'Lime Juice', 1), ingredient('simple-syrup', 'Simple Syrup', 0.75)]
-    },
-    {
-      id: 'old-fashioned', name: 'Old Fashioned', glass: 'Old Fashioned', method: 'Built', image: 'assets/old-fashioned.webp',
-      instructions: 'Place the sugar cube in a rocks glass and saturate with bitters. Muddle until dissolved. Add bourbon and a large ice cube, then stir briefly to chill and dilute. Express an orange twist over the top.',
-      garnish: 'Orange twist', tags: ['bourbon', 'whiskey', 'stirred', 'classic', 'spirit-forward'],
-      ingredients: [ingredient('sugar-cubes', 'Sugar Cube', 1, 'cube'), ingredient('angostura-bitters', 'Angostura Bitters', 3, 'dash'), ingredient('bourbon', 'Bourbon', 2), ingredient('orange-twist', 'Orange Twist', 1, 'twist', true)]
-    },
-    {
-      id: 'margarita', name: 'Margarita', glass: 'Rocks', method: 'Shaken', image: null,
-      instructions: 'Shake tequila, lime juice and orange liqueur with ice until chilled. Strain over fresh ice in a salt-rimmed rocks glass (rim optional). Garnish with a lime wedge.',
-      garnish: 'Lime wedge, salt rim (optional)', tags: ['tequila', 'shaken', 'sour', 'classic', 'citrus'],
-      ingredients: [ingredient('tequila', 'Tequila', 2), ingredient('lime-juice', 'Lime Juice', 1), ingredient('orange-liqueur', 'Orange Liqueur', 1), ingredient('salt', 'Salt', 1, 'pinch', true), ingredient('lime-wedge', 'Lime Wedge', 1, 'wedge', true)]
-    },
-    {
-      id: 'whiskey-sour', name: 'Whiskey Sour', glass: 'Rocks', method: 'Shaken', image: null,
-      instructions: 'Shake bourbon, lemon juice, syrup and egg white (if using) without ice for 10 seconds, then add ice and shake hard. Strain over fresh ice. Garnish with a cherry or lemon wheel.',
-      garnish: 'Cherry or lemon wheel', tags: ['bourbon', 'whiskey', 'shaken', 'sour', 'classic'],
-      ingredients: [ingredient('bourbon', 'Bourbon', 2), ingredient('lemon-juice', 'Lemon Juice', 0.75), ingredient('simple-syrup', 'Simple Syrup', 0.75), ingredient('egg-white', 'Egg White', 1, 'each', true), ingredient('angostura-bitters', 'Angostura Bitters', 3, 'dash', true)]
+  function ingredientID(name) {
+    const id = normalize(name).replace(/['’]/gu, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
+    return ingredientAliases.get(id) || id;
+  }
+
+  const recipes = catalog.map(recipe => ({
+    ...recipe,
+    ingredients: recipe.ingredients.map(line => ({ ...line, id: ingredientID(line.name) })),
+  })).sort((a, b) => Number(b.id === 'negroni') - Number(a.id === 'negroni') || a.name.localeCompare(b.name));
+  const catalogNames = new Map();
+  for (const recipe of recipes) {
+    for (const line of recipe.ingredients) {
+      if (!catalogNames.has(line.id)) catalogNames.set(line.id, line.name);
     }
-  ]);
+  }
 
-  const inventoryIDs = new Set(inventory.map(item => item.id));
   const recipeIDs = new Set(recipes.map(recipe => recipe.id));
-  const startingInventory = ['gin', 'campari', 'sweet-vermouth'];
+  const inventory = [...catalogNames].map(([id, name]) => ({ id, name }));
 
   function defaults() {
-    return { version: 1, inventory: startingInventory.slice(), shopping: [], servings: 1, unit: 'oz', selected: 'negroni' };
+    return {
+      version: 2, inventory: [], shopping: [], servings: 1, unit: 'oz', selected: 'negroni',
+      customRecipes: [], ingredientNames: [], favorites: [],
+    };
   }
 
-  function cleanIDs(value, fallback) {
-    if (!Array.isArray(value)) return fallback.slice();
-    return [...new Set(value.filter(id => typeof id === 'string' && inventoryIDs.has(id)))];
+  function cleanIDs(value, allowed) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.filter(id => typeof id === 'string' && allowed.has(id)))];
   }
 
   function boundedServings(value) {
     return typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.min(24, Math.trunc(value))) : 1;
   }
 
-  function validateState(raw) {
-    const fallback = defaults();
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw) || raw.version !== 1) return fallback;
-    const stocked = cleanIDs(raw.inventory, fallback.inventory);
+  function boundedText(value, limit) {
+    return typeof value === 'string' ? value.trim().slice(0, limit) : '';
+  }
+
+  function validateRecipe(raw) {
+    if (!raw || !/^custom-[a-f0-9-]{36}$/.test(raw.id)) return null;
+    const name = boundedText(raw.name, 80);
+    const instructions = boundedText(raw.instructions, 1500);
+    if (!name || !instructions || !Array.isArray(raw.ingredients)
+        || raw.ingredients.length < 1 || raw.ingredients.length > 40) return null;
+
+    const ingredients = [];
+    for (const line of raw.ingredients) {
+      const ingredientName = boundedText(line?.name, 80);
+      const id = ingredientID(ingredientName);
+      const unit = line?.unit;
+      const amount = unit === 'topUp' ? 0 : line?.amount;
+      if (!id || !units.includes(unit) || !Number.isFinite(amount) || amount > 10_000
+          || (unit !== 'topUp' && amount <= 0)) return null;
+      ingredients.push({
+        id, name: ingredientName, amount, unit, optional: line.optional === true, note: boundedText(line.note, 120),
+      });
+    }
     return {
-      version: 1,
-      inventory: stocked,
-      shopping: cleanIDs(raw.shopping, []).filter(id => !stocked.includes(id)),
-      servings: boundedServings(raw.servings),
-      unit: raw.unit === 'ml' ? 'ml' : 'oz',
-      selected: recipeIDs.has(raw.selected) ? raw.selected : fallback.selected
+      id: raw.id, name, instructions, ingredients, garnish: boundedText(raw.garnish, 100),
+      glass: boundedText(raw.glass, 40), method: boundedText(raw.method, 40),
+      tags: [], image: null,
     };
   }
 
-  function resolveRecipe(recipe) {
-    return recipes.find(item => item.id === (typeof recipe === 'string' ? recipe : recipe && recipe.id));
+  function validateState(raw) {
+    const fallback = defaults();
+    if (!raw || ![1, 2].includes(raw.version)) return fallback;
+    const customRecipes = new Map();
+    const addedNames = new Map();
+    for (const value of Array.isArray(raw.customRecipes) ? raw.customRecipes.slice(0, maxCustomRecipes) : []) {
+      const recipe = validateRecipe(value);
+      if (recipe) customRecipes.set(recipe.id, recipe);
+    }
+    for (const value of Array.isArray(raw.ingredientNames) ? raw.ingredientNames.slice(0, 10_000) : []) {
+      const name = boundedText(value, 80);
+      const id = ingredientID(name);
+      if (id && !catalogNames.has(id)) addedNames.set(id, name);
+    }
+    for (const recipe of customRecipes.values()) {
+      for (const { id, name } of recipe.ingredients) {
+        if (!catalogNames.has(id) && !addedNames.has(id)) addedNames.set(id, name);
+      }
+    }
+    const allNames = new Map([...catalogNames, ...addedNames]);
+    const allRecipes = new Set([...recipeIDs, ...customRecipes.keys()]);
+    const stocked = cleanIDs(raw.inventory, allNames);
+    const shopping = cleanIDs(raw.shopping, allNames);
+    return {
+      version: 2, inventory: stocked, shopping: raw.version === 1 ? shopping.filter(id => !stocked.includes(id)) : shopping,
+      servings: boundedServings(raw.servings), unit: raw.unit === 'ml' ? 'ml' : 'oz',
+      selected: allRecipes.has(raw.selected) ? raw.selected : fallback.selected,
+      customRecipes: [...customRecipes.values()], ingredientNames: [...addedNames.values()],
+      favorites: cleanIDs(raw.favorites, allRecipes),
+    };
+  }
+
+  function listIngredients(state) {
+    return [...inventory, ...state.ingredientNames.map(name => ({ id: ingredientID(name), name }))]
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function resolveRecipe(recipe, customRecipes = []) {
+    if (recipe?.ingredients) return recipe;
+    return [...recipes, ...customRecipes].find(item => item.id === recipe);
   }
 
   function matchRecipe(recipe, stockIDs) {
     const spec = resolveRecipe(recipe);
     if (!spec) return { canMake: false, missing: [], optionalMissing: [] };
-    const stocked = new Set(cleanIDs(stockIDs, []));
+    const stocked = new Set(stockIDs);
     const missing = spec.ingredients.filter(item => !item.optional && !stocked.has(item.id));
     const optionalMissing = spec.ingredients.filter(item => item.optional && !stocked.has(item.id));
     return { canMake: missing.length === 0, missing, optionalMissing };
   }
 
-  function normalize(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  }
-
-  function searchRecipes(query, filter, stockIDs) {
+  function searchRecipes(query, filter, state) {
     const terms = normalize(query).split(/\s+/).filter(Boolean);
-    const canMakeOnly = ['can-make', 'canMake', 'can'].includes(filter);
-    return recipes.filter(recipe => {
-      const text = normalize([recipe.name, recipe.method, recipe.glass, ...recipe.tags, ...recipe.ingredients.map(item => item.name)].join(' '));
-      return terms.every(term => text.includes(term)) && (!canMakeOnly || matchRecipe(recipe, stockIDs).canMake);
+    return [...recipes, ...state.customRecipes].filter(recipe => {
+      if (filter === 'favorites' && !state.favorites.includes(recipe.id)) return false;
+      if (filter === 'can-make' && !matchRecipe(recipe, state.inventory).canMake) return false;
+      const text = normalize([recipe.name, recipe.method, recipe.glass, ...recipe.tags,
+        ...recipe.ingredients.map(item => item.name)].join(' '));
+      return terms.every(term => text.includes(term));
     });
   }
 
+  function recipeEmptyState(query, filter) {
+    return !normalize(query) && (filter === 'favorites' || filter === 'can-make') ? filter : 'search';
+  }
+
   function formatNumber(value) {
-    return Number(value.toFixed(2)).toString();
+    if (value > 0 && value < 0.001) return Number(value.toPrecision(2)).toString();
+    return Number(value.toFixed(3)).toString();
   }
 
   function formatMeasure(amount, unit, servings, preference) {
     if (!Number.isFinite(amount) || amount < 0) return '—';
     const scaled = amount * boundedServings(servings);
-    if (unit === 'oz' || unit === 'ml') {
-      const requestedUnit = preference === 'ml' ? 'ml' : 'oz';
-      const factor = unit === requestedUnit ? 1 : unit === 'oz' ? 29.5735 : 1 / 29.5735;
-      return `${formatNumber(scaled * factor)} ${requestedUnit}`;
+    if (volumeUnits.includes(unit)) {
+      const target = preference === 'ml' ? 'ml' : 'oz';
+      const factor = unit === target ? 1 : unit === 'oz' ? 29.5735 : 1 / 29.5735;
+      return formatNumber(scaled * factor) + ' ' + target;
     }
     if (unit === 'topUp') return 'to top';
-    const labels = {
-      each: ['', ''], dash: ['dash', 'dashes'], dashes: ['dash', 'dashes'],
-      cube: ['cube', 'cubes'], twist: ['twist', 'twists'], wedge: ['wedge', 'wedges'],
-      pinch: ['pinch', 'pinches'], leaf: ['leaf', 'leaves'], barspoon: ['barspoon', 'barspoons'],
-      part: ['part', 'parts'], sprig: ['sprig', 'sprigs'], rinse: ['rinse', 'rinses']
-    };
-    const pair = Object.prototype.hasOwnProperty.call(labels, unit) ? labels[unit] : [unit, unit];
+    if (unit === 'rinse' && scaled === 0) return 'rinse';
+    const pair = countUnits[unit === 'dashes' ? 'dash' : unit] || [unit, unit];
     const label = pair[scaled === 1 ? 0 : 1];
-    return `${formatNumber(scaled)}${label ? ' ' + label : ''}`;
+    return [formatNumber(scaled), label].filter(Boolean).join(' ');
+  }
+
+  function addIngredient(state, rawName, destination) {
+    const name = boundedText(rawName, 80);
+    const id = ingredientID(name);
+    if (!id || !['inventory', 'shopping'].includes(destination)) return state;
+    const known = listIngredients(state).some(item => item.id === id);
+    return validateState({
+      ...state, [destination]: [...state[destination], id],
+      ingredientNames: known ? state.ingredientNames : [...state.ingredientNames, name],
+    });
   }
 
   function addMissing(state, recipe) {
-    const next = validateState(state);
-    const missing = matchRecipe(recipe, next.inventory).missing.map(item => item.id);
-    next.shopping = [...new Set([...next.shopping, ...missing])];
-    return next;
+    const spec = resolveRecipe(recipe, state.customRecipes);
+    if (!spec) return state;
+    const missing = matchRecipe(spec, state.inventory).missing.map(item => item.id);
+    return validateState({ ...state, shopping: [...state.shopping, ...missing] });
   }
 
   function purchase(state, id) {
-    const next = validateState(state);
-    // Only an item actually on the list can be purchased. This keeps stale UI
-    // actions and unknown storage values from creating inventory entries.
-    if (next.shopping.includes(id) && inventoryIDs.has(id)) {
-      next.inventory = [...new Set([...next.inventory, id])];
-      next.shopping = next.shopping.filter(item => item !== id);
-    }
-    return next;
+    if (!state.shopping.includes(id)) return state;
+    return validateState({
+      ...state, inventory: [...state.inventory, id], shopping: state.shopping.filter(item => item !== id),
+    });
   }
 
   function recipeText(recipe, servings, unit) {
@@ -179,15 +210,22 @@
     if (!spec) return '';
     const count = boundedServings(servings);
     return [
-      `${spec.name} — ${count} ${count === 1 ? 'serving' : 'servings'}`,
-      `${spec.method} · ${spec.glass}`,
+      spec.name + ' — ' + count + (count === 1 ? ' serving' : ' servings'),
+      [spec.method, spec.glass].filter(Boolean).join(' · '),
       '',
-      ...spec.ingredients.map(item => `${formatMeasure(item.amount, item.unit, count, unit)} ${item.name}${item.optional ? ' (optional)' : ''}`),
+      ...spec.ingredients.map(item => [
+        formatMeasure(item.amount, item.unit, count, unit), item.name,
+        item.optional ? '(optional)' : '', item.note ? '— ' + item.note : '',
+      ].filter(Boolean).join(' ')),
       '', spec.instructions,
-      ...(spec.garnish ? [`Garnish: ${spec.garnish}`] : []),
-      '', 'From the PourSTL browser demo. Check ingredients and allergies before serving.'
+      ...(spec.garnish ? ['Garnish: ' + spec.garnish] : []),
+      '', 'From PourSTL. Check ingredients and allergies before serving.',
     ].join('\n');
   }
 
-  return freeze({ inventory, recipes, defaults, validateState, matchRecipe, searchRecipes, formatMeasure, addMissing, purchase, recipeText });
+  return {
+    inventory, recipes, units, starterInventory, maxCustomRecipes, defaults, validateState,
+    validateRecipe, resolveRecipe, listIngredients, normalize, matchRecipe, searchRecipes, recipeEmptyState, formatMeasure,
+    addIngredient, addMissing, purchase, recipeText,
+  };
 });

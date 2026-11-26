@@ -42,11 +42,12 @@ Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and
   restrictions are present.
 
 Canonical and social metadata, robots, and the sitemap use `https://pourstl.com`.
-Deploy a reviewed commit with
-`SITE_URL=https://pourstl.com CF_PAGES_BRANCH=main python3 scripts/build_website.py`,
-then upload `dist` to project `pourstl` as documented in
-[the website README](../website/README.md). The app Privacy Policy link is
-`https://pourstl.com/privacy`. The site support page is `https://pourstl.com/support`.
+Cloudflare deploys the `main` branch from GitHub to project `pourstl`.
+See [the website README](../website/README.md) to preview and verify changes.
+The iPhone app’s Settings → Support links use the canonical host:
+**Get support** opens `https://pourstl.com/support`, **Privacy policy** opens
+`https://pourstl.com/privacy`, and **PourSTL website** opens `https://pourstl.com`.
+The store-recovery screen’s **Get help** also opens `https://pourstl.com/support`.
 Do not add a redirect from the Pages hostname in this repo.
 
 `https://pourstl.com`, `/privacy`, and `/support` already respond over HTTPS.

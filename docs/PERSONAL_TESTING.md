@@ -1,6 +1,6 @@
 # Test PourSTL
 
-The canonical website is **https://pourstl.com**, with the browser demo at **https://pourstl.com/try**. The browser demo works on a phone or computer without a Mac, Apple Developer account, or native installation. It saves data in that browser; it does not sync with the native app.
+Open [PourSTL Web](https://pourstl.com/try) from a phone or computer. The web app works without an account and stores recipes, favorites, inventory, and shopping data in that browser. On iPhone, use Safari’s Share menu and choose Add to Home Screen for an app icon.
 
 ## Download the native simulator app
 
@@ -41,7 +41,7 @@ The Release artifact does not carry Xcode's local StoreKit session. Subscription
 3. For local subscription testing, edit the scheme → Run → Options and confirm **StoreKit Configuration = PourSTL.storekit**. Use Debug. Local StoreKit transactions are simulated; they do not create App Store products or charge a payment method.
 4. Use Xcode's StoreKit transaction manager to clear transactions, test purchase/cancellation/restore/expiration, and confirm Pro status updates. Keep ordinary free workflows usable before any purchase. If testing outside a local StoreKit session, cancel unexpected payment/account prompts and establish the intended Apple sandbox configuration first.
 
-The **PourSTLQA** scheme uses the same local configuration. Automated UI tests use an explicit free account in Debug, isolated from StoreKit transaction history. The Pro smoke test requires the Upgrade state, opens and dismisses the sheet without purchase or restore, and confirms that free recipes remain usable. This validates navigation, not the complete billing lifecycle. StoreKit unit tests exercise simulated local transactions separately. Release builds use normal StoreKit entitlement checks and ignore the UI test fixture.
+The **PourSTLQA** scheme uses the same local configuration. Debug UI tests use explicit Free and Pro fixtures, isolated from StoreKit transaction history. They cover dismissing the upgrade sheet without buying, the Free gate on **Costing & Batch Prep**, and the Pro price editor and batch controls. They do not exercise a purchase. StoreKit tests exercise simulated local transactions separately. Release builds use normal StoreKit entitlement checks and ignore the UI test fixtures.
 
 Reproduce CI on a Mac with Xcode:
 
@@ -66,10 +66,12 @@ Record the commit from `build-manifest.json` or Xcode, device model, OS version,
 
 - Complete onboarding, browse/search classics, favorite a recipe, and verify favorites after relaunch.
 - Add bottles to My Bar, toggle in-stock and low-stock states, and confirm “What can I make” changes. Matching checks ingredient availability, not remaining bottle quantities.
-- Open a recipe, scale servings, switch oz/ml, start/pause/reset the timer, share a recipe, and add missing ingredients to Shopping. Add/delete shopping items and check persistence after relaunch.
+- Open a recipe, confirm Free scaling stops at 24 servings, switch oz/ml, start/pause/reset the timer, share a recipe, and add missing ingredients to Shopping. Add/delete shopping items and check persistence after relaunch.
+- With Pro active, open **Costing & Batch Prep**, set a batch size up to 200, and enter a package price and usable yield. Confirm the price is reused for the same ingredient and unit, and that a partial estimate is labeled as such. Export a CSV and check the scaled measures, optional ingredients and notes.
 - Make a variation of a classic, save it, and confirm the original is unchanged. Create/edit a custom recipe and confirm it persists.
 - Open **More features → Bar Assistant** and try the starter questions. It is an offline helper for supported question patterns, not a general AI model. Verify responses against the recipe; it does not assess allergies or alcohol safety.
 - Change appearance and preferred units. Try larger text and VoiceOver, and verify controls remain usable.
+- In Settings → Support, confirm that **Get support**, **Privacy policy**, and **PourSTL website** open [support](https://pourstl.com/support), [privacy](https://pourstl.com/privacy), and the [canonical home page](https://pourstl.com) in the browser. If the store-recovery screen appears, its **Get help** should open the same support page.
 - On a physical iPhone, test the camera permission prompt, allow/deny/Settings return, known and unknown barcodes, ambiguous eight-digit codes, duplicate prevention, cancel-and-rescan, torch, rotation, and background/foreground. Manual barcode entry is available when camera access is unavailable.
 - On a physical iPhone, try airplane mode and timer behavior while backgrounded; simulator navigation tests do not establish camera or real device lifecycle behavior.
 - In a local StoreKit session or established Apple sandbox, verify purchase cancellation, purchase, restore, revocation/expiration, and continued access to free features. Do not use live billing for personal QA.

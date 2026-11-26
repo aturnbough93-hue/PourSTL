@@ -14,6 +14,7 @@ differs.
 """
 
 import argparse
+import hashlib
 from pathlib import Path
 import os
 import re
@@ -154,6 +155,13 @@ def build_site(source, output, origin, preview=False):
                 lines.append("/*")
             lines.insert(lines.index("/*") + 1, "  X-Robots-Tag: noindex, nofollow")
             headers.write_text("\n".join(lines) + "\n")
+        worker = stage / "web-app-worker.js"
+        if worker.is_file():
+            digest = hashlib.sha256()
+            for file in sorted(path for path in stage.rglob("*") if path.is_file()):
+                digest.update(file.relative_to(stage).as_posix().encode())
+                digest.update(file.read_bytes())
+            worker.write_text(worker.read_text().replace("__POURSTL_BUILD__", digest.hexdigest()[:16]))
         (stage / MARKER).write_text(MARKER_CONTENT)
         backup = Path(temporary) / "previous"
         if output.exists():

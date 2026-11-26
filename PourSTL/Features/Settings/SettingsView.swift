@@ -1,6 +1,12 @@
 import SwiftUI
 import SwiftData
 
+enum SiteLinks {
+    static let home = URL(string: "https://pourstl.com")!
+    static let privacy = URL(string: "https://pourstl.com/privacy")!
+    static let support = URL(string: "https://pourstl.com/support")!
+}
+
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(ProEntitlementStore.self) private var pro
@@ -27,28 +33,36 @@ struct SettingsView: View {
         return "\(version) (\(build))"
     }
 
+    private func siteLink(_ title: String, systemImage: String, url: URL) -> some View {
+        Link(destination: url) {
+            Label(title, systemImage: systemImage)
+                .foregroundStyle(PourColor.textPrimary)
+        }
+        .accessibilityLabel(title)
+        .accessibilityHint("Opens \(url.host() ?? "the website") in your browser")
+        .accessibilityIdentifier(url.absoluteString)
+    }
+
     var body: some View {
         @Bindable var settings = settings
         NavigationStack {
             Form {
                 Section("Appearance") {
-                    Picker("Appearance", selection: $settings.appearance) {
-                        ForEach(AppAppearance.allCases, id: \.self) {
-                            Text($0.displayName).tag($0)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityLabel("Appearance, \(settings.appearance.displayName)")
+                    AdaptiveSegmentedPicker(
+                        title: "Appearance",
+                        selection: $settings.appearance,
+                        options: AppAppearance.allCases,
+                        optionTitle: { $0.displayName }
+                    )
                 }
 
                 Section("Measurement") {
-                    Picker("Preferred units", selection: $settings.unit) {
-                        ForEach(UnitPreference.allCases, id: \.self) {
-                            Text($0.rawValue).tag($0)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityLabel("Preferred units, \(settings.unit.rawValue)")
+                    AdaptiveSegmentedPicker(
+                        title: "Preferred units",
+                        selection: $settings.unit,
+                        options: UnitPreference.allCases,
+                        optionTitle: { $0.rawValue }
+                    )
                 }
 
                 Section("Assistant") {
@@ -89,11 +103,9 @@ struct SettingsView: View {
                 }
 
                 Section("Support") {
-                    Link(destination: URL(string: "https://github.com/aturnbough93-hue/PourSTL/issues")!) {
-                        Label("Send feedback", systemImage: "bubble.left")
-                            .foregroundStyle(PourColor.textPrimary)
-                    }
-                    .accessibilityLabel("Send feedback")
+                    siteLink("Get support", systemImage: "questionmark.bubble", url: SiteLinks.support)
+                    siteLink("Privacy policy", systemImage: "hand.raised", url: SiteLinks.privacy)
+                    siteLink("PourSTL website", systemImage: "safari", url: SiteLinks.home)
                     Button {
                         showResetConfirm = true
                     } label: {
@@ -111,7 +123,7 @@ struct SettingsView: View {
                         Text(appVersion).foregroundStyle(PourColor.textSecondary)
                     }
                     .accessibilityLabel("Version \(appVersion)")
-                    Text("Your recipes and bar inventory are stored on this device. PourSTL works offline. Sharing a recipe or opening feedback sends only what you choose to share.")
+                    Text("Your recipes and bar inventory are stored on this device. PourSTL works offline. Sharing a recipe or contacting support sends only what you choose to share.")
                         .font(.caption)
                         .foregroundStyle(PourColor.textTertiary)
                 }
@@ -138,5 +150,6 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             }
         }
+        .preferredColorScheme(settings.appearance.colorScheme)
     }
 }

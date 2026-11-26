@@ -1,22 +1,22 @@
 # PourSTL handoff
 
-Updated November 12, 2026. This file records the active release work so it can be
+Updated November 25, 2026. This file records the active release work so it can be
 continued from GitHub. Do not rely on old coordination entries as current state.
 
 ## Current source
 
 - Repository rename is confirmed: **https://github.com/aturnbough93-hue/PourSTL**. The owner updated About description to “PourSTL — iOS bartender assistant” and homepage to https://pourstl.com. The local origin now uses the renamed repository. Settings API still returns 403; the owner completed those settings in GitHub.
-- Integration branch: `codex/pour-testing-release`; release PR #16 includes the heads of #12–15 and every audited legacy branch. See [branch reconciliation](BRANCH_RECONCILIATION.md).
+- `main` includes the website and browser app launch ([#31](https://github.com/aturnbough93-hue/PourSTL/pull/31)), iPhone Pro costing and batch prep ([#32](https://github.com/aturnbough93-hue/PourSTL/pull/32)), and the StoreKit test fixture cleanup fix ([#33](https://github.com/aturnbough93-hue/PourSTL/pull/33)). The earlier integration is recorded in [branch reconciliation](BRANCH_RECONCILIATION.md).
 - Xcode: `PourSTL.xcodeproj`, schemes **PourSTL** and **PourSTLQA**, source/test folders `PourSTL/`, `PourSTLTests/`, `PourSTLUITests/`.
 - App display name/module: **PourSTL**. Development bundle ID: `bar.pourstl.app`. StoreKit placeholders: `bar.pourstl.app.pro.monthly` / `.yearly`, configured in `PourSTL.storekit`. They are not registered App Store products.
-- The app’s Privacy Policy link is https://pourstl.com/privacy. Terms of Use stay on Apple’s standard EULA. These pages are served by Pages project `pourstl`.
+- In [#48](https://github.com/aturnbough93-hue/PourSTL/pull/48), Settings → Support replaced GitHub Issues feedback with [Get support](https://pourstl.com/support), [Privacy policy](https://pourstl.com/privacy), and [PourSTL website](https://pourstl.com). The store-recovery screen’s **Get help** opens the same support page. Terms of Use stay on Apple’s standard EULA.
 - Deep links: `pourstl://`; legacy `pour://` remains supported. Existing internal preferences and browser storage keys remain stable. Approved app icon artwork is unchanged.
 
 Product positioning: PourSTL is a bartending app, with connected features planned. Current local feature behavior is documented accurately; “offline” is a capability of today’s testing build, not the overall product identity.
 
 ## Hosting
 
-- Authorized Cloudflare account owns Pages project **pourstl**. The canonical site is **https://pourstl.com**, including `/privacy` and `/support`. Commit `6c709ab` passed 108 live browser checks on the earlier Pages deployment. Deployment method: authenticated Wrangler direct upload; GitHub pushes run quality checks but do not automatically deploy this project. A source change does not publish until that upload.
+- The canonical site **https://pourstl.com** is served by the GitHub-connected Cloudflare Pages project **pourstl**, including the browser app at `/try` and the `/privacy` and `/support` pages. Cloudflare builds branch previews and deploys `main` to production. See the website README for the build settings and verification steps.
 - **https://pourstl.com** is registered with **IONOS SE** and is already the canonical public URL. This repo does not change DNS or add redirects. The assigned Pages hostname stays `pourstl.pages.dev` and is not the canonical URL.
 - Wrangler currently has account/user read and Pages write permissions. An earlier zone-create attempt failed with missing `com.cloudflare.api.account.zone.create`. This change does not edit DNS or nameservers.
 - Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and `matt.ns.cloudflare.com`. The earlier IONOS nameservers were `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, and `ns1122.ui-dns.de`.
@@ -27,40 +27,28 @@ Deployment/build details: [website README](../website/README.md). No API token, 
 
 ## Validation and testing
 
-Operational note: on the matched Xcode 16.4 / iOS 18.5 stack, local StoreKit
-integration tests consumed about 13 minutes on one successful runner (the
-entitlement-on-launch case about 9.5 minutes). A long-running simulator job is
-not by itself evidence of a failure. Quality CI allows 45 minutes; QA allows 50.
-Inspect the actual test summary and logs before retrying or claiming success.
+Free iPhone recipes scale up to 24 servings. A verified Pro entitlement unlocks
+on-device ingredient costing, batches up to 200 servings, and CSV prep sheets.
+Debug UI fixtures cover both tiers without purchasing. Release uses real StoreKit.
 
+The [iOS tests](https://github.com/aturnbough93-hue/PourSTL/actions/runs/45695599134)
+and [6.9-inch simulator QA](https://github.com/aturnbough93-hue/PourSTL/actions/runs/45695598973)
+passed on PR #33's test merge commit
+[`219ce72`](https://github.com/aturnbough93-hue/PourSTL/commit/219ce72de7c84629cb691e6405f7bead169f1dc6).
+The fix is test-only: the local fixture allows up to 10 minutes for its first
+entitlement sync, bounds later waits, and clears transactions again if StoreKit reports a
+subscription after cleanup. A timeout fails the test; it is not treated as an
+empty entitlement result. These checks do not replace purchase, restore, and
+expiration testing with the configured products in Apple's sandbox.
 
-The renamed app at `6c709ab` passed **162/162 unit tests** on both Quality
-runners ([push](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43324406322),
-[PR](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43324412991)),
-with verified universal Release archives and a matched Xcode 16.4 / SDK 18.5 /
-simulator iOS 18.5 stack. [Full QA 43324406233](https://github.com/aturnbough93-hue/PourSTL/actions/runs/43324406233)
-passed **184/185**: all 162 unit tests and 22 of 23 UI tests, with zero skips.
-The remaining failure is the unknown-barcode stock-toggle UI interaction. Its
-coordinate tap did not establish the off state before saving. The persistence
-unit tests pass; the UI helper is being corrected with strict state assertions.
-All eight current 1320×2868 screenshots were checked visually without obvious
-clipping. Settings correctly shows the free account's Upgrade state.
-
-Subscription listener readiness, StoreKit fixture cleanup, Debug-only free UI
-accounts, and visible recipe navigation now pass. Release always uses real
-StoreKit. The isolation regression purchases a real local fixture before proving
-it cannot leak into the free UI scenario. **The final UI rerun must pass before
-release/merge.** A draft simulator prerelease has verified assets attached but
-is not public yet.
-
-Local website checks pass: 10 static, 9 Cloudflare build and 10 demo logic tests.
-The PourSTL site and 1200×630 social image passed 108 live browser checks on the
-working Pages address, including desktop/mobile layouts, demo interactions,
-assets, security headers, unknown 404, and metadata.
+PourSTL Web opens from the homepage and works without an account. It uses the
+native seed catalog and saves custom recipes, favorites, inventory, shopping,
+and preferences in the browser. The service worker provides offline access
+after it caches the app. See the website README for build and verification steps.
 
 See [personal testing](PERSONAL_TESTING.md) for the downloadable simulator build
 and manual checklist. The owner currently has neither a Mac nor an Apple
-Developer account. The browser demo works on iPhone now; native simulator apps
+Developer account. PourSTL Web runs in a browser. Native simulator apps
 need a Mac with Xcode. Physical iPhone installation needs Xcode provisioning or
 an Apple Developer/TestFlight release. No iPhone installer or TestFlight link
 has been delivered.
@@ -68,8 +56,7 @@ has been delivered.
 ## Finish and record
 
 1. Repository rename and metadata are complete. Canonical GitHub links use /PourSTL; old /pour links redirect. Preserve the owner’s About description without adding “offline”.
-2. Canonical metadata in this repo uses https://pourstl.com. Do not add redirects or change DNS from this repository. Production upload still uses project name `pourstl` and `SITE_URL=https://pourstl.com`. The assigned Pages hostname remains pourstl.pages.dev.
+2. Canonical metadata uses https://pourstl.com. Cloudflare deploys the `main` branch to Pages project `pourstl`. The assigned Pages hostname is pourstl.pages.dev.
 3. Inspect the latest renamed app unit/Release/UI workflows. Fix genuine failures; record tested commit, SDK/runtime, counts and current screenshots.
-4. Merge PR #16 normally after required checks; confirm #12–15 are marked merged and every audited remote head is an ancestor of main. Keep superseded revert history reconciled without applying its deletions.
-5. Publish the tested simulator prerelease/package with manifest, checksum and guide. Confirm the documented download exists before final handoff.
-6. Deploy from the final reviewed main commit, verify pages/demo/assets/security headers/unknown 404, then update this handoff and coordination status with actual results and remaining owner steps.
+4. Confirm the simulator package for the tested commit is downloadable with its manifest, checksum, and guide.
+5. Verify the Pages deployment from `main`: homepage CTA, browser app, assets, security headers, and a real 404. Record the results and remaining owner steps.

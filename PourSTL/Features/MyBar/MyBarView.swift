@@ -151,6 +151,11 @@ struct MyBarView: View {
         .background(PourColor.background)
     }
 
+    static func rowSubtitle(for item: InventoryItem) -> String? {
+        let canonicalName = item.canonicalName
+        return canonicalName == IngredientNormalizer.normalize(item.name) ? nil : canonicalName
+    }
+
     private func inventoryRow(_ item: InventoryItem) -> some View {
         HStack(spacing: 12) {
             Button {
@@ -173,16 +178,11 @@ struct MyBarView: View {
                     Text(item.name)
                         .font(.body)
                         .foregroundStyle(item.isInStock ? PourColor.textPrimary : PourColor.textSecondary)
-                    HStack(spacing: 6) {
-                        Text(item.inventoryCategory.displayName)
-                        if item.canonicalName != IngredientNormalizer.normalize(item.name) {
-                            Text("·")
-                            Text(item.canonicalName)
-                                .foregroundStyle(PourColor.textTertiary)
-                        }
+                    if let subtitle = Self.rowSubtitle(for: item) {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(PourColor.textTertiary)
                     }
-                    .font(.caption)
-                    .foregroundStyle(PourColor.textTertiary)
                 }
             }
             .accessibilityLabel("Edit \(item.name)")

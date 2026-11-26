@@ -74,8 +74,11 @@ final class QAPassTests: XCTestCase {
         app.buttons["Cancel"].tap()
         app.buttons["Close scanner"].tap()
         XCTAssertTrue(app.navigationBars["My Bar"].waitForExistence(timeout: 8))
+        filterInventory("Tanqueray")
+        XCTAssertTrue(app.staticTexts["No ingredients found"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.buttons["Edit Tanqueray"].exists)
-        XCTAssertTrue(app.buttons["Edit Angostura Bitters"].exists)
+        filterInventory("Angostura Bitters")
+        XCTAssertTrue(app.buttons["Edit Angostura Bitters"].waitForExistence(timeout: 8))
     }
 
     func testUnknownCodeSavesOutOfStockWhenToggleIsOff() throws {
@@ -249,7 +252,7 @@ final class QAPassTests: XCTestCase {
         app.buttons["Increase servings"].tap()
         XCTAssertTrue(labeled("Servings, 2").waitForExistence(timeout: 3))
         XCTAssertTrue(labeled("2 oz Gin").exists)
-        let units = app.segmentedControls["Display units, oz"]
+        let units = app.segmentedControls["Display units"]
         XCTAssertTrue(units.waitForExistence(timeout: 3))
         units.buttons["ml"].tap()
         XCTAssertTrue(labeled("59 ml Gin").waitForExistence(timeout: 3))
@@ -294,6 +297,15 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Negroni"].exists)
     }
 
+    func testRecipeDistinguishesOptionalAndRequiredIngredients() throws {
+        launch(extra: ["-deepLink=pourstl://recipe?name=Margarita"])
+        let tequila = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label ENDSWITH %@", " Tequila, missing")).firstMatch
+        XCTAssertTrue(tequila.waitForExistence(timeout: 10))
+        XCTAssertTrue(labeled("1 pinch Salt, optional, not stocked").exists)
+        XCTAssertTrue(labeled("1 wedge Lime Wedge, optional").exists)
+    }
+
     func testShoppingDeepLinkSelectsTheTab() throws {
         launch(extra: ["-deepLink=pourstl://tab/shopping"])
         XCTAssertTrue(app.navigationBars["Shopping List"].waitForExistence(timeout: 15))
@@ -311,6 +323,39 @@ final class QAPassTests: XCTestCase {
         let again = preferredUnits()
         XCTAssertTrue(again.waitForExistence(timeout: 5))
         XCTAssertTrue(again.label.contains("ml") || again.buttons["ml"].isSelected)
+    }
+
+    func testSettingsLinksToTheSitePrivacyAndSupport() throws {
+        launch()
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
+        let expected = [
+            ("Get support", "https://pourstl.com/support"),
+            ("Privacy policy", "https://pourstl.com/privacy"),
+            ("PourSTL website", "https://pourstl.com")
+        ]
+        for (label, url) in expected {
+            let link = settingsLink(url)
+            for _ in 0..<5 where !link.isHittable { app.swipeUp() }
+            XCTAssertTrue(link.waitForExistence(timeout: 5), "Missing Settings link to \(url)")
+            XCTAssertEqual(link.label, label)
+        }
+        XCTAssertFalse(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier CONTAINS %@", "github.com")).firstMatch.exists)
+        XCTAssertFalse(app.buttons["Send feedback"].exists)
+        capture("09-settings-links")
+    }
+
+    func testSettingsSupportLinkOpensSafari() throws {
+        launch()
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
+        let link = settingsLink("https://pourstl.com/support")
+        for _ in 0..<5 where !link.isHittable { app.swipeUp() }
+        link.tap()
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 20))
+        app.activate()
     }
 
     func testClassicVariationCanBeCancelledWithoutChangingTheOriginal() throws {
@@ -377,6 +422,49 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(app.buttons["Increase servings"].exists, "Core recipes must remain accessible for free")
     }
 
+    func testCostingAndBatchPrepRequiresPro() {
+        launch()
+        openNegroni()
+        openServiceTools()
+        XCTAssertTrue(app.navigationBars["PourSTL Pro"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["Export prep sheet (CSV)"].exists)
+        app.navigationBars["PourSTL Pro"].buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Increase servings"].exists)
+    }
+
+    func testProCanAddPriceAndOpenBatchPrep() {
+        launch(extra: ["-uiTestingPro"])
+        openNegroni()
+        openServiceTools()
+        let tools = app.navigationBars["Costing & Batch Prep"]
+        XCTAssertTrue(tools.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Export prep sheet (CSV)"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["pro-batch-servings"].firstMatch.exists)
+        let ingredient = app.descendants(matching: .any)["costing-ingredient-0"].firstMatch
+        XCTAssertTrue(ingredient.waitForExistence(timeout: 5))
+        ingredient.tap()
+        let price = app.textFields["ingredient-package-price"]
+        let yield = app.textFields["ingredient-package-yield"]
+        XCTAssertTrue(price.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Remove saved price"].exists)
+        price.tap()
+        price.typeText("30")
+        yield.tap()
+        yield.typeText("750")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(tools.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "ingredient lines priced")).firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Priced per drink")).firstMatch.exists)
+    }
+
+    private func openServiceTools() {
+        let tools = app.buttons["Costing & Batch Prep"]
+        for _ in 0..<5 where !tools.isHittable { app.swipeUp() }
+        XCTAssertTrue(tools.isHittable)
+        tools.tap()
+    }
+
     func testCaptureTestingScreenshots() throws {
         launch()
         XCTAssertTrue(labeled("What can I make, 7 drinks").waitForExistence(timeout: 15))
@@ -428,6 +516,25 @@ final class QAPassTests: XCTestCase {
         capture("06-shopping-list")
     }
 
+    func testAX5RecipeActionsUseFullWidthAndScrollAway() throws {
+        launch(extra: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-deepLink=pourstl://recipe?name=Negroni"
+        ])
+        let scale = app.buttons["Scale"]
+        XCTAssertTrue(scale.waitForExistence(timeout: 10))
+        for _ in 0..<10 where !scale.isHittable { app.swipeUp() }
+        XCTAssertTrue(scale.isHittable)
+        XCTAssertGreaterThan(scale.frame.width, app.frame.width * 0.7,
+                             "Accessibility actions must not be squeezed into four columns")
+        capture("ax5-recipe-actions")
+        scale.tap()
+        let increase = app.buttons["Increase servings"]
+        XCTAssertTrue(increase.waitForExistence(timeout: 5))
+        for _ in 0..<4 where scale.isHittable { app.swipeUp() }
+        XCTAssertFalse(scale.isHittable, "AX5 actions must scroll away rather than cover recipe content")
+    }
+
     // MARK: - Helpers
 
     private func launch(extra: [String] = []) {
@@ -435,6 +542,10 @@ final class QAPassTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 25))
         XCTAssertFalse(app.staticTexts["Welcome to PourSTL"].exists)
+    }
+
+    private func settingsLink(_ url: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: url).firstMatch
     }
 
     private func relaunch() {
@@ -471,9 +582,8 @@ final class QAPassTests: XCTestCase {
     }
 
     private func openScanner() {
-        if !app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 2),
-           app.buttons["Cancel"].exists {
-            app.buttons["Cancel"].tap()
+        if !app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 2) {
+            dismissInventorySearch()
         }
         XCTAssertTrue(app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 5))
         app.buttons["Scan barcode to add ingredient"].tap()
@@ -572,10 +682,7 @@ final class QAPassTests: XCTestCase {
 
     private func addBottle(_ name: String, inStock: Bool, lowStock: Bool = false) {
         if !app.buttons["Add inventory item"].waitForExistence(timeout: 2) {
-            let cancel = app.buttons["Cancel"]
-            if cancel.exists {
-                cancel.tap()
-            }
+            dismissInventorySearch()
         }
         XCTAssertTrue(app.buttons["Add inventory item"].waitForExistence(timeout: 5))
         app.buttons["Add inventory item"].firstMatch.tap()
@@ -617,6 +724,16 @@ final class QAPassTests: XCTestCase {
         search.typeText(query)
         if app.keyboards.buttons["Search"].exists {
             app.keyboards.buttons["Search"].tap()
+        }
+    }
+
+    private func dismissInventorySearch() {
+        let close = app.navigationBars["My Bar"].buttons["Close"]
+        let cancel = app.buttons["Cancel"]
+        if close.exists {
+            close.tap()
+        } else if cancel.exists {
+            cancel.tap()
         }
     }
 

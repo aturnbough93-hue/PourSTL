@@ -2,6 +2,7 @@
 
 import hashlib
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -23,6 +24,21 @@ class CloudflareBuildTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.output = Path(self.temporary.name) / "dist"
         self.source = REPOSITORY / "website"
+
+    def test_web_app_cache_version_is_stable_and_changes_with_assets(self):
+        origin = "https://pourstl.com"
+        self.source = self.output.parent / "site"
+        shutil.copytree(REPOSITORY / "website", self.source)
+        filename = "web-app-worker.js"
+        build_site(self.source, self.output, origin)
+        worker = (self.output / filename).read_text()
+        self.assertRegex(worker, r"cachePrefix \+ '[0-9a-f]{16}'")
+        build_site(self.source, self.output, origin)
+        self.assertEqual((self.output / filename).read_text(), worker)
+        with (self.source / "try.css").open("a") as stylesheet:
+            stylesheet.write("\n/* cache version test */\n")
+        build_site(self.source, self.output, origin)
+        self.assertNotEqual((self.output / filename).read_text(), worker)
 
     def test_production_build_rewrites_metadata_and_preserves_source_assets_headers(self):
         before = fingerprints(self.source)

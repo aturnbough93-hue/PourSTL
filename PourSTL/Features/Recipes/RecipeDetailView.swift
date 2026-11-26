@@ -1,10 +1,207 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
+
+private struct RecipeServiceTools: View {
+    let recipe: Recipe
+    @Binding var servings: Int
+    let unit: UnitPreference
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(AppSettings.self) private var settings
+    @Environment(ProEntitlementStore.self) private var entitlement
+    @State private var exporting = false
+    @State private var exportError = false
+
+    private var currency: String { locale.currency?.identifier ?? "USD" }
+    private var activeServings: Int { min(max(servings, 1), RecipeScaling.proMaximumServings) }
+    private var batchSize: Binding<Int> {
+        Binding(get: { activeServings }, set: { servings = $0 })
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if entitlement.isPro {
+                    batchSection
+                    costingSection
+                }
+            }
+            .navigationTitle("Costing & Batch Prep")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .fileExporter(
+                isPresented: $exporting,
+                document: entitlement.isPro ? BatchPrepDocument(
+                    content: BatchPrepSheet.csv(for: recipe, servings: activeServings, unit: unit)
+                ) : nil,
+                contentType: .commaSeparatedText,
+                defaultFilename: "PourSTL Batch Prep"
+            ) { result in
+                if case .failure = result { exportError = true }
+            }
+            .alert("Prep sheet couldn’t be exported", isPresented: $exportError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Choose another location and try again.")
+            }
+        }
+    }
+
+    private var batchSection: some View {
+        Section {
+            Picker("Servings", selection: batchSize) {
+                ForEach(RecipeScaling.minimumServings...RecipeScaling.proMaximumServings, id: \.self) { count in
+                    Text(count.formatted()).tag(count)
+                }
+            }
+            .pickerStyle(.navigationLink)
+            .accessibilityIdentifier("pro-batch-servings")
+            if !ProGate.isLocked(.batchExport, isPro: entitlement.isPro) {
+                Button("Export prep sheet (CSV)", systemImage: "square.and.arrow.up") { exporting = true }
+                    .disabled(recipe.sortedIngredients.isEmpty)
+            }
+        } header: {
+            Text("Batch prep")
+        } footer: {
+            Text("The prep sheet includes scaled ingredient measures, optional ingredients, and ingredient notes.")
+        }
+    }
+
+    private var costingSection: some View {
+        let ingredients = recipe.sortedIngredients
+        let costs = ingredients.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
+        let perDrink = costs.reduce(Decimal.zero, +)
+        let isComplete = !ingredients.isEmpty && costs.count == ingredients.count
+        return Section {
+            if !costs.isEmpty {
+                LabeledContent(isComplete ? "Per drink" : "Priced per drink", value: money(perDrink))
+                LabeledContent(isComplete ? "Batch total" : "Priced batch subtotal", value: money(perDrink * Decimal(activeServings)))
+            }
+            if !isComplete {
+                Text("\(costs.count) of \(ingredients.count) ingredient lines priced")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(ingredients) { ingredient in
+                let line = RecipeCostLine(ingredient: ingredient)
+                if line.quantity != nil {
+                    let key = line.priceKey(currency: currency)
+                    NavigationLink {
+                        IngredientPriceEditor(line: line, currency: currency, existing: settings.ingredientPrices[key])
+                    } label: {
+                        LabeledContent(ingredient.name, value: line.cost(in: settings.ingredientPrices, currency: currency)
+                            .map(money) ?? "Add price")
+                    }
+                    .accessibilityIdentifier("costing-ingredient-\(ingredient.position)")
+                } else {
+                    LabeledContent(ingredient.name, value: "Unmeasured")
+                }
+            }
+        } header: {
+            Text("Ingredient costing")
+        } footer: {
+            Text("Enter what you paid for each package and its usable yield. Prices are saved on this device and reused in recipes with the same ingredient and unit. Estimates cover priced ingredient lines, including optional ones when priced. Add labor, waste, and unlisted garnishes separately.")
+        }
+    }
+
+    private func money(_ amount: Decimal) -> String {
+        amount.formatted(.currency(code: currency).locale(locale))
+    }
+}
+
+private struct IngredientPriceEditor: View {
+    let line: RecipeCostLine
+    let currency: String
+    let existing: IngredientPackagePrice?
+
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @State private var price = ""
+    @State private var yield = ""
+
+    private var package: IngredientPackagePrice? {
+        let strategy = Decimal.FormatStyle(locale: locale).parseStrategy
+        guard let price = try? strategy.parse(price), let yield = try? strategy.parse(yield),
+              (0...1_000_000_000).contains(price), (0.000001...1_000_000_000).contains(yield) else { return nil }
+        return IngredientPackagePrice(price: price, yield: yield)
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Package price (\(currency))", text: $price)
+                    .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("ingredient-package-price")
+                TextField("Package yield (\(line.unit))", text: $yield)
+                    .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("ingredient-package-yield")
+            } footer: {
+                if line.usesVolume {
+                    Text("Enter the usable package volume in milliliters. A standard 750 ml bottle has a yield of 750.")
+                } else {
+                    Text("Enter how many \(line.unit) you get from the package.")
+                }
+            }
+            if existing != nil {
+                Button("Remove saved price", role: .destructive) {
+                    settings.ingredientPrices.removeValue(forKey: line.priceKey(currency: currency))
+                    dismiss()
+                }
+            }
+        }
+        .navigationTitle(line.ingredient.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    guard let package else { return }
+                    settings.ingredientPrices[line.priceKey(currency: currency)] = package
+                    dismiss()
+                }
+                .disabled(package == nil)
+            }
+        }
+        .onAppear {
+            guard let existing else { return }
+            let format = Decimal.FormatStyle(locale: locale).grouping(.never).precision(.fractionLength(0...12))
+            price = existing.price.formatted(format)
+            yield = existing.yield.formatted(format)
+        }
+    }
+}
+
+private struct BatchPrepDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.commaSeparatedText]
+    let content: String
+
+    init(content: String) {
+        self.content = content
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents,
+              let content = String(data: data, encoding: .utf8) else { throw CocoaError(.fileReadCorruptFile) }
+        self.content = content
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(content.utf8))
+    }
+}
 
 struct RecipeDetailView: View {
     @Bindable var recipe: Recipe
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
+    @Environment(ProEntitlementStore.self) private var entitlement
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var inventory: [InventoryItem]
 
     @State private var servings: Int = 1
@@ -12,6 +209,8 @@ struct RecipeDetailView: View {
     @State private var unitOverride: UnitPreference? = nil
     @State private var showTimer = false
     @State private var showEdit = false
+    @State private var showServiceTools = false
+    @State private var showPro = false
     @State private var addedToList = false
     @State private var shoppingConfirmationTask: Task<Void, Never>?
     @State private var showSaveError = false
@@ -19,7 +218,17 @@ struct RecipeDetailView: View {
 
     private var effectiveUnit: UnitPreference { unitOverride ?? settings.unit }
     private var match: RecipeMatch { RecipeEngine.match(recipe, inventory: inventory) }
-    private var scaleFactor: Double { Double(servings) }
+    private var maximumServings: Int {
+        ProGate.isLocked(.largeBatches, isPro: entitlement.isPro)
+            ? RecipeScaling.maximumServings : RecipeScaling.proMaximumServings
+    }
+    private var activeServings: Int { min(servings, maximumServings) }
+    private var scaleFactor: Double { Double(activeServings) }
+    private var adaptiveRow: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -27,17 +236,25 @@ struct RecipeDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     hero
                     metadataPills
+                    if dynamicTypeSize.isAccessibilitySize {
+                        actionBar(proxy: proxy)
+                    }
                     scalingControls.id("scaling")
                     ingredientsList
                     instructionsSection
                     if !recipe.isCustom { variationAction }
                     shoppingAction
+                    serviceToolsAction
                 }
                 .padding(.horizontal)
-                .padding(.bottom, 90)
+                .padding(.bottom, 16)
             }
             .background(PourColor.background)
-            .overlay(alignment: .bottom) { actionBar(proxy: proxy) }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !dynamicTypeSize.isAccessibilitySize {
+                    actionBar(proxy: proxy)
+                }
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -57,6 +274,14 @@ struct RecipeDetailView: View {
         .sheet(isPresented: $showTimer) { TimerSheet(recipeName: recipe.name) }
         .sheet(isPresented: $showEdit) {
             RecipeEditorView(recipe: recipe, makingVariation: !recipe.isCustom)
+        }
+        .sheet(isPresented: $showServiceTools) {
+            RecipeServiceTools(recipe: recipe, servings: $servings, unit: effectiveUnit)
+        }
+        .sheet(isPresented: $showPro) { ProUpsellView() }
+        .onChange(of: maximumServings) { _, limit in
+            servings = min(servings, limit)
+            if !entitlement.isPro { showServiceTools = false }
         }
         .alert(saveErrorTitle, isPresented: $showSaveError) {
             Button("OK", role: .cancel) {}
@@ -87,7 +312,7 @@ struct RecipeDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                 }
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(PourColor.border))
-                .frame(height: 180)
+                .frame(minHeight: 180)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(recipe.name)
@@ -107,24 +332,35 @@ struct RecipeDetailView: View {
     // MARK: - Metadata pills
 
     private var metadataPills: some View {
-        HStack(spacing: 8) {
-            metaPill(recipe.glassType, symbol: GlassIcon.symbol(for: recipe.glassType))
-                .accessibilityLabel("Served in a \(recipe.glassType)")
-            if !recipe.method.isEmpty {
-                metaPill(recipe.method, symbol: "drop")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                metadataLabels
             }
-            if match.canMake {
-                metaPill("Can make", symbol: "checkmark.circle.fill", tint: PourColor.canMake)
-            } else {
-                metaPill(
-                    "Missing \(match.missing.count)",
-                    symbol: "exclamationmark.triangle",
-                    tint: PourColor.almost
-                )
+            .fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 8) {
+                metadataLabels
             }
-            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var metadataLabels: some View {
+        metaPill(recipe.glassType, symbol: GlassIcon.symbol(for: recipe.glassType))
+            .accessibilityLabel("Served in a \(recipe.glassType)")
+        if !recipe.method.isEmpty {
+            metaPill(recipe.method, symbol: "drop")
+        }
+        if match.canMake {
+            metaPill("Can make", symbol: "checkmark.circle.fill", tint: PourColor.canMake)
+        } else {
+            metaPill(
+                "Missing \(match.missing.count)",
+                symbol: "exclamationmark.triangle",
+                tint: PourColor.almost
+            )
+        }
     }
 
     private func metaPill(_ text: String, symbol: String, tint: Color = PourColor.textSecondary) -> some View {
@@ -139,9 +375,9 @@ struct RecipeDetailView: View {
     // MARK: - Scaling + unit toggle
 
     private var scalingControls: some View {
-        HStack(spacing: 12) {
+        adaptiveRow {
             VStack(alignment: .leading, spacing: 4) {
-                Text(servings == 1 ? "Servings" : "Batch of \(servings)")
+                Text(activeServings == 1 ? "Servings" : "Batch of \(activeServings)")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(PourColor.textSecondary)
                 HStack(spacing: 4) {
@@ -152,47 +388,49 @@ struct RecipeDetailView: View {
                         Image(systemName: "minus.circle.fill")
                             .font(.title2)
                             .foregroundStyle(servings > RecipeScaling.minimumServings ? PourColor.accent : PourColor.textTertiary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .disabled(servings <= RecipeScaling.minimumServings)
                     .accessibilityLabel("Decrease servings")
                     .accessibilityAddTraits(.isButton)
 
-                    Text("\(servings)")
+                    Text("\(activeServings)")
                         .font(.title3.weight(.semibold).monospacedDigit())
                         .foregroundStyle(PourColor.textPrimary)
                         .frame(minWidth: 32)
-                        .accessibilityLabel("Servings, \(servings)")
+                        .accessibilityLabel("Servings, \(activeServings)")
                         .accessibilityAddTraits(.updatesFrequently)
 
                     Button {
-                        if servings < RecipeScaling.maximumServings { servings += 1 }
+                        if servings < maximumServings { servings += 1 }
                         Haptics.selection()
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundStyle(servings < RecipeScaling.maximumServings ? PourColor.accent : PourColor.textTertiary)
+                            .foregroundStyle(servings < maximumServings ? PourColor.accent : PourColor.textTertiary)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
-                    .disabled(servings >= RecipeScaling.maximumServings)
+                    .disabled(servings >= maximumServings)
                     .accessibilityLabel("Increase servings")
                     .accessibilityAddTraits(.isButton)
                 }
             }
 
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
 
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: 4) {
                 Text("Units")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(PourColor.textSecondary)
-                Picker("Display units", selection: unitBinding) {
-                    ForEach(UnitPreference.allCases, id: \.self) { unit in
-                        Text(unit.rawValue).tag(unit)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 110)
-                .accessibilityLabel("Display units, \(effectiveUnit.rawValue)")
-                .accessibilityAddTraits(.isButton)
+                AdaptiveSegmentedPicker(
+                    title: "Display units",
+                    selection: unitBinding,
+                    options: UnitPreference.allCases,
+                    optionTitle: { $0.rawValue }
+                )
+                .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 110)
             }
         }
         .padding(14)
@@ -226,23 +464,32 @@ struct RecipeDetailView: View {
     }
 
     private func ingredientRow(_ line: IngredientLine) -> some View {
-        let isMissing = match.missing.contains { $0.persistentModelID == line.persistentModelID }
-            || match.missingOptional.contains { $0.persistentModelID == line.persistentModelID }
+        let isMissingRequired = match.missing.contains { $0.persistentModelID == line.persistentModelID }
+        let isMissingOptional = match.missingOptional.contains { $0.persistentModelID == line.persistentModelID }
         let measure = line.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)
-        return HStack(alignment: .firstTextBaseline, spacing: 10) {
+        let accessibilityStatus = if isMissingRequired {
+            ", missing"
+        } else if isMissingOptional {
+            ", optional, not stocked"
+        } else if line.isOptional {
+            ", optional"
+        } else {
+            ""
+        }
+        return adaptiveRow {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(line.name)
-                        .font(.body)
-                        .foregroundStyle(PourColor.textPrimary)
-                    if isMissing {
-                        StatusPill(kind: .missing)
-                    }
-                    if line.isOptional {
-                        Text("optional")
-                            .font(.caption)
-                            .foregroundStyle(PourColor.textTertiary)
-                    }
+                Text(line.name)
+                    .font(.body)
+                    .foregroundStyle(PourColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if isMissingRequired {
+                    StatusPill(kind: .missing)
+                        .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
+                } else if line.isOptional {
+                    Text(isMissingOptional ? "Optional · not stocked" : "Optional")
+                        .font(.caption)
+                        .foregroundStyle(PourColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if let note = line.note, !note.isEmpty {
                     Text(note)
@@ -250,15 +497,15 @@ struct RecipeDetailView: View {
                         .foregroundStyle(PourColor.textTertiary)
                 }
             }
-            Spacer(minLength: 8)
+            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
             Text(measure)
                 .font(.pourMeasure)
                 .foregroundStyle(PourColor.textPrimary)
-                .multilineTextAlignment(.trailing)
+                .multilineTextAlignment(dynamicTypeSize.isAccessibilitySize ? .leading : .trailing)
         }
         .frame(minHeight: 52)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(measure) \(line.name)\(isMissing ? ", missing" : "")")
+        .accessibilityLabel("\(measure) \(line.name)\(accessibilityStatus)")
     }
 
     // MARK: - Instructions
@@ -346,7 +593,7 @@ struct RecipeDetailView: View {
     // MARK: - Sticky action bar
 
     private func actionBar(proxy: ScrollViewProxy) -> some View {
-        HStack(spacing: 12) {
+        adaptiveRow {
             actionButton(
                 recipe.isFavorite ? "heart.fill" : "heart",
                 label: recipe.isFavorite ? "Unfavorite" : "Favorite",
@@ -355,7 +602,9 @@ struct RecipeDetailView: View {
                 toggleFavorite()
             }
             actionButton("square.resize", label: "Scale") {
-                withAnimation { proxy.scrollTo("scaling", anchor: .top) }
+                withAnimation(reduceMotion ? nil : .default) {
+                    proxy.scrollTo("scaling", anchor: .top)
+                }
             }
             actionButton("timer", label: "Start timer") {
                 showTimer = true
@@ -369,6 +618,7 @@ struct RecipeDetailView: View {
             .accessibilityLabel("Share recipe")
             .accessibilityAddTraits(.isButton)
         }
+        .buttonStyle(.plain)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.ultraThinMaterial)
@@ -392,11 +642,27 @@ struct RecipeDetailView: View {
             "• \($0.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)) \($0.name)"
         }
         return """
-        \(recipe.name) — serves \(servings)
+        \(recipe.name) — serves \(activeServings)
         \(lines.joined(separator: "\n"))
 
         \(recipe.instructions)
         """
+    }
+
+    private var serviceToolsAction: some View {
+        Button {
+            if ProGate.isLocked(.recipeCosting, isPro: entitlement.isPro) {
+                showPro = true
+            } else {
+                showServiceTools = true
+            }
+        } label: {
+            Label("Costing & Batch Prep", systemImage: entitlement.isPro ? "chart.bar" : "lock")
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .tint(PourColor.accent)
+        .accessibilityHint(entitlement.isPro ? "Opens service tools" : "Requires PourSTL Pro")
     }
 
     private func actionButton(_ symbol: String, label: String, selected: Bool = false, action: @escaping () -> Void) -> some View {
@@ -408,14 +674,18 @@ struct RecipeDetailView: View {
     }
 
     private func actionBarLabel(_ symbol: String, text: String, selected: Bool = false) -> some View {
-        VStack(spacing: 4) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+            : AnyLayout(VStackLayout(spacing: 4))
+        return layout {
             Image(systemName: symbol)
                 .font(.system(size: 20, weight: .medium))
             Text(text)
-                .font(.caption2.weight(.medium))
+                .font(dynamicTypeSize.isAccessibilitySize ? .body.weight(.medium) : .caption2.weight(.medium))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(selected ? PourColor.accent : PourColor.textSecondary)
-        .frame(maxWidth: .infinity, minHeight: 48)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .center)
         .contentShape(Rectangle())
     }
 }

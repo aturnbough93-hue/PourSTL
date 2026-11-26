@@ -17,12 +17,15 @@ source review or a historical simulator run.
 - [ ] Onboarding seeds classic recipes; new users start with an empty bar (demo stock is a Debug-only QA flag)
 - [ ] Search + filter chips work offline
 - [ ] What can I make matches correctly (normalized ingredients)
-- [ ] Scaling (1-24) + oz/ml conversion accurate
+- [ ] Free scaling (1–24) + oz/ml conversion accurate
+- [ ] Verified Pro access unlocks batches up to 200, ingredient costing and CSV prep sheets; Free opens the upgrade sheet instead
+- [ ] With configured products in Apple’s sandbox, verify purchase, restore and expiration; Free tools remain usable
 - [ ] Timer haptics + Reduce Motion
 - [ ] Shopping list add/delete/clear
 - [ ] Custom recipe save/edit
 - [ ] Deep links `pourstl://` (legacy `pour://` remains supported)
 - [ ] Settings persist (appearance, units)
+- [ ] Settings → Support links open the expected pages in the browser: [Get support](https://pourstl.com/support), [Privacy policy](https://pourstl.com/privacy), and [PourSTL website](https://pourstl.com)
 
 ## Accessibility (required for App Store)
 - [ ] VoiceOver full navigation, meaningful labels on all controls
@@ -36,7 +39,7 @@ source review or a historical simulator run.
 ## TestFlight Specific
 - [ ] Archive + upload via Xcode or Devin macOS
 - [ ] Beta App Description + What to Test filled
-- [ ] Feedback email set
+- [ ] TestFlight beta feedback email set in App Store Connect (separate from the app’s **Get support** link)
 - [ ] Internal group auto-distribute enabled
 - [ ] External requires first build review
 - [ ] Screenshots match actual UI (no mockups)
@@ -48,7 +51,7 @@ source review or a historical simulator run.
 - [ ] Archive includes PrivacyInfo.xcprivacy and its required-reason API declaration
 - [ ] Privacy report and website policy reflect the distributed app
 - [ ] Save failures preserve editor input and never show false success
-- [ ] Store initialization failures preserve existing data
+- [ ] Store initialization failures preserve existing data, and **Get help** opens the [same support page](https://pourstl.com/support) as Settings
 
 ## Native verification
 - Use the GitHub-hosted macOS workflows for repeatable unit/UI tests and screenshots
