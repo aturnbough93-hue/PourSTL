@@ -622,6 +622,8 @@ final class QAPassTests: XCTestCase {
             XCTWaiter.wait(for: [cleared], timeout: 5), .completed,
             "\(selectedOption.label) in \(title) must lose the selected state"
         )
+        let after = group.buttons.allElementsBoundByIndex.filter(\.isSelected).map(\.label)
+        XCTAssertEqual(after, [tapLabel], "\(title) must end with exactly \(tapLabel) selected; found \(after)")
     }
 
     func testAX5RecipeActionsUseFullWidthAndScrollAway() throws {
