@@ -196,6 +196,10 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
     get lastElementChild() { return this.children[this.children.length - 1] || null; }
     setAttribute(name, value) { this.attributes.set(name, String(value)); }
     getAttribute(name) { return this.attributes.get(name) ?? null; }
+    toggleAttribute(name, force) {
+      if (force) this.attributes.set(name, '');
+      else this.attributes.delete(name);
+    }
     addEventListener(type, listener) {
       if (!this.listeners.has(type)) this.listeners.set(type, []);
       this.listeners.get(type).push(listener);
@@ -366,8 +370,9 @@ test('successful recipe copy announces beside its action without changing focus'
   await copy.listeners.get('click')[0]();
 
   assert.match(copiedText, /Negroni/);
-  assert.equal(page.byId.get('copy-label').getAttribute('aria-hidden'), 'true');
-  assert.equal(page.byId.get('copied-label').getAttribute('aria-hidden'), 'false');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copied');
+  assert.equal(page.byId.get('copy-icon').getAttribute('hidden'), '');
+  assert.equal(page.byId.get('copied-icon').getAttribute('hidden'), null);
   assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
   assert.equal(page.byId.get('feedback').textContent, '');
   assert.equal(page.doc.activeElement, copy);
@@ -375,8 +380,9 @@ test('successful recipe copy announces beside its action without changing focus'
 
   assert.equal(page.timeouts.size, 1);
   page.timeouts.values().next().value();
-  assert.equal(page.byId.get('copy-label').getAttribute('aria-hidden'), 'false');
-  assert.equal(page.byId.get('copied-label').getAttribute('aria-hidden'), 'true');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
+  assert.equal(page.byId.get('copy-icon').getAttribute('hidden'), null);
+  assert.equal(page.byId.get('copied-icon').getAttribute('hidden'), '');
   assert.equal(page.byId.get('copy-feedback').textContent, '');
   assert.equal(page.doc.activeElement, copy);
 });
@@ -443,7 +449,7 @@ test('pending copy does not restore stale confirmation after servings change', a
   await pendingCopy;
 
   assert.equal(copyFeedback.textContent, '');
-  assert.equal(page.byId.get('copied-label').getAttribute('aria-hidden'), 'true');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
   assert.equal(page.doc.activeElement, more);
   assert.equal(copy.focusCount, 1);
 });
@@ -452,25 +458,25 @@ test('recipe selection, servings, and units clear the previous copy confirmation
   const page = bootTryPage({ singleColumn: true, clipboardWrite: async () => {} });
   const copy = page.byId.get('copy').listeners.get('click')[0];
   const status = page.byId.get('copy-feedback');
-  const copiedLabel = page.byId.get('copied-label');
+  const copyLabel = page.byId.get('copy-label');
 
   await copy();
   page.byId.get('more').listeners.get('click')[0]();
   assert.equal(status.textContent, '');
-  assert.equal(copiedLabel.getAttribute('aria-hidden'), 'true');
+  assert.equal(copyLabel.textContent, 'Copy recipe');
   assert.equal(page.timeouts.size, 0);
 
   await copy();
   page.byId.get('unit-ml').listeners.get('click')[0]();
   assert.equal(status.textContent, '');
-  assert.equal(copiedLabel.getAttribute('aria-hidden'), 'true');
+  assert.equal(copyLabel.textContent, 'Copy recipe');
 
   await copy();
   const otherRecipe = page.byId.get('recipes').children.find(button => button.dataset.recipe !== 'negroni');
   otherRecipe.listeners.get('click')[0]();
   assert.notEqual(page.byId.get('recipe-title').textContent, 'Negroni');
   assert.equal(status.textContent, '');
-  assert.equal(copiedLabel.getAttribute('aria-hidden'), 'true');
+  assert.equal(copyLabel.textContent, 'Copy recipe');
 });
 
 test('blocked recipe copy keeps the selected manual-copy flow and close focus return', async () => {
@@ -480,7 +486,7 @@ test('blocked recipe copy keeps the selected manual-copy flow and close focus re
   await copy.listeners.get('click')[0]();
 
   assert.equal(page.byId.get('copy-feedback').textContent, '');
-  assert.equal(page.byId.get('copied-label').getAttribute('aria-hidden'), 'true');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
   assert.match(page.byId.get('feedback').textContent, /blocked clipboard access/);
   assert.equal(page.byId.get('manual-copy').hidden, false);
   assert.match(page.byId.get('recipe-copy').value, /Negroni/);

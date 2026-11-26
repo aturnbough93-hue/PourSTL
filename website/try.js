@@ -351,8 +351,10 @@
 
   function setCopyConfirmation(message = '') {
     window.clearTimeout(copyFeedbackTimeout);
-    $('copy-label').setAttribute('aria-hidden', String(Boolean(message)));
-    $('copied-label').setAttribute('aria-hidden', String(!message));
+    const copied = Boolean(message);
+    $('copy-label').textContent = copied ? 'Copied' : 'Copy recipe';
+    $('copy-icon').toggleAttribute('hidden', copied);
+    $('copied-icon').toggleAttribute('hidden', !copied);
     $('copy-feedback').textContent = message;
     copyFeedbackTimeout = message ? window.setTimeout(setCopyConfirmation, 3000) : undefined;
   }

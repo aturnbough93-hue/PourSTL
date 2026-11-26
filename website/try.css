@@ -622,19 +622,6 @@ h2 {
   flex-shrink: 0;
 }
 
-.copy-labels {
-  display: grid;
-  align-items: center;
-}
-
-.copy-labels > span {
-  grid-area: 1 / 1;
-}
-
-.copy-labels > [aria-hidden="true"] {
-  visibility: hidden;
-}
-
 .limits {
   font-size: 14px;
   color: var(--muted);
