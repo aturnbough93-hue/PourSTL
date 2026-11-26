@@ -357,8 +357,10 @@ test('bar assistant parses intents accurately including scaling, substitutions, 
   assert.deepEqual(Assistant.parseIntent("What's in my bar?"), { type: 'inventory', mode: 'stocked' });
   assert.deepEqual(Assistant.parseIntent("What's out of stock?"), { type: 'inventory', mode: 'outOfStock' });
   assert.deepEqual(Assistant.parseIntent('Do you upload my bar to the cloud?'), { type: 'privacy' });
+  assert.deepEqual(Assistant.parseIntent('Do you use cloud storage?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Are my questions saved?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Scale the Cloud Nine for 4'), { type: 'scale', recipeQuery: 'cloud nine', servings: 4 });
+  assert.deepEqual(Assistant.parseIntent('What can I make with extra virgin olive oil?'), { type: 'whatCanIMake', focus: 'extra virgin olive oil' });
   assert.deepEqual(Assistant.parseIntent('What can I make tonight?'), { type: 'whatCanIMake', focus: null });
   assert.deepEqual(Assistant.parseIntent('How do I make a Negroni for 1/2?'), { type: 'recipe', recipeQuery: 'negroni', servings: 0.5 });
   assert.deepEqual(Assistant.parseIntent('What is gluten free and vegan?'), { type: 'unsupportedDietaryRequest' });
@@ -456,6 +458,10 @@ test('bar assistant answers from My Bar, custom recipes, stand-ins, and scaling 
   const outOfStockReply = Assistant.answer("What's out of stock?", { ...Demo.defaults(), inventory: ['gin', 'sweet-vermouth'] });
   assert.match(outOfStockReply.text, /Not currently in My Bar/);
   assert.match(outOfStockReply.text, /Campari/);
+
+  const allExceptCrushedIce = Demo.listIngredients(Demo.defaults()).map(i => i.id).filter(id => id !== 'crushed-ice');
+  const crushedIceOut = Assistant.answer("What's out of stock?", { ...Demo.defaults(), inventory: allExceptCrushedIce });
+  assert.match(crushedIceOut.text, /Not currently in My Bar \(1\): Crushed Ice\./);
 
   const dietaryReply = Assistant.answer('Is Negroni safe for nut allergies?', state);
   assert.match(dietaryReply.text, /can't verify allergies/);
