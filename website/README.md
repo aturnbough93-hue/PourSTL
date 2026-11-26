@@ -148,9 +148,10 @@ production build versions the cache using the static site's content.
 
 When verifying `/try` on a Pages preview, check these flows:
 
-- After the app has cached, go offline, open **Bar Assistant**, and try
-  “What can I make?” or “Scale the Negroni for 4.” Close with **Done** and
-  reopen to confirm the conversation cleared.
+- After the app has cached, go offline and reload `/try` to verify that the
+  app loads from cache. Then open **Bar Assistant** and try “What can I make?”
+  or “Scale the Negroni for 4.” Close with **Done** and reopen to confirm the
+  conversation cleared.
 - At phone widths (700px and below), recipe search and results come before the
   recipe detail and My Bar. **My Bar & tools** jumps to the bar panel;
   **Back to recipes** in the detail returns focus to the selected result.
