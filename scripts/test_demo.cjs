@@ -194,6 +194,11 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
     }
     get firstElementChild() { return this.children[0] || null; }
     get lastElementChild() { return this.children[this.children.length - 1] || null; }
+    get disabled() { return this._disabled; }
+    set disabled(disabled) {
+      this._disabled = Boolean(disabled);
+      if (this._disabled && doc.activeElement === this) doc.activeElement = doc.body;
+    }
     setAttribute(name, value) { this.attributes.set(name, String(value)); }
     getAttribute(name) { return this.attributes.get(name) ?? null; }
     toggleAttribute(name, force) {
@@ -359,7 +364,7 @@ test('/try starts cleanly and orders panels for desktop and single-column viewpo
   assert.equal(desktop.doc.activeElement, stockInput);
 });
 
-test('successful recipe copy announces beside its action without changing focus', async () => {
+test('successful recipe copy announces beside its action and restores focus to Copy', async () => {
   let copiedText = '';
   const page = bootTryPage({ clipboardWrite: async text => { copiedText = text; } });
   const copy = page.byId.get('copy');
@@ -367,7 +372,9 @@ test('successful recipe copy announces beside its action without changing focus'
   page.byId.get('feedback').textContent = 'Previous status.';
   page.byId.get('copy-feedback').textContent = 'Old copy status.';
 
-  await copy.listeners.get('click')[0]();
+  const pendingCopy = copy.listeners.get('click')[0]();
+  assert.equal(page.doc.activeElement, page.doc.body);
+  await pendingCopy;
 
   assert.match(copiedText, /Negroni/);
   assert.equal(page.byId.get('copy-label').textContent, 'Copied');
