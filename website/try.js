@@ -362,11 +362,7 @@
   $('copy').addEventListener('click', async () => {
     const copy = $('copy');
     const restoreCopyFocus = document.activeElement === copy;
-    const selected = state.selected;
-    const servings = state.servings;
-    const unit = state.unit;
-    const recipe = currentRecipe();
-    const text = App.recipeText(recipe, servings, unit);
+    const text = App.recipeText(currentRecipe(), state.servings, state.unit);
     setCopyConfirmation();
     $('feedback').textContent = '';
     copy.disabled = true;
@@ -392,7 +388,8 @@
     }
     if (copied) {
       $('manual-copy').hidden = true;
-      if (state.selected === selected && state.servings === servings && state.unit === unit) {
+      const recipe = currentRecipe();
+      if (recipe && App.recipeText(recipe, state.servings, state.unit) === text) {
         setCopyConfirmation(`${recipe.name} recipe copied to clipboard.`);
       }
     } else {

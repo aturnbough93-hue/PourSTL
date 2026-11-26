@@ -159,7 +159,7 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
 });
 
-function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false } = {}) {
+function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState } = {}) {
   const siteDir = path.join(__dirname, '..', 'website');
   const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
   const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
@@ -302,6 +302,8 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   };
 
   const storage = new Map();
+  if (initialState) storage.set('pour.browser-demo.v1', JSON.stringify(initialState));
+  const windowListeners = new Map();
   const timeouts = new Map();
   let nextTimeout = 0;
   const win = {
@@ -319,7 +321,7 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
       if (query.includes('700px')) return makeMediaQuery(query, singleColumn);
       return makeMediaQuery(query, false);
     },
-    addEventListener() {},
+    addEventListener: (type, listener) => windowListeners.set(type, listener),
     setTimeout(callback) {
       timeouts.set(++nextTimeout, callback);
       return nextTimeout;
@@ -336,7 +338,7 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'try.js']) {
     vm.runInContext(fs.readFileSync(path.join(siteDir, file), 'utf8'), context, { filename: file });
   }
-  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts };
+  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts, windowListeners };
 }
 
 test('/try starts cleanly and orders panels for desktop and single-column viewports', () => {
@@ -459,6 +461,40 @@ test('pending copy does not restore stale confirmation after servings change', a
   assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
   assert.equal(page.doc.activeElement, more);
   assert.equal(copy.focusCount, 1);
+});
+
+test('pending copy does not announce success after a same-ID recipe edit syncs from another tab', async () => {
+  const recipe = {
+    id: 'custom-7d8cc6b0-4650-4b35-a9b7-a465a1e3352d',
+    name: 'Yuzu Fizz',
+    instructions: 'Stir over ice.',
+    ingredients: [{ name: 'Yuzu syrup', amount: 20, unit: 'ml' }],
+  };
+  const initialState = { ...Demo.defaults(), customRecipes: [recipe], selected: recipe.id };
+  let completeClipboardWrite;
+  let copiedText;
+  const page = bootTryPage({
+    initialState,
+    clipboardWrite: text => {
+      copiedText = text;
+      return new Promise(resolve => { completeClipboardWrite = resolve; });
+    },
+  });
+  const pendingCopy = page.byId.get('copy').listeners.get('click')[0]();
+  assert.match(copiedText, /Stir over ice\./);
+
+  const editedRecipe = { ...recipe, instructions: 'Shake with ice.' };
+  page.windowListeners.get('storage')({
+    key: 'pour.browser-demo.v1',
+    newValue: JSON.stringify({ ...initialState, customRecipes: [editedRecipe] }),
+  });
+  assert.equal(page.byId.get('recipe-title').textContent, 'Yuzu Fizz');
+  assert.equal(page.byId.get('instructions').textContent, editedRecipe.instructions);
+
+  completeClipboardWrite();
+  await pendingCopy;
+  assert.equal(page.byId.get('copy-feedback').textContent, '');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
 });
 
 test('recipe selection, servings, and units clear the previous copy confirmation', async () => {
