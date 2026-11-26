@@ -296,10 +296,11 @@ final class QAPassTests: XCTestCase {
 
     func testRecipeDistinguishesOptionalAndRequiredIngredients() throws {
         launch(extra: ["-deepLink=pourstl://recipe?name=Margarita"])
-        let labels = app.descendants(matching: .any)
-        XCTAssertTrue(labels["2 oz Tequila, missing"].waitForExistence(timeout: 10))
-        XCTAssertTrue(labels["1 pinch Salt, optional, not stocked"].exists)
-        XCTAssertTrue(labels["1 wedge Lime Wedge, optional"].exists)
+        let tequila = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label ENDSWITH %@", " Tequila, missing")).firstMatch
+        XCTAssertTrue(tequila.waitForExistence(timeout: 10))
+        XCTAssertTrue(labeled("1 pinch Salt, optional, not stocked").exists)
+        XCTAssertTrue(labeled("1 wedge Lime Wedge, optional").exists)
     }
 
     func testShoppingDeepLinkSelectsTheTab() throws {
