@@ -207,7 +207,7 @@
 
   function normalizeQuestion(raw) {
     const str = String(raw || '');
-    const pattern = /(^|[^\p{L}\p{N}])([-+−]?(?:\d+(?:\.\d+)?|\.\d+))(?=$|[^\p{L}\p{N}])/gu;
+    const pattern = /(^|[^\p{L}\p{N}])([-+−]?(?:\d+\/\d+|\d+(?:\.\d+)?|\.\d+))(?=$|[^\p{L}\p{N}])/gu;
     const parts = [];
     let last = 0;
     for (const match of str.matchAll(pattern)) {
@@ -249,6 +249,12 @@
   function parseNumber(token) {
     if (Object.prototype.hasOwnProperty.call(NUMBER_WORDS, token)) {
       return NUMBER_WORDS[token];
+    }
+    if (/^[-+]?\d+\/\d+$/.test(token)) {
+      const [num, den] = token.split('/').map(Number);
+      if (!den) return 0;
+      const value = num / den;
+      return Number.isFinite(value) ? value : null;
     }
     if (!/^[-+]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(token)) return null;
     const value = Number(token);
