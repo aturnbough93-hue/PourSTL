@@ -130,6 +130,16 @@ class WebsiteChecks(unittest.TestCase):
                     if tag == "img":
                         self.assertIn("alt", attrs)
 
+    def test_recipe_return_is_a_button_for_the_results(self):
+        page = self.pages[SITE / "try.html"]
+        [(tag, attrs)] = [(tag, attrs) for tag, attrs in page.tags
+                          if attrs.get("id") == "back-to-recipes"]
+        self.assertEqual(tag, "button")
+        self.assertEqual(attrs.get("type"), "button")
+        self.assertEqual(attrs.get("aria-controls"), "recipes")
+        self.assertNotIn("href", attrs)
+        self.assertIn("recipes", page.ids)
+
     def test_scripts_are_compatible_with_self_only_csp(self):
         for path, page in self.pages.items():
             with self.subTest(page=path.name):

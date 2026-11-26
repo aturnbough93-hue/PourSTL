@@ -392,6 +392,10 @@ h2 {
   padding: 22px 20px 20px;
 }
 
+#back-to-recipes {
+  display: none;
+}
+
 .recipe-media {
   height: 190px;
   border-radius: 12px;
@@ -1064,6 +1068,14 @@ dialog p {
   }
   .detail-panel {
     scroll-margin-top: 18px;
+  }
+  #back-to-recipes {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    font-size: 16px;
+    margin: -6px 0 8px;
   }
   .recipe-media {
     height: 185px;
