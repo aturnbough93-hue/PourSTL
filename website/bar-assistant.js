@@ -560,7 +560,8 @@
     }
     if (unit === 'topUp') return 'to top';
     if (unit === 'rinse' && scaled === 0) return 'rinse';
-    const pair = COUNT_UNITS[unit === 'dashes' ? 'dash' : unit] || [unit, unit];
+    const unitKey = unit === 'dashes' ? 'dash' : unit;
+    const pair = Object.prototype.hasOwnProperty.call(COUNT_UNITS, unitKey) ? COUNT_UNITS[unitKey] : [unit, unit];
     const label = pair[scaled === 1 ? 0 : 1];
     return [formatNumber(scaled), label].filter(Boolean).join(' ');
   }
@@ -701,7 +702,7 @@
       lines.push(display + ' already counts as ' + canonicalDisplay + ' in your bar.');
     }
 
-    const standIns = STAND_INS[cid] || [];
+    const standIns = Object.prototype.hasOwnProperty.call(STAND_INS, cid) ? STAND_INS[cid] : [];
     if (!standIns.length && cid === normalizedSlug) {
       lines.push('I don\'t have a stand-in for ' + display + ' in the offline list.');
     } else if (standIns.length) {
