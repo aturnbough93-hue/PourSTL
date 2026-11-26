@@ -685,8 +685,9 @@
     assistantTurns.push(userTurn, assistantTurn);
     if (assistantLog) {
       if (wasEmpty) assistantLog.replaceChildren();
-      assistantLog.append(buildAssistantTurnNode(userTurn), buildAssistantTurnNode(assistantTurn));
-      assistantLog.scrollTop = assistantLog.scrollHeight;
+      const assistantTurnNode = buildAssistantTurnNode(assistantTurn);
+      assistantLog.append(buildAssistantTurnNode(userTurn), assistantTurnNode);
+      assistantLog.scrollTop += assistantTurnNode.getBoundingClientRect().top - assistantLog.getBoundingClientRect().top;
     }
     assistantInput?.focus({ preventScroll: true });
   }

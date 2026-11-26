@@ -496,6 +496,19 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   const form = page.byId.get('assistant-form');
   const input = page.byId.get('assistant-input');
 
+  const appendToLog = log.append.bind(log);
+  log.scrollTop = 0;
+  log.scrollHeight = 900;
+  log.getBoundingClientRect = () => ({ top: 100 });
+  log.append = (...nodes) => {
+    for (const child of nodes) {
+      if (child.className === 'assistant-turn assistant-turn-assistant') {
+        child.getBoundingClientRect = () => ({ top: 300 });
+      }
+    }
+    appendToLog(...nodes);
+  };
+
   openBtn.listeners.get('click')[0]();
   assert.ok(log.children.length > 0);
   assert.equal(log.children[0].className, 'assistant-empty');
@@ -508,6 +521,8 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   assert.equal(firstUserNode.className, 'assistant-turn assistant-turn-user');
   assert.equal(firstAssistantNode.className, 'assistant-turn assistant-turn-assistant');
   assert.equal(input.value, '');
+  assert.equal(log.scrollTop, 200);
+  assert.equal(page.doc.activeElement, input);
 
   input.value = 'What can I make?';
   form.listeners.get('submit')[0]({ preventDefault() {} });
