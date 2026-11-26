@@ -2,6 +2,7 @@
   'use strict';
   const App = window.PourWeb;
   if (!App) return;
+  const Assistant = window.PourAssistant;
   const $ = id => document.getElementById(id);
   const storageKey = 'pour.browser-demo.v1';
   let state = App.defaults();
@@ -613,6 +614,114 @@
     feedback('Prep timer stopped.');
   });
 
+  const assistantDialog = $('assistant-dialog');
+  const assistantLog = $('assistant-log');
+  const assistantInput = $('assistant-input');
+  let assistantTurns = [];
+
+  function buildAssistantTurnNode(turn) {
+    const item = node('div', 'assistant-turn assistant-turn-' + turn.kind);
+    const bubble = node('div', 'assistant-bubble');
+    const lines = turn.text.split('\n');
+    for (let i = 0; i < lines.length; i += 1) {
+      if (i > 0) bubble.append(document.createElement('br'));
+      bubble.append(document.createTextNode(lines[i]));
+    }
+    item.append(bubble);
+    if (turn.sourceNote) item.append(node('p', 'assistant-note', turn.sourceNote));
+    if (turn.followUps && turn.followUps.length) {
+      const prompts = node('div', 'assistant-prompts');
+      for (const follow of turn.followUps) {
+        const button = node('button', 'assistant-prompt', follow);
+        button.type = 'button';
+        button.addEventListener('click', () => askAssistant(follow));
+        prompts.append(button);
+      }
+      item.append(prompts);
+    }
+    return item;
+  }
+
+  function renderAssistant() {
+    if (!assistantLog || !Assistant) return;
+    assistantLog.replaceChildren();
+    if (!assistantTurns.length) {
+      const empty = node('div', 'assistant-empty');
+      empty.append(
+        node('h3', '', 'Ask your bar'),
+        node('p', '', 'An offline recipe helper for what you can make, ingredient stand-ins, and scaled measures. It uses recipes and My Bar in this browser.')
+      );
+      const prompts = node('div', 'assistant-prompts');
+      for (const question of Assistant.STARTER_QUESTIONS) {
+        const button = node('button', 'assistant-prompt', question);
+        button.type = 'button';
+        button.addEventListener('click', () => askAssistant(question));
+        prompts.append(button);
+      }
+      empty.append(prompts);
+      assistantLog.append(empty);
+      return;
+    }
+    for (const turn of assistantTurns) {
+      assistantLog.append(buildAssistantTurnNode(turn));
+    }
+    assistantLog.scrollTop = assistantLog.scrollHeight;
+  }
+
+  function askAssistant(rawQuestion) {
+    if (!Assistant) return;
+    const question = String(rawQuestion || '').trim();
+    if (!question) return;
+    if (assistantInput) assistantInput.value = '';
+    const wasEmpty = assistantTurns.length === 0;
+    const userTurn = { kind: 'user', text: question };
+    const reply = Assistant.answer(question, state);
+    const assistantTurn = {
+      kind: 'assistant',
+      text: reply.text,
+      sourceNote: reply.sourceNote,
+      followUps: reply.followUps,
+    };
+    assistantTurns.push(userTurn, assistantTurn);
+    if (assistantLog) {
+      if (wasEmpty) assistantLog.replaceChildren();
+      assistantLog.append(buildAssistantTurnNode(userTurn), buildAssistantTurnNode(assistantTurn));
+      assistantLog.scrollTop = assistantLog.scrollHeight;
+    }
+    assistantInput?.focus({ preventScroll: true });
+  }
+
+  function clearAssistant() {
+    assistantTurns = [];
+    if (assistantInput) assistantInput.value = '';
+    renderAssistant();
+  }
+
+  if (assistantDialog && Assistant) {
+    $('open-assistant')?.addEventListener('click', () => {
+      renderAssistant();
+      if (typeof assistantDialog.showModal === 'function') assistantDialog.showModal();
+      else assistantDialog.setAttribute('open', '');
+      assistantInput?.focus();
+    });
+    $('close-assistant')?.addEventListener('click', () => {
+      if (typeof assistantDialog.close === 'function') assistantDialog.close();
+      else {
+        assistantDialog.removeAttribute?.('open');
+        clearAssistant();
+        $('open-assistant')?.focus();
+      }
+    });
+    assistantDialog.addEventListener('close', () => {
+      clearAssistant();
+      $('open-assistant')?.focus();
+    });
+    $('assistant-form')?.addEventListener('submit', event => {
+      event.preventDefault();
+      askAssistant(assistantInput?.value || '');
+    });
+  }
+
   const resetDialog = $('reset-dialog');
   function reset() {
     state = App.defaults();
@@ -622,6 +731,7 @@
     $('search').value = '';
     $('inventory-search').value = '';
     $('manual-copy').hidden = true;
+    clearAssistant();
     stopTimer();
     try { window.localStorage.removeItem(storageKey); } catch (_) { storageAvailable = false; }
     render();

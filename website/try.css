@@ -932,6 +932,145 @@ dialog p {
   flex-wrap: wrap;
 }
 
+.assistant-trigger {
+  font-size: 15px;
+  min-height: 44px;
+  padding: 8px 14px;
+}
+
+#assistant-dialog {
+  width: min(600px, calc(100vw - 32px));
+  max-height: min(82vh, 720px);
+  padding: 20px;
+}
+
+#assistant-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assistant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.assistant-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.assistant-log {
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: 48vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px;
+}
+
+.assistant-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.assistant-empty h3 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text);
+}
+
+.assistant-empty p {
+  margin: 0;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.assistant-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assistant-bubble {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.assistant-turn-user .assistant-bubble {
+  background: var(--accent);
+  color: #17110D;
+  font-weight: 500;
+}
+
+.assistant-turn-assistant .assistant-bubble {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.assistant-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.assistant-prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.assistant-prompt {
+  text-align: left;
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.assistant-privacy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+  text-align: center;
+}
+
+.assistant-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.assistant-form input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.assistant-form button {
+  flex-shrink: 0;
+}
+
 #editor-error:empty {
   display: none;
 }
