@@ -619,6 +619,29 @@
   const assistantInput = $('assistant-input');
   let assistantTurns = [];
 
+  function buildAssistantTurnNode(turn) {
+    const item = node('div', 'assistant-turn assistant-turn-' + turn.kind);
+    const bubble = node('div', 'assistant-bubble');
+    const lines = turn.text.split('\n');
+    for (let i = 0; i < lines.length; i += 1) {
+      if (i > 0) bubble.append(document.createElement('br'));
+      bubble.append(document.createTextNode(lines[i]));
+    }
+    item.append(bubble);
+    if (turn.sourceNote) item.append(node('p', 'assistant-note', turn.sourceNote));
+    if (turn.followUps && turn.followUps.length) {
+      const prompts = node('div', 'assistant-prompts');
+      for (const follow of turn.followUps) {
+        const button = node('button', 'assistant-prompt', follow);
+        button.type = 'button';
+        button.addEventListener('click', () => askAssistant(follow));
+        prompts.append(button);
+      }
+      item.append(prompts);
+    }
+    return item;
+  }
+
   function renderAssistant() {
     if (!assistantLog || !Assistant) return;
     assistantLog.replaceChildren();
@@ -640,26 +663,7 @@
       return;
     }
     for (const turn of assistantTurns) {
-      const item = node('div', 'assistant-turn assistant-turn-' + turn.kind);
-      const bubble = node('div', 'assistant-bubble');
-      const lines = turn.text.split('\n');
-      for (let i = 0; i < lines.length; i += 1) {
-        if (i > 0) bubble.append(document.createElement('br'));
-        bubble.append(document.createTextNode(lines[i]));
-      }
-      item.append(bubble);
-      if (turn.sourceNote) item.append(node('p', 'assistant-note', turn.sourceNote));
-      if (turn.followUps && turn.followUps.length) {
-        const prompts = node('div', 'assistant-prompts');
-        for (const follow of turn.followUps) {
-          const button = node('button', 'assistant-prompt', follow);
-          button.type = 'button';
-          button.addEventListener('click', () => askAssistant(follow));
-          prompts.append(button);
-        }
-        item.append(prompts);
-      }
-      assistantLog.append(item);
+      assistantLog.append(buildAssistantTurnNode(turn));
     }
     assistantLog.scrollTop = assistantLog.scrollHeight;
   }
@@ -669,15 +673,21 @@
     const question = String(rawQuestion || '').trim();
     if (!question) return;
     if (assistantInput) assistantInput.value = '';
-    assistantTurns.push({ kind: 'user', text: question });
+    const wasEmpty = assistantTurns.length === 0;
+    const userTurn = { kind: 'user', text: question };
     const reply = Assistant.answer(question, state);
-    assistantTurns.push({
+    const assistantTurn = {
       kind: 'assistant',
       text: reply.text,
       sourceNote: reply.sourceNote,
       followUps: reply.followUps,
-    });
-    renderAssistant();
+    };
+    assistantTurns.push(userTurn, assistantTurn);
+    if (assistantLog) {
+      if (wasEmpty) assistantLog.replaceChildren();
+      assistantLog.append(buildAssistantTurnNode(userTurn), buildAssistantTurnNode(assistantTurn));
+      assistantLog.scrollTop = assistantLog.scrollHeight;
+    }
     assistantInput?.focus({ preventScroll: true });
   }
 
