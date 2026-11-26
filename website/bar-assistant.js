@@ -574,8 +574,11 @@
     const lines = [recipe.name + ' for ' + servingsPhrase(factor) + ':'];
     for (const line of recipe.ingredients) {
       const measure = formatScaledMeasure(line.amount, line.unit, factor, unit);
-      const optional = line.optional ? ' (optional)' : '';
-      lines.push('• ' + measure + ' ' + line.name + optional);
+      const qualifiers = [];
+      if (line.note) qualifiers.push(line.note);
+      if (line.optional) qualifiers.push('optional');
+      const suffix = qualifiers.length ? ' (' + qualifiers.join(', ') + ')' : '';
+      lines.push('• ' + measure + ' ' + line.name + suffix);
     }
     const meta = [recipe.method, recipe.glass].filter(Boolean);
     if (meta.length) {
