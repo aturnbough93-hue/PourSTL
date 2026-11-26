@@ -8,6 +8,7 @@ import plistlib
 import re
 import subprocess
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,8 +80,15 @@ def git(*args):
     return subprocess.check_output(["git", *args], cwd=ROOT)
 
 
+def build_number_at_ref(ref):
+    commit = git("rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}").decode().strip()
+    spec = app_spec(git("show", f"{commit}:{PROJECT}").decode())
+    settings = yaml_fields(yaml_fields(spec["settings"])["base"])
+    return int(settings["CURRENT_PROJECT_VERSION"])
+
+
 class ReleaseChecks(unittest.TestCase):
-    base_ref = None
+    base_refs = ()
 
     @classmethod
     def setUpClass(cls):
@@ -190,13 +198,24 @@ class ReleaseChecks(unittest.TestCase):
         self.assertFalse(hits, "Potential secrets (values omitted):\n" + "\n".join(sorted(hits)))
 
     def test_release_build_number_increased(self):
-        if self.base_ref is None:
+        if not self.base_refs:
             self.skipTest("No release baseline requested")
-        commit = git("rev-parse", "--verify", "--end-of-options", f"{self.base_ref}^{{commit}}").decode().strip()
-        base = git("show", f"{commit}:{PROJECT}").decode()
-        previous = yaml_fields(yaml_fields(app_spec(base)["settings"])["base"])["CURRENT_PROJECT_VERSION"]
-        current = self.settings["CURRENT_PROJECT_VERSION"]
-        self.assertGreater(int(current), int(previous), f"Build number must increase from {previous} at {self.base_ref}")
+        previous, baseline = max((build_number_at_ref(ref), ref) for ref in self.base_refs)
+        current = int(self.settings["CURRENT_PROJECT_VERSION"])
+        self.assertGreater(current, previous, f"Build number must increase from {previous} at {baseline}")
+
+
+class ReleaseBuildNumberTests(unittest.TestCase):
+    def test_candidate_must_exceed_both_baselines(self):
+        check = ReleaseChecks("test_release_build_number_increased")
+        check.base_refs = ("v1.0.0", "v1.0.0-rc.1")
+        builds = {"v1.0.0": 5, "v1.0.0-rc.1": 4}
+        with patch(f"{__name__}.build_number_at_ref", side_effect=builds.__getitem__):
+            check.settings = {"CURRENT_PROJECT_VERSION": "5"}
+            with self.assertRaisesRegex(AssertionError, r"Build number must increase from 5 at v1\.0\.0"):
+                check.test_release_build_number_increased()
+            check.settings = {"CURRENT_PROJECT_VERSION": "6"}
+            check.test_release_build_number_increased()
 
 
 class YamlFieldTests(unittest.TestCase):
@@ -227,7 +246,7 @@ class YamlFieldTests(unittest.TestCase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, add_help=False)
-    parser.add_argument("--version-bumped-since", metavar="REF")
+    parser.add_argument("--version-bumped-since", metavar="REF", action="append")
     args, rest = parser.parse_known_args()
-    ReleaseChecks.base_ref = args.version_bumped_since
+    ReleaseChecks.base_refs = args.version_bumped_since or ()
     unittest.main(argv=[__file__, *rest])
