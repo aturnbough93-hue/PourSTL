@@ -55,3 +55,16 @@ questions with the same random conversation ID and a third with a new ID. In the
 confirm that the first two turns share a session and the third starts a separate
 session. Each turn should have one `invoke_agent pourstl-bar-assistant` span
 with a nested `chat` span.
+
+## Production deployment
+
+The Worker is deployed as `pourstl-bar-assistant` at
+`https://pourstl-bar-assistant.pourstl.workers.dev/v1/assistant/turn`. It runs on
+the account's `pourstl.workers.dev` subdomain because pourstl.com is not a
+Cloudflare zone in this account. Traces are enabled at 100% sampling, and Workers
+Logs are disabled. Preview URLs are off.
+
+`BAR_ASSISTANT_TOKEN` is set as a Worker secret and is not stored in this
+repository. To rotate it, set a new value with
+`npx wrangler secret put BAR_ASSISTANT_TOKEN` from this directory and update the
+callers. To redeploy, run `npx wrangler deploy`.
