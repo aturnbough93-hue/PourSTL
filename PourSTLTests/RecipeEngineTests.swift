@@ -61,7 +61,7 @@ final class RecipeEngineTests: XCTestCase {
     }
 
     func testOutOfStockDoesntMatch() {
-        var inventory = stock(["Beefeater"])
+        let inventory = stock(["Beefeater"])
         inventory[0].isInStock = false
         let r = recipe(name: "Gimlet", lines: [("Gin", 2, "oz", false)])
         XCTAssertFalse(RecipeEngine.match(r, inventory: inventory).canMake)

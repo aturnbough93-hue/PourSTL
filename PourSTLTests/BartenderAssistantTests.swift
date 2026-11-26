@@ -147,7 +147,7 @@ final class BartenderAssistantTests: XCTestCase {
             ("Campari", 1, "oz", false),
             ("Sweet Vermouth", 1, "oz", false),
         ])
-        var gin = stock(["Beefeater"])[0]
+        let gin = stock(["Beefeater"])[0]
         gin.isInStock = false
         let library = AssistantLibrary(
             recipes: [negroni],
