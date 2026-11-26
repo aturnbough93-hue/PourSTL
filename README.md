@@ -1,6 +1,6 @@
 # PourSTL
 
-**PourSTL** is a bartending app with recipes, inventory, and service tools for working bartenders. The current native client is built for iOS.
+**PourSTL** is a bartending app with recipes, inventory, and service tools for working bartenders. The project includes a native iPhone app and [PourSTL Web](https://pourstl.com/try), which you can open in a browser without an account.
 
 Dark-mode-first SwiftUI app with a copper-accented design system, seeded with ~30 classic cocktails, intelligent "what can I make" inventory matching, professional scaling/batch mode, shopping list, timers, and custom recipes.
 
@@ -22,9 +22,9 @@ bash scripts/test_ios.sh
 
 Then choose a simulator/device in Xcode and press ⌘R.
 
-The dependency-free marketing site runs on Linux or macOS with
-`python3 -m http.server 8080 --directory website`. It is separate from the native
-app. VS Code includes a local website-server launch configuration.
+The dependency-free website and browser app run on Linux or macOS with
+`python3 -m http.server 8080 --directory website`. They are separate from the
+native app. VS Code includes a local website-server launch configuration.
 
 Cloudflare Pages hosts project **pourstl**. The canonical site is
 **https://pourstl.com**. See
@@ -56,12 +56,12 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 
 ## Feature status
 
-### Implemented (free-tier core)
+### iPhone: Free
 
 - SwiftData persistence (recipes, ingredient lines, inventory, shopping list, venues, favorites)
 - ~30 seeded classic cocktails with measures in oz, dashes, parts, barspoons, countables
 - Home: real-time recipe search across name/ingredient/tag, filter chips, "What can I make" module driven by inventory, drink-card grid, pull-to-refresh
-- Recipe detail: right-aligned monospaced measures, sticky action bar (favorite / scale / timer / share), serving scaling + batch mode, oz ⇄ ml conversion incl. dashes and barspoons, per-recipe unit toggle, one-tap "add missing to shopping list"
+- Recipe detail: right-aligned monospaced measures, sticky action bar (favorite / scale / timer / share), scaling up to 24 servings, oz ⇄ ml conversion incl. dashes and barspoons, per-recipe unit toggle, one-tap "add missing to shopping list"
 - My Bar: categorized inventory, in/out-of-stock toggles, low-stock flag, search, quick-add missing recipe ingredients, barcode scan with confirm-before-add
 - Barcode scan stays on device: camera when the device allows it, a small offline bottle catalog, manual code entry when the camera is missing or denied, and the existing add-item sheet plus ingredient normalization when a code is unknown
 - Shopping list with purchased tracking
@@ -74,7 +74,9 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
 - `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
 - Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
-- Free includes the recipe library, recipe editing, inventory, barcode scanning, shopping, timers, venue check-in, and scaling up to 24 servings.
+
+### iPhone: Pro
+
 - PourSTL Pro adds recipe ingredient costing with reusable package prices, scaling up to 200 servings, and CSV batch prep sheets. Price data stays on the device. The StoreKit 2 product IDs are `bar.pourstl.app.pro.monthly` and `bar.pourstl.app.pro.yearly`. The shared scheme uses `PourSTL.storekit` for local testing. Configure the matching products in App Store Connect before selling Pro.
 
 ### Planned (out of scope for this build)
@@ -107,7 +109,8 @@ project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 
 ## Browser testing
 
-Open [PourSTL Web](https://pourstl.com/try) or serve `website/try.html` locally.
+Open [PourSTL Web](https://pourstl.com/try) or use `/try.html` on the local server.
 Use the seeded catalog, save custom recipes and favorites, stock My Bar, and
-manage a shopping list. The web app saves data in the browser. See the
-[website guide](website/README.md) for offline and deployment checks.
+manage a shopping list. The web app saves data in the browser, scales to 24
+servings, and works offline after it caches the app. Pro tools are iPhone-only.
+See the [website guide](website/README.md) for offline and deployment checks.
