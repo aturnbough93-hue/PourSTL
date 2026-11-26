@@ -516,6 +516,108 @@ final class QAPassTests: XCTestCase {
         capture("06-shopping-list")
     }
 
+    /// At the largest accessibility size every picker option must stay its
+    /// own button, exactly one option must read as selected, the selection
+    /// must follow a tap, and the picker group must keep its title. This is
+    /// the same tree VoiceOver uses; it does not replace a device pass.
+    func testAX5PickersKeepTitledGroupsWithSelectedButtons() throws {
+        launch(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+
+        verifyPicker(
+            title: "Filter drinks by availability",
+            options: ["All drinks", "Can make", "Almost there"],
+            initiallySelected: "All drinks",
+            tapOption: "Can make"
+        )
+
+        app.buttons["Settings"].tap()
+        // Settings and display-unit values persist across QA launches, so
+        // only the exactly-one-selected shape is checked, not which option.
+        verifyPicker(
+            title: "Appearance",
+            options: ["System", "Light", "Dark"],
+            initiallySelected: nil,
+            tapOption: "Dark"
+        )
+        verifyPicker(
+            title: "Preferred units",
+            options: ["oz", "ml"],
+            initiallySelected: nil,
+            tapOption: "ml"
+        )
+        app.buttons["Done"].tap()
+
+        // At AX5 the recipe card is not one combined button, so deep-link
+        // instead of searching for it.
+        app.terminate()
+        app.launchArguments.append("-deepLink=pourstl://recipe?name=Negroni")
+        app.launch()
+        XCTAssertTrue(app.buttons["Increase servings"].waitForExistence(timeout: 15))
+        verifyPicker(
+            title: "Display units",
+            options: ["oz", "ml"],
+            initiallySelected: nil,
+            tapOption: nil
+        )
+    }
+
+    /// options must each appear as a button inside the titled group, with
+    /// exactly one selected. When tapOption is given, the selected state must
+    /// move to it. SwiftUI virtualizes rows, so this scrolls until the group
+    /// or the missing button shows up.
+    private func verifyPicker(
+        title: String,
+        options: [String],
+        initiallySelected: String?,
+        tapOption: String?
+    ) {
+        // Section headers can share the picker's title, so choose the match
+        // that actually contains the option buttons.
+        func pickerGroup() -> XCUIElement? {
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label == %@", title))
+                .allElementsBoundByIndex
+                .first { $0.buttons.allElementsBoundByIndex.count == options.count }
+        }
+        var group: XCUIElement?
+        for _ in 0..<12 {
+            if let found = pickerGroup() {
+                group = found
+                break
+            }
+            app.swipeUp()
+        }
+        XCTAssertNotNil(group, "Picker group \(title) must keep its title at AX5")
+        guard let group else { return }
+
+        let buttons = group.buttons.allElementsBoundByIndex.filter { $0.exists }
+        XCTAssertEqual(
+            buttons.count, options.count,
+            "\(title) must expose every option as its own button; found \(buttons.map(\.label))"
+        )
+        XCTAssertEqual(
+            Set(buttons.map(\.label)), Set(options),
+            "\(title) option buttons must match; found \(buttons.map(\.label))"
+        )
+        let selected = buttons.filter(\.isSelected)
+        XCTAssertEqual(selected.count, 1, "\(title) must report exactly one selected option")
+        if let initiallySelected {
+            XCTAssertEqual(selected.first?.label, initiallySelected)
+        }
+
+        guard let tapOption else { return }
+        let target = group.buttons[tapOption]
+        XCTAssertTrue(target.exists, "\(title) must expose \(tapOption)")
+        target.tap()
+        let moved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isSelected == true"), object: target
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [moved], timeout: 5), .completed,
+            "Tapping \(tapOption) in \(title) must move the selected state"
+        )
+    }
+
     func testAX5RecipeActionsUseFullWidthAndScrollAway() throws {
         launch(extra: [
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
@@ -570,7 +672,8 @@ final class QAPassTests: XCTestCase {
         }
         let card = app.buttons["Negroni, Rocks, can make"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
-        for _ in 0..<3 where !card.isHittable { app.swipeUp() }
+        // AX5 layouts are much taller than the default size.
+        for _ in 0..<10 where !card.isHittable { app.swipeUp() }
         XCTAssertTrue(card.isHittable, "The filtered Negroni card must be visible before opening it")
         card.tap()
         XCTAssertTrue(app.buttons["Increase servings"].waitForExistence(timeout: 8))
