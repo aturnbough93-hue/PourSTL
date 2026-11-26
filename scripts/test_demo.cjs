@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Demo = require('../website/demo-core.js');
+const Assistant = require('../website/bar-assistant.js');
 
 test('catalog has the native specs and all required ingredients exist in inventory', () => {
   assert.ok(Demo.recipes.length >= 31);
@@ -312,7 +313,7 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
   win.window = win;
 
   const context = vm.createContext(win);
-  for (const file of ['recipe-catalog.js', 'demo-core.js', 'try.js']) {
+  for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'try.js']) {
     vm.runInContext(fs.readFileSync(path.join(siteDir, file), 'utf8'), context, { filename: file });
   }
   return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries };
@@ -341,4 +342,108 @@ test('/try starts cleanly and orders panels for desktop and single-column viewpo
   singleColumn.setMatches(false);
   assert.equal(desktop.byId.get('workspace').firstElementChild, desktop.barPanel);
   assert.equal(desktop.doc.activeElement, stockInput);
+});
+
+test('bar assistant parses intents accurately including scaling, substitutions, dietary, and privacy', () => {
+  assert.deepEqual(Assistant.parseIntent('What can I make?'), { type: 'whatCanIMake', focus: null });
+  assert.deepEqual(Assistant.parseIntent('What can I make with Beefeater?'), { type: 'whatCanIMake', focus: 'beefeater' });
+  assert.deepEqual(Assistant.parseIntent('What can I substitute for Campari?'), { type: 'substitution', ingredient: 'campari', recipeName: null });
+  assert.deepEqual(Assistant.parseIntent("I don't have Campari in a Negroni"), { type: 'substitution', ingredient: 'campari', recipeName: 'negroni' });
+  assert.deepEqual(Assistant.parseIntent('Scale the Negroni for 4'), { type: 'scale', recipeQuery: 'negroni', servings: 4 });
+  assert.deepEqual(Assistant.parseIntent('Half the Daiquiri'), { type: 'scale', recipeQuery: 'daiquiri', servings: 0.5 });
+  assert.deepEqual(Assistant.parseIntent('Scale Negroni for -2'), { type: 'scale', recipeQuery: 'negroni', servings: -2 });
+  assert.deepEqual(Assistant.parseIntent('How do I make a Negroni for 4?'), { type: 'recipe', recipeQuery: 'negroni', servings: 4 });
+  assert.deepEqual(Assistant.parseIntent('What am I missing for a Martini?'), { type: 'missingIngredients', recipeQuery: 'martini' });
+  assert.deepEqual(Assistant.parseIntent("What's in my bar?"), { type: 'inventory' });
+  assert.deepEqual(Assistant.parseIntent('Do you upload my bar to the cloud?'), { type: 'privacy' });
+  assert.deepEqual(Assistant.parseIntent('What is gluten free and vegan?'), { type: 'unsupportedDietaryRequest' });
+  assert.deepEqual(Assistant.parseIntent('   '), { type: 'empty' });
+  assert.deepEqual(Assistant.parseIntent('Tell me a joke'), { type: 'unrecognized' });
+});
+
+test('bar assistant answers from My Bar, custom recipes, stand-ins, and scaling preferences', () => {
+  const empty = Demo.defaults();
+  const emptyReply = Assistant.answer('What can I make?', empty);
+  assert.match(emptyReply.text, /My Bar is empty/);
+  assert.equal(emptyReply.sourceNote, Assistant.ON_DEVICE_NOTE);
+
+  const state = { ...Demo.defaults(), inventory: [...Demo.starterInventory, 'aperol'], unit: 'ml' };
+  const makeReply = Assistant.answer('What can I make?', state);
+  assert.match(makeReply.text, /You can make 1 drink from My Bar:/);
+  assert.match(makeReply.text, /Negroni/);
+
+  const focusReply = Assistant.answer('What can I make with Beefeater?', state);
+  assert.match(focusReply.text, /Negroni/);
+
+  const subReply = Assistant.answer('What can I substitute for Campari in a Negroni?', state);
+  assert.match(subReply.text, /Negroni uses Campari/);
+  assert.match(subReply.text, /Aperol - in your bar/);
+
+  const scaleMl = Assistant.answer('Scale the Negroni for 4', state);
+  assert.match(scaleMl.text, /Negroni for 4 servings:/);
+  assert.match(scaleMl.text, /ml/);
+
+  const halfOz = Assistant.answer('Half the Negroni', { ...state, unit: 'oz' });
+  assert.match(halfOz.text, /half the written spec/);
+  assert.match(halfOz.text, /0\.5 oz/);
+
+  const capped = Assistant.answer('Scale Negroni for 50', state);
+  assert.match(capped.text, /scales up to 24 servings/);
+
+  const badServings = Assistant.answer('Scale Negroni for 0', state);
+  assert.match(badServings.text, /greater than zero/);
+
+  const missingReply = Assistant.answer('What am I missing for a Martini?', { ...Demo.defaults(), inventory: ['gin'] });
+  assert.match(missingReply.text, /Martini still needs Dry Vermouth/);
+
+  const recipeReply = Assistant.answer('How do I make a Negroni?', state);
+  assert.match(recipeReply.text, /Negroni for 1 serving:/);
+  assert.match(recipeReply.text, /Stir/i);
+
+  const inventoryReply = Assistant.answer("What's in my bar?", { ...state, shopping: ['dry-vermouth'] });
+  assert.match(inventoryReply.text, /In stock \(4\):/);
+  assert.match(inventoryReply.text, /On your shopping list \(1\):/);
+
+  const dietaryReply = Assistant.answer('Is Negroni safe for nut allergies?', state);
+  assert.match(dietaryReply.text, /can't verify allergies/);
+  assert.deepEqual(dietaryReply.followUps, []);
+
+  const privacyReply = Assistant.answer('Do you send my bar to OpenAI?', state);
+  assert.match(privacyReply.text, /does not use an AI model/);
+
+  // Every returned follow-up must parse to a recognized intent.
+  for (const reply of [emptyReply, makeReply, focusReply, subReply, scaleMl, missingReply, recipeReply, inventoryReply, privacyReply]) {
+    for (const follow of reply.followUps) {
+      const intent = Assistant.parseIntent(follow);
+      assert.notEqual(intent.type, 'unrecognized', `Follow-up not understood: ${follow}`);
+      assert.notEqual(intent.type, 'empty', `Follow-up empty: ${follow}`);
+    }
+  }
+});
+
+test('bar assistant dialog opens, answers questions, and clears conversation on close', () => {
+  const page = bootTryPage({ compact: false, singleColumn: false });
+  const openBtn = page.byId.get('open-assistant');
+  const closeBtn = page.byId.get('close-assistant');
+  const dialog = page.byId.get('assistant-dialog');
+  const log = page.byId.get('assistant-log');
+  const form = page.byId.get('assistant-form');
+  const input = page.byId.get('assistant-input');
+
+  openBtn.listeners.get('click')[0]();
+  assert.ok(log.children.length > 0);
+  assert.equal(log.children[0].className, 'assistant-empty');
+
+  input.value = 'Scale the Negroni for 4';
+  form.listeners.get('submit')[0]({ preventDefault() {} });
+  assert.equal(log.children.length, 2);
+  assert.equal(log.children[0].className, 'assistant-turn assistant-turn-user');
+  assert.equal(log.children[1].className, 'assistant-turn assistant-turn-assistant');
+  assert.equal(input.value, '');
+
+  closeBtn.listeners.get('click')[0]();
+  dialog.listeners.get('close')[0]();
+  assert.equal(log.children.length, 1);
+  assert.equal(log.children[0].className, 'assistant-empty');
+  assert.equal(page.doc.activeElement, openBtn);
 });

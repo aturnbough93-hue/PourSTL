@@ -25,13 +25,14 @@
   <link rel="stylesheet" href="try.css">
   <script src="recipe-catalog.js" defer></script>
   <script src="demo-core.js" defer></script>
+  <script src="bar-assistant.js" defer></script>
   <script src="try.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header class="app-header">
     <a class="brand" href="./" aria-label="PourSTL home"><img src="assets/brand-icon.png" alt="" width="44" height="44">PourSTL</a>
-    <div class="header-actions"><a href="./">Website</a></div>
+    <div class="header-actions"><button type="button" id="open-assistant" class="secondary assistant-trigger">Bar Assistant</button><a href="./">Website</a></div>
   </header>
   <main id="main" tabindex="-1">
     <div class="intro">
@@ -132,6 +133,19 @@
     <div id="manual-copy" class="manual-copy" hidden><label for="recipe-copy">Copy recipe text</label><textarea id="recipe-copy" readonly rows="8"></textarea><button type="button" id="close-copy" class="secondary">Close</button></div>
     <p class="demo-footer"><a href="privacy.html">Privacy</a> · <a href="support.html">Support</a> · <button type="button" id="reset" class="text-button">Clear app data</button></p>
   </main>
+  <dialog id="assistant-dialog" aria-labelledby="assistant-title">
+    <div class="assistant-header">
+      <h2 id="assistant-title">Bar Assistant</h2>
+      <button type="button" id="close-assistant" class="text-button">Done</button>
+    </div>
+    <div id="assistant-log" class="assistant-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+    <p class="assistant-privacy">Questions stay in this browser and clear when you close this dialog. Stock checks ingredient presence, not quantities or dietary needs.</p>
+    <form id="assistant-form" class="assistant-form">
+      <label class="sr-only" for="assistant-input">Question for Bar Assistant</label>
+      <input id="assistant-input" maxlength="500" placeholder="Ask about your bar" autocomplete="off">
+      <button type="submit" id="assistant-send" class="primary">Ask</button>
+    </form>
+  </dialog>
   <dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Clear PourSTL Web data?</h2><p>This deletes your bar, shopping list, favorites, and custom recipes from this browser.</p><div class="dialog-actions"><button type="button" id="cancel-reset" class="secondary">Keep my data</button><button type="button" id="confirm-reset" class="primary">Clear app data</button></div></dialog>
   <dialog id="recipe-dialog" aria-labelledby="editor-title">
     <h2 id="editor-title">New recipe</h2>
