@@ -599,20 +599,30 @@
     }
 
     let pool = recipes;
+    let focusIds = [];
     if (focus) {
       const parts = focus.split(' and ').map(p => p.trim()).filter(Boolean);
-      if (parts.length) {
-        pool = recipes.filter(recipe => parts.every(part => {
-          const cid = canonicalID(part);
-          return recipe.ingredients.some(line => line.id === cid || canonicalID(line.name) === cid);
-        }));
+      focusIds = parts.map(part => canonicalID(part));
+      if (focusIds.length) {
+        pool = recipes.filter(recipe => focusIds.every(cid => (
+          recipe.ingredients.some(line => line.id === cid || canonicalID(line.name) === cid)
+        )));
       }
       if (!pool.length) {
         return makeReply('I don\'t have a drink that uses ' + titled(focus) + ' in your recipes.', ['What can I make?']);
       }
     }
 
-    const matches = pool.map(recipe => ({ recipe, ...App.matchRecipe(recipe, state.inventory) }));
+    const matches = pool.map(recipe => {
+      const base = App.matchRecipe(recipe, state.inventory);
+      if (!focusIds.length) return { recipe, ...base };
+      const missingFocusOptional = base.optionalMissing.filter(line => (
+        focusIds.includes(line.id) || focusIds.includes(canonicalID(line.name))
+      ));
+      if (!missingFocusOptional.length) return { recipe, ...base };
+      const missing = [...base.missing, ...missingFocusOptional];
+      return { recipe, ...base, canMake: false, missing };
+    });
     const ready = matches.filter(m => m.canMake).sort((a, b) => a.recipe.name.localeCompare(b.recipe.name));
     const almost = matches
       .filter(m => !m.canMake && m.missing.length >= 1 && m.missing.length <= 2)
