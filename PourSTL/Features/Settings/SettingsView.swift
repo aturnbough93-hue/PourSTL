@@ -2,9 +2,9 @@ import SwiftUI
 import SwiftData
 
 enum SiteLinks {
-    static let home = URL(string: "https://barpour.pages.dev")!
-    static let privacy = URL(string: "https://barpour.pages.dev/privacy")!
-    static let support = URL(string: "https://barpour.pages.dev/support")!
+    static let home = URL(string: "https://pourstl.com")!
+    static let privacy = URL(string: "https://pourstl.com/privacy")!
+    static let support = URL(string: "https://pourstl.com/support")!
 }
 
 struct SettingsView: View {

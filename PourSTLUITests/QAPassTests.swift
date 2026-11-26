@@ -318,9 +318,9 @@ final class QAPassTests: XCTestCase {
         app.buttons["Settings"].tap()
         XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
         let expected = [
-            ("Get support", "https://barpour.pages.dev/support"),
-            ("Privacy policy", "https://barpour.pages.dev/privacy"),
-            ("PourSTL website", "https://barpour.pages.dev")
+            ("Get support", "https://pourstl.com/support"),
+            ("Privacy policy", "https://pourstl.com/privacy"),
+            ("PourSTL website", "https://pourstl.com")
         ]
         for (label, url) in expected {
             let link = settingsLink(url)
@@ -338,7 +338,7 @@ final class QAPassTests: XCTestCase {
         launch()
         app.buttons["Settings"].tap()
         XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
-        let link = settingsLink("https://barpour.pages.dev/support")
+        let link = settingsLink("https://pourstl.com/support")
         for _ in 0..<5 where !link.isHittable { app.swipeUp() }
         link.tap()
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")

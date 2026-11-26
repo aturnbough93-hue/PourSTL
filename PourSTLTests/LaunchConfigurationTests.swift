@@ -47,8 +47,8 @@ final class LaunchConfigurationTests: XCTestCase {
     }
 
     func testSiteLinksPointAtThePourSite() {
-        XCTAssertEqual(SiteLinks.home.absoluteString, "https://barpour.pages.dev")
-        XCTAssertEqual(SiteLinks.privacy.absoluteString, "https://barpour.pages.dev/privacy")
-        XCTAssertEqual(SiteLinks.support.absoluteString, "https://barpour.pages.dev/support")
+        XCTAssertEqual(SiteLinks.home.absoluteString, "https://pourstl.com")
+        XCTAssertEqual(SiteLinks.privacy.absoluteString, "https://pourstl.com/privacy")
+        XCTAssertEqual(SiteLinks.support.absoluteString, "https://pourstl.com/support")
     }
 }
