@@ -286,8 +286,6 @@ struct VenueSheet: View {
     @State private var newVenueName = ""
     @State private var showSaveError = false
 
-    private var checkedIn: Venue? { venues.first { $0.isCheckedIn } }
-
     var body: some View {
         NavigationStack {
             List {

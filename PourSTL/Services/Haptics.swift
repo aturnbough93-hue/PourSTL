@@ -11,10 +11,6 @@ enum Haptics {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 1.0)
     }
 
-    static func rigidTap() {
-        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-    }
-
     static func selection() {
         UISelectionFeedbackGenerator().selectionChanged()
     }
