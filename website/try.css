@@ -388,6 +388,16 @@ h2 {
   font-size: 16px;
 }
 
+.empty-guidance h3 {
+  color: var(--text);
+  font-size: 18px;
+  margin: 12px 0 4px;
+}
+
+.empty-guidance p {
+  margin: 0 0 4px;
+}
+
 .detail-panel {
   padding: 22px 20px 20px;
 }

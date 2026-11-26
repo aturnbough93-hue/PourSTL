@@ -45,6 +45,15 @@ test('search matches recipe names, normalized ingredient terms and tags', () => 
   assert.equal(Demo.searchRecipes('nonexistent', 'all', state).length, 0);
 });
 
+test('filter empty states offer specific guidance only without a search query', () => {
+  assert.equal(Demo.recipeEmptyState('', 'favorites'), 'favorites');
+  assert.equal(Demo.recipeEmptyState('  ', 'can-make'), 'can-make');
+  assert.equal(Demo.recipeEmptyState('', 'all'), 'search');
+  for (const filter of ['all', 'favorites', 'can-make']) {
+    assert.equal(Demo.recipeEmptyState('nonexistent', filter), 'search');
+  }
+});
+
 test('malformed persisted values reset safely without leaking arbitrary fields', () => {
   for (const bad of [null, undefined, false, 'bad json', [], { version: 3 }]) assert.deepEqual(Demo.validateState(bad), Demo.defaults());
   const state = Demo.validateState({version: 1, inventory: ['gin', 'gin', '__proto__', {}, null, 'unknown'], shopping: ['dry-vermouth', 'dry-vermouth', 'constructor'], servings: Infinity, selected: '__proto__', unit: 'html', unsafe: '<script>'});

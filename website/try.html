@@ -81,7 +81,22 @@
         <label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span class="sr-only">Search recipes or ingredients</span><input id="search" type="search" placeholder="Search recipes" autocomplete="off"></label>
         <div class="filters" role="group" aria-label="Filter recipes"><button type="button" id="all-filter" aria-pressed="true">All drinks</button><button type="button" id="ready-filter" aria-pressed="false">Can make</button><button type="button" id="favorites-filter" aria-pressed="false">Favorites</button></div>
         <div id="recipes" class="recipe-list"></div>
-        <div id="no-results" class="empty-results" hidden><p>No matching drinks.</p><button type="button" id="clear-filters" class="text-button">Clear search and filters</button></div>
+        <div id="no-results" class="empty-results" hidden>
+          <div id="empty-search" hidden>
+            <p>No matching drinks.</p>
+            <button type="button" id="clear-filters" class="text-button">Clear search and filters</button>
+          </div>
+          <div id="empty-favorites" class="empty-guidance" hidden>
+            <h3>No favorites yet.</h3>
+            <p>Open a recipe and tap Favorite to save it here.</p>
+            <button type="button" id="browse-drinks" class="text-button">Browse all drinks</button>
+          </div>
+          <div id="empty-can-make" class="empty-guidance" hidden>
+            <h3>No drinks you can make yet.</h3>
+            <p>Add ingredients in My Bar to see which recipes you can make.</p>
+            <button type="button" id="open-my-bar" class="text-button">Open My Bar</button>
+          </div>
+        </div>
       </section>
       <section class="panel detail-panel" aria-labelledby="recipe-title">
         <div id="recipe-media" class="recipe-media"></div>
