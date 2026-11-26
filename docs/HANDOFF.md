@@ -1,6 +1,6 @@
 # PourSTL handoff
 
-Updated November 25, 2026. This file records the active release work so it can be
+Updated November 26, 2026. This file records the active release work so it can be
 continued from GitHub. Do not rely on old coordination entries as current state.
 
 ## Current source
@@ -12,12 +12,15 @@ continued from GitHub. Do not rely on old coordination entries as current state.
 - In [#48](https://github.com/aturnbough93-hue/PourSTL/pull/48), Settings → Support replaced GitHub Issues feedback with [Get support](https://pourstl.com/support), [Privacy policy](https://pourstl.com/privacy), and [PourSTL website](https://pourstl.com). The store-recovery screen’s **Get help** opens the same support page. Terms of Use stay on Apple’s standard EULA.
 - Deep links: `pourstl://`; legacy `pour://` remains supported. Existing internal preferences and browser storage keys remain stable. Approved app icon artwork is unchanged.
 
-Product positioning: PourSTL is a bartending app, with connected features planned. Current local feature behavior is documented accurately; “offline” is a capability of today’s testing build, not the overall product identity.
+Product positioning: PourSTL is a bartending app with offline tools. The
+iPhone Bar Assistant still uses on-device rules, and PourSTL Web does not
+include an assistant. Neither app calls the standalone Worker.
 
 ## Hosting
 
 - The canonical site **https://pourstl.com** is served by the GitHub-connected Cloudflare Pages project **pourstl**, including the browser app at `/try` and the `/privacy` and `/support` pages. Cloudflare builds branch previews and deploys `main` to production. See the website README for the build settings and verification steps.
-- **https://pourstl.com** is registered with **IONOS SE** and is already the canonical public URL. This repo does not change DNS or add redirects. The assigned Pages hostname stays `pourstl.pages.dev` and is not the canonical URL.
+- The standalone [Bar Assistant Worker](../workers/bar-assistant/README.md) from [#30](https://github.com/aturnbough93-hue/PourSTL/pull/30) is deployed separately from Pages. Its bearer-token-protected `POST https://assistant.pourstl.com/v1/assistant/turn` endpoint uses Workers AI for general bartending questions and has no access to app data. Agent Tracing is configured for 100% sampling and records questions and answers. After deploying, [verify tracing in Cloudflare](../workers/bar-assistant/README.md#cloudflare-tracing).
+- **https://pourstl.com** is registered with **IONOS SE** and is already the canonical public URL. The Pages setup does not change DNS or add redirects. The assigned Pages hostname stays `pourstl.pages.dev` and is not the canonical URL.
 - Wrangler currently has account/user read and Pages write permissions. An earlier zone-create attempt failed with missing `com.cloudflare.api.account.zone.create`. This change does not edit DNS or nameservers.
 - Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and `matt.ns.cloudflare.com`. The earlier IONOS nameservers were `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, and `ns1122.ui-dns.de`.
 - The earlier temporary site at `barpour-7hb.pages.dev` remains available. The preferred legacy `barpour.pages.dev` was registered outside this account and is not managed here.

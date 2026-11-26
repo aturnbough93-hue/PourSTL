@@ -59,8 +59,11 @@ and TestFlight distribution remain separate release requirements.
 The review below is historical (November 5). Its validation counts, icon
 concept, permission inventory and hosting activation notes describe that older
 revision. Camera access has since shipped for on-device barcode scanning;
-StoreKit may contact Apple when billing is tested, and the Bar Assistant uses
-local rules rather than a remote model.
+StoreKit may contact Apple when billing is tested, and the iPhone Bar Assistant
+still uses local rules. The separate
+[Bar Assistant Worker](workers/bar-assistant/README.md) uses Workers AI and
+records turns in Cloudflare Agent Tracing, but neither app calls it or sends it
+local data.
 
 ## November 5 review (historical)
 

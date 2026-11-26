@@ -23,8 +23,13 @@ the clean app route, offline cache, and Home Screen install.
 Cloudflare Pages hosts the website in the **pourstl** project. The canonical
 site is **https://pourstl.com**, including `/privacy`, `/support`, and `/try`.
 The project name stays `pourstl`. `pourstl.pages.dev` remains the assigned
-Pages hostname and is not the canonical URL. This repo does not add redirects
-or DNS changes. The site uses the security headers in `website/_headers`.
+Pages hostname and is not the canonical URL. The Pages setup does not add
+redirects or DNS changes. The site uses the security headers in
+`website/_headers`.
+
+The [Bar Assistant Worker](../workers/bar-assistant/README.md) at
+`assistant.pourstl.com` is deployed separately from Pages. Neither the
+marketing site nor PourSTL Web calls it, and browser data is not sent to it.
 
 ### Production project
 

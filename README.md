@@ -31,7 +31,12 @@ Cloudflare Pages hosts project **pourstl**. The canonical site is
 [website/README.md](website/README.md) for the project settings and build.
 
 The standalone [Cloudflare Bar Assistant Worker](workers/bar-assistant/README.md)
-provides an authenticated endpoint for general bartending questions.
+answers general bartending questions with Workers AI at
+`POST https://assistant.pourstl.com/v1/assistant/turn`. It requires a bearer
+token and is deployed separately from Cloudflare Pages. Neither the iPhone app
+nor PourSTL Web calls it, and it has no access to their local data. Cloudflare
+Agent Tracing is configured to capture every AI turn, including the question
+and answer.
 
 See [docs/HANDOFF.md](docs/HANDOFF.md) for current delivery status and resuming work.
 See [REVIEW.md](REVIEW.md) for the code, UI, security review, improvements included,
@@ -77,7 +82,7 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - Empty / error states throughout; local recipe and bar tools work offline
 - XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
 - `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
-- Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
+- Bar Assistant on iPhone: free, on-device rules for supported recipe and inventory questions, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; the app does not call the Worker. Availability checks ingredient presence, not quantities or dietary suitability.
 
 ### iPhone: Pro
 
@@ -108,6 +113,8 @@ PourSTL/
   Services/       conversion, normalization, matching, seeding, haptics, settings
   Features/       Home, Recipes, MyBar, Shopping, Timer, Assistant, Settings, stubs
 PourSTLTests/        XCTest unit tests
+website/           static site and PourSTL Web (Cloudflare Pages)
+workers/bar-assistant/  standalone Workers AI endpoint and deployment config
 project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 ```
 
