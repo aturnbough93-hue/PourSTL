@@ -497,13 +497,14 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   const input = page.byId.get('assistant-input');
 
   const appendToLog = log.append.bind(log);
+  const assistantReplyTops = [300, 400];
   log.scrollTop = 0;
   log.scrollHeight = 900;
   log.getBoundingClientRect = () => ({ top: 100 });
   log.append = (...nodes) => {
     for (const child of nodes) {
       if (child.className === 'assistant-turn assistant-turn-assistant') {
-        child.getBoundingClientRect = () => ({ top: 300 });
+        child.getBoundingClientRect = () => ({ top: assistantReplyTops.shift() });
       }
     }
     appendToLog(...nodes);
@@ -529,6 +530,7 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   assert.equal(log.children.length, 4);
   assert.equal(log.children[0], firstUserNode);
   assert.equal(log.children[1], firstAssistantNode);
+  assert.equal(log.scrollTop, 500);
 
   closeBtn.listeners.get('click')[0]();
   dialog.listeners.get('close')[0]();
