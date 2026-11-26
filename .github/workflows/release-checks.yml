@@ -37,11 +37,7 @@ jobs:
         run: |
           base_ref="$BASE_REF"
           if [[ -z "$base_ref" ]]; then
-            options=(--tags --abbrev=0 --match 'v*')
-            if [[ "$GITHUB_REF_TYPE" == tag ]]; then
-              options+=(--exclude "$GITHUB_REF_NAME")
-            fi
-            if ! base_ref=$(git describe "${options[@]}" HEAD 2>/dev/null); then
+            if ! base_ref=$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null); then
               echo "::notice::No earlier reachable v* tag; no build-number comparison. Set base_ref to compare with an earlier build."
               exit 0
             fi
