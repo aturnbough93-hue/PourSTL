@@ -45,4 +45,10 @@ final class LaunchConfigurationTests: XCTestCase {
         XCTAssertNil(LaunchConfiguration.simulatedReadiness(arguments: ["-uiTesting"], uiTesting: true))
         XCTAssertNil(LaunchConfiguration.cameraStatus(in: ["-cameraStatus=nope"]))
     }
+
+    func testSiteLinksPointAtThePourSite() {
+        XCTAssertEqual(SiteLinks.home.absoluteString, "https://barpour.pages.dev")
+        XCTAssertEqual(SiteLinks.privacy.absoluteString, "https://barpour.pages.dev/privacy")
+        XCTAssertEqual(SiteLinks.support.absoluteString, "https://barpour.pages.dev/support")
+    }
 }

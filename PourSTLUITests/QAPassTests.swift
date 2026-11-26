@@ -313,6 +313,39 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(again.label.contains("ml") || again.buttons["ml"].isSelected)
     }
 
+    func testSettingsLinksToTheSitePrivacyAndSupport() throws {
+        launch()
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
+        let expected = [
+            ("Get support", "https://barpour.pages.dev/support"),
+            ("Privacy policy", "https://barpour.pages.dev/privacy"),
+            ("PourSTL website", "https://barpour.pages.dev")
+        ]
+        for (label, url) in expected {
+            let link = settingsLink(url)
+            for _ in 0..<5 where !link.isHittable { app.swipeUp() }
+            XCTAssertTrue(link.waitForExistence(timeout: 5), "Missing Settings link to \(url)")
+            XCTAssertEqual(link.label, label)
+        }
+        XCTAssertFalse(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier CONTAINS %@", "github.com")).firstMatch.exists)
+        XCTAssertFalse(app.buttons["Send feedback"].exists)
+        capture("09-settings-links")
+    }
+
+    func testSettingsSupportLinkOpensSafari() throws {
+        launch()
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(preferredUnits().waitForExistence(timeout: 5))
+        let link = settingsLink("https://barpour.pages.dev/support")
+        for _ in 0..<5 where !link.isHittable { app.swipeUp() }
+        link.tap()
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 20))
+        app.activate()
+    }
+
     func testClassicVariationCanBeCancelledWithoutChangingTheOriginal() throws {
         launch()
         openNegroni()
@@ -497,6 +530,10 @@ final class QAPassTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 25))
         XCTAssertFalse(app.staticTexts["Welcome to PourSTL"].exists)
+    }
+
+    private func settingsLink(_ url: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: url).firstMatch
     }
 
     private func relaunch() {
