@@ -760,11 +760,27 @@ dialog p {
   flex-wrap: wrap;
 }
 
+.labeled-form {
+  margin: 12px 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
 .inline-form {
   display: flex;
   align-items: stretch;
   gap: 8px;
   margin: 12px 0;
+}
+
+.labeled-form .inline-form {
+  margin: 0;
 }
 
 .inline-form input, #inventory-search, #recipe-form input:not([type=checkbox]),
@@ -782,6 +798,13 @@ dialog p {
 
 .inline-form input {
   flex: 1;
+}
+
+.inline-form button {
+  font-size: 16px;
+  min-height: 44px;
+  padding: 8px 14px;
+  flex-shrink: 0;
 }
 
 #inventory-search {

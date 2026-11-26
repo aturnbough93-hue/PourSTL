@@ -44,10 +44,12 @@
       <section class="panel bar-panel" aria-labelledby="bar-title">
         <div class="bar-heading"><h2 id="bar-title" tabindex="-1">My Bar</h2><button type="button" id="inventory-toggle" class="text-button" aria-expanded="false" aria-controls="inventory-controls">Show ingredients</button></div>
         <div id="inventory-controls">
-          <form id="stock-form" class="inline-form">
-            <label class="sr-only" for="stock-name">Ingredient to stock</label>
-            <input id="stock-name" name="ingredient" maxlength="80" placeholder="Ingredient to stock" required>
-            <button type="submit" class="secondary">Stock</button>
+          <form id="stock-form" class="labeled-form">
+            <label class="field-label" for="stock-name">Ingredient to stock</label>
+            <div class="inline-form">
+              <input id="stock-name" name="ingredient" maxlength="80" placeholder="e.g. Rye" required>
+              <button type="submit" class="secondary">Stock</button>
+            </div>
           </form>
           <label for="inventory-search" class="sr-only">Filter ingredients</label>
           <input id="inventory-search" type="search" placeholder="Filter ingredients">
