@@ -58,13 +58,13 @@ with a nested `chat` span.
 
 ## Production deployment
 
-The Worker is deployed as `pourstl-bar-assistant` at
-`https://pourstl-bar-assistant.pourstl.workers.dev/v1/assistant/turn`. It runs on
-the account's `pourstl.workers.dev` subdomain because pourstl.com is not a
-Cloudflare zone in this account. Traces are enabled at 100% sampling, and Workers
-Logs are disabled. Preview URLs are off.
+The Worker is deployed as `pourstl-bar-assistant` in the Cloudflare account that
+owns the pourstl.com zone, at
+`https://assistant.pourstl.com/v1/assistant/turn`. That hostname is a Workers
+custom domain. The `workers.dev` route and Preview URLs are off. Traces are
+enabled at 100% sampling, and Workers Logs are disabled.
 
 `BAR_ASSISTANT_TOKEN` is set as a Worker secret and is not stored in this
 repository. To rotate it, set a new value with
 `npx wrangler secret put BAR_ASSISTANT_TOKEN` from this directory and update the
-callers. To redeploy, run `npx wrangler deploy`.
+callers. To redeploy, run `npx wrangler deploy` while signed in to that account.
