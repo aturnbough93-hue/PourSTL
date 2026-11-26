@@ -655,6 +655,10 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(selected.isSelected)
         XCTAssertFalse(app.buttons["All, not selected"].isSelected)
         XCTAssertTrue(app.buttons["Edit Aperol"].waitForExistence(timeout: 5))
+        let liqueurs = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "Liqueurs, 1 ingredients")
+        ).firstMatch
+        XCTAssertTrue(liqueurs.waitForExistence(timeout: 5), "Only one liqueur should match Out")
         XCTAssertFalse(campari.exists, "Out must exclude in-stock Campari")
     }
 
