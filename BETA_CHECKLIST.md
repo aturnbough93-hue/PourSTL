@@ -71,7 +71,7 @@ source review or a historical simulator run.
 - [ ] iPhone recipes and inventory stay in SwiftData; the iPhone Bar Assistant does not call the separate Worker
 - [ ] Privacy nutrition labels prepared (no tracking)
 - [ ] Archive includes PrivacyInfo.xcprivacy and its required-reason API declaration
-- [ ] Privacy report reflects the distributed app; the website policy distinguishes on-device questions from traced Worker API turns
+- [ ] Privacy report reflects the distributed app; the website policy distinguishes local Bar Assistant questions on iPhone and PourSTL Web from traced Worker API turns
 - [ ] Save failures preserve editor input and never show false success
 - [ ] Store initialization failures preserve existing data, and **Get help** opens the [same support page](https://pourstl.com/support) as Settings
 
