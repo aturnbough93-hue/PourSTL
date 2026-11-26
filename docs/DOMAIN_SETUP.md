@@ -5,7 +5,7 @@ Canonical site: **https://pourstl.com**. It is live on Cloudflare Pages project
 domain stays registered at IONOS while Cloudflare provides DNS and the Pages
 website.
 
-This repository does not change DNS records or add redirects. The Pages project
+The Pages setup does not change DNS records or add redirects. The Pages project
 name stays `pourstl`. The assigned Pages hostname `pourstl.pages.dev` remains
 the CNAME target for `@` and `www`; it is not the canonical URL.
 
@@ -29,6 +29,15 @@ Public NS for `pourstl.com` resolve to `amanda.ns.cloudflare.com` and
 `matt.ns.cloudflare.com`. The original IONOS nameservers were
 `ns1085.ui-dns.biz`, `ns1093.ui-dns.org`, `ns1095.ui-dns.com`, and
 `ns1122.ui-dns.de`. This change does not replace nameservers.
+
+## Bar Assistant Worker domain
+
+`assistant.pourstl.com` is a Workers custom domain in the Cloudflare account
+that owns the `pourstl.com` zone. Do not point it at the Pages CNAME target.
+Wrangler manages the custom domain when deploying the Worker; `workers.dev`
+and Worker preview URLs are disabled. The Pages production and preview builds
+do not deploy this Worker. See the [Worker runbook](../workers/bar-assistant/README.md)
+for deployment, bearer token rotation, and trace verification.
 
 ## Checks for the live site
 

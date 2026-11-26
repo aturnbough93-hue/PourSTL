@@ -1,9 +1,9 @@
 # PourSTL Bar Assistant Worker
 
 The Worker answers general cocktail and bartending questions through Workers AI.
-It runs separately from the offline iOS Bar Assistant and the static Pages site.
-Each request is one model turn. The Worker has no access to iOS inventory, saved
-recipes, or previous questions.
+Neither the offline iOS Bar Assistant nor PourSTL Web calls the Worker. It has
+no access to either app's stored data. Each accepted question starts a single
+model turn without conversation history.
 
 ## API
 
@@ -41,10 +41,10 @@ credentials.
 ## Cloudflare tracing
 
 The Worker uses Workers AI through AI SDK v7. Workers tracing samples every
-request at Cloudflare's default rate of 100%. Each model turn records messages
-and can record tool payloads when tools are added. Messages include the system
-prompt, caller question, and model answer, so send content suitable for storage
-in the Cloudflare account. Trace identity uses the fixed agent name
+request at Cloudflare's default rate of 100%. Each model turn records messages.
+Tool payload recording is enabled, but no tools are configured. Messages include
+the system prompt, caller question, and model answer, so do not send personal or
+confidential information. Trace identity uses the fixed agent name
 `pourstl-bar-assistant`, fixed agent ID `pourstl-bar-assistant-worker`, and the
 caller's random conversation ID.
 
