@@ -33,6 +33,7 @@ SECRET_PATTERNS = {
 
 def yaml_fields(text):
     """Read the immediate keys of an indented block in our XcodeGen spec."""
+    text = text.replace("\r\n", "\n").removesuffix("\r")
     lines = [line for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
     indent = min(len(line) - len(line.lstrip()) for line in lines)
     entries = list(re.finditer(rf"(?m)^ {{{indent}}}([\w.-]+):[ \t]*(.*)$", text))
@@ -217,6 +218,10 @@ class YamlFieldTests(unittest.TestCase):
 
     def test_inline_comment_before_nested_block(self):
         fields = yaml_fields("settings: # App settings\n  CURRENT_PROJECT_VERSION: 5\n")
+        self.assertEqual(yaml_fields(fields["settings"]), {"CURRENT_PROJECT_VERSION": "5"})
+
+    def test_crlf_quoted_build_number(self):
+        fields = yaml_fields('settings:\r\n  CURRENT_PROJECT_VERSION: "5"\r\n')
         self.assertEqual(yaml_fields(fields["settings"]), {"CURRENT_PROJECT_VERSION": "5"})
 
 
