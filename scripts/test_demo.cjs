@@ -159,12 +159,12 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
 });
 
-function bootTryPage({ compact = false, singleColumn = false } = {}) {
+function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false } = {}) {
   const siteDir = path.join(__dirname, '..', 'website');
   const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
   const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
 
-  const doc = { activeElement: null };
+  const doc = { activeElement: null, execCommand: () => execCommandResult };
   class FakeElement {
     constructor(tag, id = '', className = '') {
       this.tagName = tag.toUpperCase();
@@ -204,6 +204,7 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
       if (!this.parentNode) return;
       this.parentNode.children = this.parentNode.children.filter(child => child !== this);
       this.parentNode = null;
+      if (doc.activeElement === this) doc.activeElement = doc.body;
     }
     append(...nodes) {
       for (const node of nodes) {
@@ -239,6 +240,8 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
       doc.activeElement = this;
       this.focusCount += 1;
     }
+    select() { this.selected = true; this.focus(); }
+    scrollIntoView() {}
     querySelector(selector) {
       const classMatch = /^\.([a-z0-9-]+)$/i.exec(selector);
       for (const child of this.children) {
@@ -292,7 +295,8 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
   const storage = new Map();
   const win = {
     document: doc,
-    navigator: {},
+    navigator: clipboardWrite ? { clipboard: { writeText: clipboardWrite } } : {},
+    isSecureContext: Boolean(clipboardWrite),
     localStorage: {
       getItem: key => (storage.has(key) ? storage.get(key) : null),
       setItem: (key, value) => storage.set(key, String(value)),
@@ -342,6 +346,126 @@ test('/try starts cleanly and orders panels for desktop and single-column viewpo
   singleColumn.setMatches(false);
   assert.equal(desktop.byId.get('workspace').firstElementChild, desktop.barPanel);
   assert.equal(desktop.doc.activeElement, stockInput);
+});
+
+test('successful recipe copy announces beside its action without changing focus', async () => {
+  let copiedText = '';
+  const page = bootTryPage({ clipboardWrite: async text => { copiedText = text; } });
+  const copy = page.byId.get('copy');
+  copy.focus();
+  page.byId.get('feedback').textContent = 'Previous status.';
+  page.byId.get('copy-feedback').textContent = 'Old copy status.';
+
+  await copy.listeners.get('click')[0]();
+
+  assert.match(copiedText, /Negroni/);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+  assert.equal(page.byId.get('feedback').textContent, '');
+  assert.equal(page.doc.activeElement, copy);
+  assert.equal(page.byId.get('manual-copy').hidden, true);
+});
+
+test('pending recipe copy preserves focus moved to another control', async () => {
+  let completeClipboardWrite;
+  const clipboardWrite = new Promise(resolve => { completeClipboardWrite = resolve; });
+  const page = bootTryPage({ clipboardWrite: () => clipboardWrite });
+  const copy = page.byId.get('copy');
+  const search = page.byId.get('search');
+  copy.focus();
+
+  const pendingCopy = copy.listeners.get('click')[0]();
+  search.focus();
+  completeClipboardWrite();
+  await pendingCopy;
+
+  assert.equal(page.doc.activeElement, search);
+  assert.equal(copy.focusCount, 1);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+});
+
+test('successful legacy copy fallback restores focus to Copy when it did not move', async () => {
+  const page = bootTryPage({ execCommandResult: true });
+  const copy = page.byId.get('copy');
+  copy.focus();
+
+  await copy.listeners.get('click')[0]();
+
+  assert.equal(page.doc.activeElement, copy);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+});
+
+test('legacy copy fallback preserves a control focused while clipboard was pending', async () => {
+  let denyClipboardWrite;
+  const clipboardWrite = new Promise((_resolve, reject) => { denyClipboardWrite = reject; });
+  const page = bootTryPage({ clipboardWrite: () => clipboardWrite, execCommandResult: true });
+  const copy = page.byId.get('copy');
+  const search = page.byId.get('search');
+  copy.focus();
+
+  const pendingCopy = copy.listeners.get('click')[0]();
+  search.focus();
+  denyClipboardWrite(new Error('denied'));
+  await pendingCopy;
+
+  assert.equal(page.doc.activeElement, search);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+});
+
+test('pending copy does not restore stale confirmation after servings change', async () => {
+  let completeClipboardWrite;
+  const clipboardWrite = new Promise(resolve => { completeClipboardWrite = resolve; });
+  const page = bootTryPage({ clipboardWrite: () => clipboardWrite });
+  const copy = page.byId.get('copy');
+  const more = page.byId.get('more');
+  const copyFeedback = page.byId.get('copy-feedback');
+  copy.focus();
+
+  const pendingCopy = copy.listeners.get('click')[0]();
+  more.focus();
+  more.listeners.get('click')[0]();
+  completeClipboardWrite();
+  await pendingCopy;
+
+  assert.equal(copyFeedback.textContent, '');
+  assert.equal(page.doc.activeElement, more);
+  assert.equal(copy.focusCount, 1);
+});
+
+test('recipe selection, servings, and units clear the previous copy confirmation', () => {
+  const page = bootTryPage({ singleColumn: true });
+  const status = page.byId.get('copy-feedback');
+
+  status.textContent = 'Negroni recipe copied to clipboard.';
+  page.byId.get('more').listeners.get('click')[0]();
+  assert.equal(status.textContent, '');
+
+  status.textContent = 'Negroni recipe copied to clipboard.';
+  page.byId.get('unit-ml').listeners.get('click')[0]();
+  assert.equal(status.textContent, '');
+
+  status.textContent = 'Negroni recipe copied to clipboard.';
+  const otherRecipe = page.byId.get('recipes').children.find(button => button.dataset.recipe !== 'negroni');
+  otherRecipe.listeners.get('click')[0]();
+  assert.notEqual(page.byId.get('recipe-title').textContent, 'Negroni');
+  assert.equal(status.textContent, '');
+});
+
+test('blocked recipe copy keeps the selected manual-copy flow and close focus return', async () => {
+  const page = bootTryPage({ clipboardWrite: async () => { throw new Error('denied'); }, execCommandResult: false });
+  const copy = page.byId.get('copy');
+
+  await copy.listeners.get('click')[0]();
+
+  assert.equal(page.byId.get('copy-feedback').textContent, '');
+  assert.match(page.byId.get('feedback').textContent, /blocked clipboard access/);
+  assert.equal(page.byId.get('manual-copy').hidden, false);
+  assert.match(page.byId.get('recipe-copy').value, /Negroni/);
+  assert.equal(page.byId.get('recipe-copy').selected, true);
+  assert.equal(page.doc.activeElement, page.byId.get('recipe-copy'));
+
+  page.byId.get('close-copy').listeners.get('click')[0]();
+  assert.equal(page.byId.get('manual-copy').hidden, true);
+  assert.equal(page.doc.activeElement, copy);
 });
 
 test('bar assistant parses intents accurately including scaling, substitutions, dietary, and privacy', () => {

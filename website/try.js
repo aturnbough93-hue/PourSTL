@@ -198,6 +198,7 @@
   }
 
   function renderDetail() {
+    $('copy-feedback').textContent = '';
     const recipe = currentRecipe();
     if (!recipe) return;
     if (!$('manual-copy').hidden) {
@@ -348,9 +349,16 @@
   }
 
   $('copy').addEventListener('click', async () => {
+    const copy = $('copy');
+    const restoreCopyFocus = document.activeElement === copy;
+    const selected = state.selected;
+    const servings = state.servings;
+    const unit = state.unit;
     const recipe = currentRecipe();
-    const text = App.recipeText(recipe, state.servings, state.unit);
-    $('copy').disabled = true;
+    const text = App.recipeText(recipe, servings, unit);
+    $('copy-feedback').textContent = '';
+    $('feedback').textContent = '';
+    copy.disabled = true;
     let copied = false;
     try {
       if (window.navigator.clipboard && window.isSecureContext) {
@@ -358,12 +366,24 @@
         copied = true;
       }
     } catch (_) { /* Some browsers require the legacy copy fallback. */ }
-    if (!copied) copied = fallbackCopy(text);
-    $('copy').disabled = false;
+    let focusedBeforeFallback = null;
+    if (!copied) {
+      focusedBeforeFallback = document.activeElement;
+      copied = fallbackCopy(text);
+    }
+    copy.disabled = false;
+    if (copied && document.activeElement === document.body) {
+      if (focusedBeforeFallback && focusedBeforeFallback !== document.body) {
+        focusedBeforeFallback.focus({ preventScroll: true });
+      } else if (restoreCopyFocus) {
+        copy.focus({ preventScroll: true });
+      }
+    }
     if (copied) {
       $('manual-copy').hidden = true;
-      $('copy').focus({ preventScroll: true });
-      feedback(`${recipe.name} recipe copied to clipboard.`);
+      if (state.selected === selected && state.servings === servings && state.unit === unit) {
+        $('copy-feedback').textContent = `${recipe.name} recipe copied to clipboard.`;
+      }
     } else {
       $('manual-copy').hidden = false;
       $('recipe-copy').value = text;
