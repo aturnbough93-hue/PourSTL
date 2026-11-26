@@ -556,7 +556,7 @@
     const stopHadFocus = document.activeElement === $('timer-stop');
     stopTimer();
     $('timer-complete').hidden = false;
-    if (stopHadFocus) $('timer-start').focus();
+    if (stopHadFocus) $('timer-start').focus({ preventScroll: true });
     feedback('Prep timer finished.');
     if (typeof navigator.vibrate === 'function') navigator.vibrate(200);
   }
