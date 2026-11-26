@@ -31,10 +31,12 @@ Free iPhone recipes scale up to 24 servings. A verified Pro entitlement unlocks
 on-device ingredient costing, batches up to 200 servings, and CSV prep sheets.
 Debug UI fixtures cover both tiers without purchasing. Release uses real StoreKit.
 
-The iOS tests and 6.9-inch simulator QA passed on
-[#33](https://github.com/aturnbough93-hue/PourSTL/pull/33/checks). The fix is
-test-only: the local fixture allows up to 10 minutes for its first entitlement
-sync, bounds later waits, and clears transactions again if StoreKit reports a
+The [iOS tests](https://github.com/aturnbough93-hue/PourSTL/actions/runs/45695599134)
+and [6.9-inch simulator QA](https://github.com/aturnbough93-hue/PourSTL/actions/runs/45695598973)
+passed on PR #33's test merge commit
+[`219ce72`](https://github.com/aturnbough93-hue/PourSTL/commit/219ce72de7c84629cb691e6405f7bead169f1dc6).
+The fix is test-only: the local fixture allows up to 10 minutes for its first
+entitlement sync, bounds later waits, and clears transactions again if StoreKit reports a
 subscription after cleanup. A timeout fails the test; it is not treated as an
 empty entitlement result. These checks do not replace purchase, restore, and
 expiration testing with the configured products in Apple's sandbox.
