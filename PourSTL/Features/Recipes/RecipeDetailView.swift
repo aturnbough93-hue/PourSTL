@@ -464,25 +464,32 @@ struct RecipeDetailView: View {
     }
 
     private func ingredientRow(_ line: IngredientLine) -> some View {
-        let isMissing = match.missing.contains { $0.persistentModelID == line.persistentModelID }
-            || match.missingOptional.contains { $0.persistentModelID == line.persistentModelID }
+        let isMissingRequired = match.missing.contains { $0.persistentModelID == line.persistentModelID }
+        let isMissingOptional = match.missingOptional.contains { $0.persistentModelID == line.persistentModelID }
         let measure = line.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)
+        let accessibilityStatus = if isMissingRequired {
+            ", missing"
+        } else if isMissingOptional {
+            ", optional, not stocked"
+        } else if line.isOptional {
+            ", optional"
+        } else {
+            ""
+        }
         return adaptiveRow {
             VStack(alignment: .leading, spacing: 2) {
                 Text(line.name)
                     .font(.body)
                     .foregroundStyle(PourColor.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                adaptiveRow {
-                    if isMissing {
-                        StatusPill(kind: .missing)
-                            .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
-                    }
-                    if line.isOptional {
-                        Text("optional")
-                            .font(.caption)
-                            .foregroundStyle(PourColor.textTertiary)
-                    }
+                if isMissingRequired {
+                    StatusPill(kind: .missing)
+                        .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
+                } else if line.isOptional {
+                    Text(isMissingOptional ? "Optional · not stocked" : "Optional")
+                        .font(.caption)
+                        .foregroundStyle(PourColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if let note = line.note, !note.isEmpty {
                     Text(note)
@@ -498,7 +505,7 @@ struct RecipeDetailView: View {
         }
         .frame(minHeight: 52)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(measure) \(line.name)\(isMissing ? ", missing" : "")")
+        .accessibilityLabel("\(measure) \(line.name)\(accessibilityStatus)")
     }
 
     // MARK: - Instructions

@@ -294,6 +294,14 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Negroni"].exists)
     }
 
+    func testRecipeDistinguishesOptionalAndRequiredIngredients() throws {
+        launch(extra: ["-deepLink=pourstl://recipe?name=Margarita"])
+        let labels = app.descendants(matching: .any)
+        XCTAssertTrue(labels["2 oz Tequila, missing"].waitForExistence(timeout: 10))
+        XCTAssertTrue(labels["1 pinch Salt, optional, not stocked"].exists)
+        XCTAssertTrue(labels["1 wedge Lime Wedge, optional"].exists)
+    }
+
     func testShoppingDeepLinkSelectsTheTab() throws {
         launch(extra: ["-deepLink=pourstl://tab/shopping"])
         XCTAssertTrue(app.navigationBars["Shopping List"].waitForExistence(timeout: 15))
