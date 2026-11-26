@@ -42,7 +42,7 @@
     <noscript><p class="notice">PourSTL Web needs JavaScript. <a href="./">Explore PourSTL’s features</a> on the main website.</p></noscript>
     <div class="workspace" id="workspace" hidden>
       <section class="panel bar-panel" aria-labelledby="bar-title">
-        <div class="bar-heading"><h2 id="bar-title">My Bar</h2><button type="button" id="inventory-toggle" class="text-button" aria-expanded="false" aria-controls="inventory-controls">Show ingredients</button></div>
+        <div class="bar-heading"><h2 id="bar-title" tabindex="-1">My Bar</h2><button type="button" id="inventory-toggle" class="text-button" aria-expanded="false" aria-controls="inventory-controls">Show ingredients</button></div>
         <div id="inventory-controls">
           <form id="stock-form" class="inline-form">
             <label class="sr-only" for="stock-name">Ingredient to stock</label>
@@ -82,6 +82,7 @@
         <div class="filters" role="group" aria-label="Filter recipes"><button type="button" id="all-filter" aria-pressed="true">All drinks</button><button type="button" id="ready-filter" aria-pressed="false">Can make</button><button type="button" id="favorites-filter" aria-pressed="false">Favorites</button></div>
         <div id="recipes" class="recipe-list"></div>
         <div id="no-results" class="empty-results" hidden><p>No matching drinks.</p><button type="button" id="clear-filters" class="text-button">Clear search and filters</button></div>
+        <a class="bar-jump" href="#bar-title">My Bar &amp; tools</a>
       </section>
       <section class="panel detail-panel" aria-labelledby="recipe-title">
         <div id="recipe-media" class="recipe-media"></div>

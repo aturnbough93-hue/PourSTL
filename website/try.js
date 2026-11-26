@@ -13,6 +13,7 @@
   let timerEndsAt = 0;
   let timerTick;
   const compact = window.matchMedia('(max-width: 1000px)');
+  const phone = window.matchMedia('(max-width: 700px)');
   let inventoryExpanded = !compact.matches;
 
   try {
@@ -153,7 +154,7 @@
         renderRecipes();
         renderDetail();
         save();
-        if (window.matchMedia('(max-width: 700px)').matches) {
+        if (phone.matches) {
           $('recipe-title').focus({ preventScroll: true });
           document.querySelector('.detail-panel').scrollIntoView({ block: 'start' });
         } else {
@@ -244,11 +245,23 @@
     $('inventory-toggle').textContent = inventoryExpanded ? 'Hide ingredients' : 'Show ingredients';
   }
 
+  function updatePanelOrder() {
+    const workspace = $('workspace');
+    const bar = workspace.querySelector('.bar-panel');
+    if (phone.matches ? bar === workspace.lastElementChild : bar === workspace.firstElementChild) return;
+
+    const focused = document.activeElement;
+    if (phone.matches) workspace.append(bar);
+    else workspace.prepend(bar);
+    if (bar.contains(focused)) focused.focus();
+  }
+
   $('inventory-toggle').addEventListener('click', () => {
     inventoryExpanded = !inventoryExpanded;
     updateInventoryVisibility();
   });
   compact.addEventListener('change', updateInventoryVisibility);
+  phone.addEventListener('change', updatePanelOrder);
   $('search').addEventListener('input', event => {
     query = event.target.value;
     const count = renderRecipes();
@@ -603,6 +616,7 @@
   render();
   storageNote();
   updateInventoryVisibility();
+  updatePanelOrder();
   $('workspace').hidden = false;
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('web-app-worker.js', { scope: '/try' }).catch(() => {});
