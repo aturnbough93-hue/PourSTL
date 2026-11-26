@@ -162,7 +162,7 @@ private struct StoreRecoveryView: View {
                     .foregroundStyle(PourColor.textSecondary)
                 Button("Retry", action: retry)
                     .buttonStyle(PourPrimaryButtonStyle())
-                Link("Get help", destination: URL(string: "https://github.com/aturnbough93-hue/PourSTL/issues")!)
+                Link("Get help", destination: SiteLinks.support)
                     .font(.body.weight(.semibold))
                     .frame(minHeight: 44)
             }
