@@ -6,6 +6,27 @@ artifacts and installation instructions. Mark items only with evidence from the
 specific build being distributed; an unchecked item is not established by a
 source review or a historical simulator run.
 
+## Automated release checks
+
+- Pull requests run [Quality checks](.github/workflows/ci.yml) and
+  [Simulator QA](.github/workflows/qa-simulator-pass.yml): iOS unit/UI tests and a
+  Release simulator build, website and Worker regression checks (including
+  `/try` startup on desktop and mobile layouts), and static checks for the
+  bundle ID, version/build consistency, app icon and launch screen, privacy
+  manifest inclusion, Settings support/privacy pages, and common secret
+  patterns in tracked files.
+- Before publishing, run [Release checks](.github/workflows/release-checks.yml)
+  on the exact candidate ref and wait for all jobs to pass. A `v*` tag push
+  and a published GitHub Release also rerun the checks; publication itself
+  does not wait for Actions. The build number must increase from the previous
+  reachable `v*` tag or the supplied `base_ref`. Without either baseline,
+  only build-number consistency is checked; provide `base_ref` to compare a
+  first tagged release with an earlier distributed build.
+- A person still verifies distribution signing and provisioning, the
+  signed archive and App Store Connect/TestFlight settings (including privacy
+  labels), physical-device and Apple sandbox behavior, VoiceOver and other
+  accessibility checks, screenshots, and deployed site behavior.
+
 ## Build & Quality
 - [ ] Unit and UI tests pass on an available iOS 17+ iPhone simulator; record workflow and commit
 - [ ] Clean build (no warnings treated as errors)

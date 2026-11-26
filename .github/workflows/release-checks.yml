@@ -1,0 +1,49 @@
+name: Release checks
+
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: Build-number baseline (defaults to the previous reachable v* tag)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+
+  simulator-qa:
+    uses: ./.github/workflows/qa-simulator-pass.yml
+
+  build-number:
+    name: Release build number
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare with the previous release
+        env:
+          BASE_REF: ${{ inputs.base_ref }}
+        run: |
+          base_ref="$BASE_REF"
+          if [[ -z "$base_ref" ]]; then
+            options=(--tags --abbrev=0 --match 'v*')
+            if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+              options+=(--exclude "$GITHUB_REF_NAME")
+            fi
+            if ! base_ref=$(git describe "${options[@]}" HEAD 2>/dev/null); then
+              echo "::notice::No earlier reachable v* tag; no build-number comparison. Set base_ref to compare with an earlier build."
+              exit 0
+            fi
+          fi
+          python3 scripts/check_release.py -v --version-bumped-since "$base_ref"
