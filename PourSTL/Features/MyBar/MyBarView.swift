@@ -178,7 +178,8 @@ struct MyBarView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     lowStockButton(item)
                         .labelStyle(.titleAndIcon)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
