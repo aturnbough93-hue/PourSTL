@@ -645,6 +645,9 @@ final class QAPassTests: XCTestCase {
         XCTAssertGreaterThan(low.frame.minY, all.frame.maxY)
         XCTAssertTrue(all.isSelected)
 
+        let campari = app.buttons["Edit Campari"]
+        for _ in 0..<4 where !campari.exists { app.swipeUp() }
+        XCTAssertTrue(campari.exists)
         out.tap()
         let selected = app.buttons["Out, selected"]
         XCTAssertTrue(selected.waitForExistence(timeout: 5))
@@ -652,6 +655,7 @@ final class QAPassTests: XCTestCase {
         XCTAssertTrue(selected.isSelected)
         XCTAssertFalse(app.buttons["All, not selected"].isSelected)
         XCTAssertTrue(app.buttons["Edit Aperol"].waitForExistence(timeout: 5))
+        XCTAssertFalse(campari.exists, "Out must exclude in-stock Campari")
     }
 
     func testAX5RecipeActionsUseFullWidthAndScrollAway() throws {
