@@ -785,13 +785,15 @@
   }
 
   function answerInventory(state) {
-    if (!state.inventory.length) {
-      return makeReply('My Bar is empty. Stock a bottle and I can match drinks against it.', ['What can I make?']);
-    }
     const names = ingredientNameMap(state);
-    const stockedNames = state.inventory.map(id => displayName(id, names)).sort((a, b) => a.localeCompare(b));
-    const lines = ['In stock (' + stockedNames.length + '): ' + listed(stockedNames.slice(0, 12)) + '.'];
-    if (stockedNames.length > 12) lines.push('And ' + (stockedNames.length - 12) + ' more in stock.');
+    const lines = [];
+    if (!state.inventory.length) {
+      lines.push('My Bar is empty. Stock a bottle and I can match drinks against it.');
+    } else {
+      const stockedNames = state.inventory.map(id => displayName(id, names)).sort((a, b) => a.localeCompare(b));
+      lines.push('In stock (' + stockedNames.length + '): ' + listed(stockedNames.slice(0, 12)) + '.');
+      if (stockedNames.length > 12) lines.push('And ' + (stockedNames.length - 12) + ' more in stock.');
+    }
     if (state.shopping.length) {
       const shoppingNames = state.shopping.map(id => displayName(id, names)).sort((a, b) => a.localeCompare(b));
       lines.push('On your shopping list (' + shoppingNames.length + '): ' + listed(shoppingNames.slice(0, 8)) + '.');
