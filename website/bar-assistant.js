@@ -163,11 +163,15 @@
 
   const RECIPE_MARKERS = ['how do i make ', 'how to make ', 'recipe for '];
 
+  const OUT_OF_STOCK_PHRASES = [
+    'whats out of stock', 'what is out of stock', 'out of stock',
+    'what do i have out of stock',
+  ];
+
   const INVENTORY_PHRASES = [
     'whats in my bar', 'what is in my bar', 'what do i have',
     'whats in stock', 'what is in stock', 'my inventory',
-    'whats out of stock', 'what is out of stock', 'out of stock',
-    'what do i have in stock', 'what do i have out of stock',
+    'what do i have in stock',
     'show my bar', 'show my inventory', 'list my bar', 'my bar inventory',
   ];
 
@@ -417,8 +421,11 @@
       return { type: 'help' };
     }
     const trimmed = trimFiller(text);
+    if (OUT_OF_STOCK_PHRASES.some(phrase => trimmed === trimFiller(phrase))) {
+      return { type: 'inventory', mode: 'outOfStock' };
+    }
     if (INVENTORY_PHRASES.some(phrase => trimmed === trimFiller(phrase))) {
-      return { type: 'inventory' };
+      return { type: 'inventory', mode: 'stocked' };
     }
     const sub = parseSubstitution(text);
     if (sub && !isPlainMakeQuestion(text)) return sub;
@@ -784,9 +791,28 @@
     return answerScaledRecipe(hit.recipe, servings, state, true);
   }
 
-  function answerInventory(state) {
+  function answerInventory(state, mode) {
     const names = ingredientNameMap(state);
     const lines = [];
+    if (mode === 'outOfStock') {
+      const stocked = new Set(state.inventory);
+      const unstocked = App.listIngredients(state)
+        .filter(item => !stocked.has(item.id) && !ASSUMED_AVAILABLE.has(item.id))
+        .map(item => item.name)
+        .sort((a, b) => a.localeCompare(b));
+      lines.push('PourSTL Web tracks stocked bottles and a shopping list rather than a separate out-of-stock status.');
+      if (state.shopping.length) {
+        const shoppingNames = state.shopping.map(id => displayName(id, names)).sort((a, b) => a.localeCompare(b));
+        lines.push('On your shopping list (' + shoppingNames.length + '): ' + listed(shoppingNames.slice(0, 8)) + '.');
+      }
+      if (!unstocked.length) {
+        lines.push('Every tracked ingredient is currently in My Bar.');
+      } else {
+        lines.push('Not currently in My Bar (' + unstocked.length + '): ' + listed(unstocked.slice(0, 12)) + '.');
+        if (unstocked.length > 12) lines.push('And ' + (unstocked.length - 12) + ' more not in My Bar.');
+      }
+      return makeReply(lines.join('\n'), ['What can I make?', 'What am I missing for a Negroni?']);
+    }
     if (!state.inventory.length) {
       lines.push('My Bar is empty. Stock a bottle and I can match drinks against it.');
     } else {
@@ -824,7 +850,7 @@
           STARTER_QUESTIONS
         );
       case 'inventory':
-        return answerInventory(current);
+        return answerInventory(current, intent.mode);
       case 'whatCanIMake':
         return answerWhatCanIMake(intent.focus, current);
       case 'substitution':
