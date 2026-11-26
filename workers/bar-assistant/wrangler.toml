@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2026-11-05"
 compatibility_flags = ["nodejs_compat"]
 send_metrics = false
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "assistant.pourstl.com", custom_domain = true }]
 
 [ai]
 binding = "AI"
