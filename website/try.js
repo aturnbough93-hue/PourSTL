@@ -13,7 +13,7 @@
   let timerEndsAt = 0;
   let timerTick;
   const compact = window.matchMedia('(max-width: 1000px)');
-  const phone = window.matchMedia('(max-width: 700px)');
+  const singleColumn = window.matchMedia('(max-width: 700px)');
   let inventoryExpanded = !compact.matches;
 
   try {
@@ -158,7 +158,7 @@
         renderRecipes();
         renderDetail();
         save();
-        if (phone.matches) {
+        if (singleColumn.matches) {
           $('recipe-title').focus({ preventScroll: true });
           document.querySelector('.detail-panel').scrollIntoView({ block: 'start' });
         } else {
@@ -266,7 +266,13 @@
     updateInventoryVisibility();
   });
   compact.addEventListener('change', updateInventoryVisibility);
-  phone.addEventListener('change', updatePanelOrder);
+  singleColumn.addEventListener('change', updatePanelOrder);
+  $('back-to-recipes').addEventListener('click', () => {
+    const selectedResult = $('recipes').querySelector('[aria-current="true"]');
+    if (!selectedResult) return;
+    selectedResult.focus({ preventScroll: true });
+    selectedResult.scrollIntoView({ block: 'center', inline: 'nearest' });
+  });
   $('search').addEventListener('input', event => {
     query = event.target.value;
     const count = renderRecipes();
