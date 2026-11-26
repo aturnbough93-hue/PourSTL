@@ -1,0 +1,54 @@
+name: Release checks
+
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: Build-number baseline (defaults to all reachable v* tags not on the candidate commit)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+
+  simulator-qa:
+    uses: ./.github/workflows/qa-simulator-pass.yml
+
+  build-number:
+    name: Release build number
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare with prior releases
+        env:
+          BASE_REF: ${{ inputs.base_ref }}
+        run: |
+          args=()
+          if [[ -n "$BASE_REF" ]]; then
+            args+=(--version-bumped-since "$BASE_REF")
+          else
+            head_tags=$(git tag --points-at HEAD)
+            merged_tags=$(git tag --merged HEAD --list 'v*')
+            while IFS= read -r tag; do
+              if [[ -n "$tag" && $'\n'"$head_tags"$'\n' != *$'\n'"$tag"$'\n'* ]]; then
+                args+=(--version-bumped-since "refs/tags/$tag")
+              fi
+            done <<< "$merged_tags"
+            if [[ ${#args[@]} -eq 0 ]]; then
+              echo "::notice::No earlier reachable v* tag; no build-number comparison. Set base_ref to compare with an earlier build."
+              exit 0
+            fi
+          fi
+          python3 scripts/check_release.py -v "${args[@]}"
