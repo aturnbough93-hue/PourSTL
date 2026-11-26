@@ -810,12 +810,46 @@ dialog p {
   font-size: 21px;
 }
 
+.timer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.timer-controls button {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 16px;
+}
+
+.timer-value {
+  display: grid;
+  flex: 1;
+  min-width: 5rem;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 #timer-seconds {
-  width: 5.5rem;
+  width: 100%;
+  color: var(--text);
 }
 
 #timer-display {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+#timer-complete {
+  margin: 8px 0 0;
   color: var(--accent);
 }
 
@@ -856,7 +890,7 @@ dialog p {
   flex-wrap: wrap;
 }
 
-#editor-error:empty, #timer-display:empty {
+#editor-error:empty {
   display: none;
 }
 

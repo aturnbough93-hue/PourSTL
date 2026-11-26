@@ -534,12 +534,17 @@
     feedback(recipe.name + ' deleted.');
   });
 
+  function showTimerControls(running) {
+    $('timer-setup').hidden = running;
+    $('timer-running').hidden = !running;
+  }
+
   function stopTimer() {
     window.clearInterval(timerTick);
     timerEndsAt = 0;
-    $('timer-start').disabled = false;
-    $('timer-stop').hidden = true;
+    showTimerControls(false);
     $('timer-display').textContent = '';
+    $('timer-complete').hidden = true;
   }
 
   function updateTimer() {
@@ -548,8 +553,10 @@
       $('timer-display').textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
       return;
     }
+    const stopHadFocus = document.activeElement === $('timer-stop');
     stopTimer();
-    $('timer-display').textContent = 'Time’s up';
+    $('timer-complete').hidden = false;
+    if (stopHadFocus) $('timer-start').focus();
     feedback('Prep timer finished.');
     if (typeof navigator.vibrate === 'function') navigator.vibrate(200);
   }
@@ -557,11 +564,13 @@
   $('timer-start').addEventListener('click', () => {
     const duration = $('timer-seconds');
     if (!duration.reportValidity() || !Number.isInteger(duration.valueAsNumber)) return;
+    const startHadFocus = document.activeElement === $('timer-start');
     timerEndsAt = Date.now() + duration.valueAsNumber * 1000;
-    $('timer-start').disabled = true;
-    $('timer-stop').hidden = false;
-    updateTimer();
+    $('timer-complete').hidden = true;
+    showTimerControls(true);
+    if (startHadFocus) $('timer-stop').focus();
     timerTick = window.setInterval(updateTimer, 250);
+    updateTimer();
     feedback('Prep timer started.');
   });
   $('timer-stop').addEventListener('click', () => {
