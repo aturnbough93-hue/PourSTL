@@ -551,6 +551,19 @@ h2 {
   color: var(--muted);
 }
 
+.missing-label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 180, 172, .14);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+
 .method h2 {
   font-size: 27px;
   margin-bottom: 4px;

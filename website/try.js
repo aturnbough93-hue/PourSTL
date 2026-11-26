@@ -217,6 +217,7 @@
     for (const item of recipe.ingredients) {
       const row = node('div', `ingredient-row${item.optional ? ' optional' : ''}`);
       const name = node('dt', '', item.name);
+      if (match.missing.includes(item)) name.append(' ', node('span', 'missing-label', 'Missing'));
       if (item.optional) name.append(node('span', 'optional-label', ' · optional'));
       if (item.note) name.append(node('span', 'ingredient-note', item.note));
       row.append(name, node('dd', '', App.formatMeasure(item.amount, item.unit, state.servings, state.unit)));
