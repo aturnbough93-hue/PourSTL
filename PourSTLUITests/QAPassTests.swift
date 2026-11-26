@@ -526,8 +526,7 @@ final class QAPassTests: XCTestCase {
         verifyPicker(
             title: "Filter drinks by availability",
             options: ["All drinks", "Can make", "Almost there"],
-            initiallySelected: "All drinks",
-            tapOption: "Can make"
+            initiallySelected: "All drinks"
         )
 
         app.buttons["Settings"].tap()
@@ -536,14 +535,12 @@ final class QAPassTests: XCTestCase {
         verifyPicker(
             title: "Appearance",
             options: ["System", "Light", "Dark"],
-            initiallySelected: nil,
-            tapOption: "Dark"
+            initiallySelected: nil
         )
         verifyPicker(
             title: "Preferred units",
             options: ["oz", "ml"],
-            initiallySelected: nil,
-            tapOption: "ml"
+            initiallySelected: nil
         )
         app.buttons["Done"].tap()
 
@@ -556,20 +553,19 @@ final class QAPassTests: XCTestCase {
         verifyPicker(
             title: "Display units",
             options: ["oz", "ml"],
-            initiallySelected: nil,
-            tapOption: nil
+            initiallySelected: nil
         )
     }
 
     /// options must each appear as a button inside the titled group, with
-    /// exactly one selected. When tapOption is given, the selected state must
-    /// move to it. SwiftUI virtualizes rows, so this scrolls until the group
-    /// or the missing button shows up.
+    /// exactly one selected. The option that is not selected is tapped, and
+    /// the selected state must move to it while the old one clears. SwiftUI
+    /// virtualizes rows, so this scrolls until the group or the missing
+    /// button shows up.
     private func verifyPicker(
         title: String,
         options: [String],
-        initiallySelected: String?,
-        tapOption: String?
+        initiallySelected: String?
     ) {
         // Section headers can share the picker's title, so choose the match
         // that actually contains the option buttons.
@@ -601,20 +597,30 @@ final class QAPassTests: XCTestCase {
         )
         let selected = buttons.filter(\.isSelected)
         XCTAssertEqual(selected.count, 1, "\(title) must report exactly one selected option")
+        guard let selectedOption = selected.first else { return }
         if let initiallySelected {
-            XCTAssertEqual(selected.first?.label, initiallySelected)
+            XCTAssertEqual(selectedOption.label, initiallySelected)
         }
 
-        guard let tapOption else { return }
-        let target = group.buttons[tapOption]
-        XCTAssertTrue(target.exists, "\(title) must expose \(tapOption)")
+        // Persisted settings can hold any option, so tap whichever option is
+        // not selected now; an ineffective tap must fail the test.
+        guard let tapLabel = options.first(where: { $0 != selectedOption.label }) else { return }
+        let target = group.buttons[tapLabel]
+        XCTAssertTrue(target.exists, "\(title) must expose \(tapLabel)")
         target.tap()
         let moved = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "isSelected == true"), object: target
         )
         XCTAssertEqual(
             XCTWaiter.wait(for: [moved], timeout: 5), .completed,
-            "Tapping \(tapOption) in \(title) must move the selected state"
+            "Tapping \(tapLabel) in \(title) must move the selected state"
+        )
+        let cleared = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isSelected == false"), object: selectedOption
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [cleared], timeout: 5), .completed,
+            "\(selectedOption.label) in \(title) must lose the selected state"
         )
     }
 
