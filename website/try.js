@@ -133,7 +133,11 @@
       state.selected = results[0].id;
     }
     $('recipes').replaceChildren();
-    $('no-results').hidden = results.length > 0;
+    const emptyState = results.length ? null : App.recipeEmptyState(query, filter);
+    $('no-results').hidden = !emptyState;
+    for (const name of ['search', 'favorites', 'can-make']) {
+      $('empty-' + name).hidden = emptyState !== name;
+    }
     $('all-filter').setAttribute('aria-pressed', String(filter === 'all'));
     $('ready-filter').setAttribute('aria-pressed', String(filter === 'can-make'));
     $('favorites-filter').setAttribute('aria-pressed', String(filter === 'favorites'));
@@ -270,14 +274,24 @@
     save();
     feedback(`${count} ${count === 1 ? 'recipe matches' : 'recipes match'} your search.`);
   });
-  for (const [id, value] of [['all-filter', 'all'], ['ready-filter', 'can-make'], ['favorites-filter', 'favorites']]) {
-    $(id).addEventListener('click', () => {
-      filter = value;
-      const count = render();
-      save();
-      feedback(`${count} ${count === 1 ? 'recipe' : 'recipes'} ${filter === 'can-make' ? 'you can make with your bar' : 'shown'}.`);
-    });
+  function setRecipeFilter(value) {
+    filter = value;
+    const count = render();
+    save();
+    feedback(`${count} ${count === 1 ? 'recipe' : 'recipes'} ${filter === 'can-make' ? 'you can make with your bar' : 'shown'}.`);
   }
+  for (const [id, value] of [['all-filter', 'all'], ['ready-filter', 'can-make'], ['favorites-filter', 'favorites']]) {
+    $(id).addEventListener('click', () => setRecipeFilter(value));
+  }
+  $('browse-drinks').addEventListener('click', () => {
+    setRecipeFilter('all');
+    $('all-filter').focus();
+  });
+  $('open-my-bar').addEventListener('click', () => {
+    inventoryExpanded = true;
+    updateInventoryVisibility();
+    $(state.inventory.length ? 'stock-name' : 'starter-bar').focus();
+  });
   $('clear-filters').addEventListener('click', () => {
     query = '';
     filter = 'all';

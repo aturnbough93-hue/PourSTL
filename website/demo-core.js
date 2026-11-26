@@ -156,6 +156,10 @@
     });
   }
 
+  function recipeEmptyState(query, filter) {
+    return !normalize(query) && (filter === 'favorites' || filter === 'can-make') ? filter : 'search';
+  }
+
   function formatNumber(value) {
     if (value > 0 && value < 0.001) return Number(value.toPrecision(2)).toString();
     return Number(value.toFixed(3)).toString();
@@ -221,7 +225,7 @@
 
   return {
     inventory, recipes, units, starterInventory, maxCustomRecipes, defaults, validateState,
-    validateRecipe, resolveRecipe, listIngredients, normalize, matchRecipe, searchRecipes, formatMeasure,
+    validateRecipe, resolveRecipe, listIngredients, normalize, matchRecipe, searchRecipes, recipeEmptyState, formatMeasure,
     addIngredient, addMissing, purchase, recipeText,
   };
 });
