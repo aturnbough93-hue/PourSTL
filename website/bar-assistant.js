@@ -114,6 +114,7 @@
     'nut free', 'nutfree', 'egg free', 'eggfree', 'soy free', 'soyfree',
     'sugar free', 'sugarfree', 'low sugar', 'diabet', 'halal', 'kosher',
     'alcohol free', 'alcoholfree', 'non alcoholic', 'nonalcoholic', 'zero proof',
+    'virgin', 'mocktail', 'spirit free', 'spiritfree', 'booze free', 'boozefree',
     'pregnan', 'medication', 'cant have ', 'cannot have ',
     'without dairy', 'no dairy', 'without milk', 'no milk', 'without nuts', 'no nuts',
     'without egg', 'no egg', 'without gluten', 'no gluten', 'without alcohol', 'no alcohol',
