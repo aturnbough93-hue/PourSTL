@@ -258,6 +258,7 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
   const barPanel = new FakeElement('section', '', 'panel bar-panel');
   const recipesPanel = new FakeElement('section', '', 'panel recipes-panel');
   const detailPanel = new FakeElement('section', '', 'panel detail-panel');
+  byId.get('inventory-controls').append(byId.get('stock-name'));
   barPanel.append(byId.get('bar-title'), byId.get('inventory-toggle'), byId.get('inventory-controls'));
   byId.get('workspace').append(barPanel, recipesPanel, detailPanel);
 
@@ -328,16 +329,16 @@ test('/try starts cleanly and orders panels for desktop and single-column viewpo
   assert.equal(phone.byId.get('workspace').lastElementChild, phone.barPanel);
 
   // Breakpoint toggle moves My Bar between end and start while preserving focus inside it.
-  const toggle = desktop.byId.get('inventory-toggle');
-  toggle.focus();
-  const focusBefore = toggle.focusCount;
+  const stockInput = desktop.byId.get('stock-name');
+  stockInput.focus();
+  const focusBefore = stockInput.focusCount;
   const singleColumn = desktop.mediaQueries.get('(max-width: 700px)');
   singleColumn.setMatches(true);
   assert.equal(desktop.byId.get('workspace').lastElementChild, desktop.barPanel);
-  assert.equal(desktop.doc.activeElement, toggle);
-  assert.ok(toggle.focusCount > focusBefore);
+  assert.equal(desktop.doc.activeElement, stockInput);
+  assert.ok(stockInput.focusCount > focusBefore);
 
   singleColumn.setMatches(false);
   assert.equal(desktop.byId.get('workspace').firstElementChild, desktop.barPanel);
-  assert.equal(desktop.doc.activeElement, toggle);
+  assert.equal(desktop.doc.activeElement, stockInput);
 });
