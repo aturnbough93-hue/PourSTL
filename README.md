@@ -110,6 +110,8 @@ project.yml       XcodeGen spec (regenerate with `xcodegen` if needed)
 ## Browser testing
 
 Open [PourSTL Web](https://pourstl.com/try) or use `/try.html` on the local server.
+Use a Cloudflare Pages preview, not the local server, to test offline caching
+and Home Screen installation.
 Use the seeded catalog, save custom recipes and favorites, stock My Bar, and
 manage a shopping list. The web app saves data in the browser, scales to 24
 servings, and works offline after it caches the app. Pro tools are iPhone-only.
