@@ -1,6 +1,6 @@
 # PourSTL website
 
-Static marketing/landing page for the PourSTL iOS app. Local preview needs no install.
+Static site for the PourSTL iPhone app and its account-free browser app. Local preview needs no install.
 Production is built by `scripts/build_website.py` and hosted on Cloudflare Pages.
 
 ## Run it
@@ -105,7 +105,7 @@ Git. Existing directories without the generator marker are never overwritten.
 
 ## Content and privacy
 
-The app is in development. Keep download calls to action pointed at the status section until a public distribution link exists. Phone frames are illustrative previews, not simulator screenshots. Planned features must stay clearly labeled.
+Keep iPhone download calls to action pointed at the status section until a public distribution link exists. The web app is available now at `/try`. Phone frames are illustrative previews, not simulator screenshots. Planned features must stay clearly labeled.
 
 `privacy.html` describes current data handling. Update it when adding network services, analytics, accounts, permissions, or backup/export behavior. The repository does not vendor third-party scripts. The content security policy allows the host to inject Cloudflare Web Analytics and blocks other remote APIs.
 
@@ -127,9 +127,12 @@ response headers after publishing.
 
 `/try` opens the web app. It includes the native recipe catalog, custom recipes,
 favorites, recipe matching, inventory, shopping, scaling, and a prep timer.
-It saves state in the browser and migrates existing demo inventory and shopping data.
-Its service worker caches the app after the first load. A production build
-versions the cache using the static site's content.
+Scaling goes up to 24 servings; Pro costing and CSV prep sheets are iPhone-only.
+The web app saves state in the browser, shares saved changes across tabs on the
+same origin, and migrates existing demo inventory and shopping data.
+Its service worker caches the app after the first load and is scoped to `/try`,
+not the marketing or support pages. A production build versions the cache
+using the static site's content.
 
 Use `python3 scripts/export_web_catalog.py` to refresh the browser catalog after
 changing the native seed recipes. Run `node scripts/test_demo.cjs` for app logic

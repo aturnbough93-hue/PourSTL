@@ -1,6 +1,10 @@
 # PourSTL product, code, UI, and security review
 
-## PourSTL rebrand and domain setup
+For the current browser app, iPhone Free and Pro tiers, and StoreKit QA status,
+see [the handoff](docs/HANDOFF.md). The review and test evidence below applies
+to the commits tested at the time.
+
+## PourSTL rebrand and domain setup (historical)
 
 The active app, project, test targets and website are now named **PourSTL**.
 Approved icon artwork is preserved; the social preview carries the new name.
@@ -10,7 +14,7 @@ project. Domain notes and current native CI results are tracked in
 commits and pre-rename names; their test counts are not evidence that the
 renamed app has passed CI.
 
-Current evidence at `6c709ab`: both Quality workflows pass all **162 unit tests**
+At `6c709ab`, both Quality workflows passed all **162 unit tests**
 and produce verified universal Release simulator archives. Full QA passed
 **184/185** (162 units and 22/23 UI tests); one stock-toggle UI interaction is
 being corrected before the final rerun and merge. All eight current screenshots
@@ -20,7 +24,7 @@ the actual pre-rename generated-output marker filename while retaining exact
 content, symlink and unmarked-directory protections. These current results
 supersede the historical integration counts below.
 
-## November 12 integration review
+## November 12 integration review (historical)
 
 The current release integrates the root Apple touch icon, StoreKit purchase and
 restore flow, offline Bar Assistant, and simulator QA pull requests. The approved

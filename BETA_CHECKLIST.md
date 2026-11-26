@@ -17,7 +17,9 @@ source review or a historical simulator run.
 - [ ] Onboarding seeds classic recipes; new users start with an empty bar (demo stock is a Debug-only QA flag)
 - [ ] Search + filter chips work offline
 - [ ] What can I make matches correctly (normalized ingredients)
-- [ ] Scaling (1-24) + oz/ml conversion accurate
+- [ ] Free scaling (1–24) + oz/ml conversion accurate
+- [ ] Verified Pro access unlocks batches up to 200, ingredient costing and CSV prep sheets; Free opens the upgrade sheet instead
+- [ ] With configured products in Apple’s sandbox, verify purchase, restore and expiration; Free tools remain usable
 - [ ] Timer haptics + Reduce Motion
 - [ ] Shopping list add/delete/clear
 - [ ] Custom recipe save/edit
