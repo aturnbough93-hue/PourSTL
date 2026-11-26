@@ -13,6 +13,7 @@
   let editorID = null;
   let timerEndsAt = 0;
   let timerTick;
+  let copyFeedbackTimeout;
   const compact = window.matchMedia('(max-width: 1000px)');
   const singleColumn = window.matchMedia('(max-width: 700px)');
   let inventoryExpanded = !compact.matches;
@@ -198,7 +199,7 @@
   }
 
   function renderDetail() {
-    $('copy-feedback').textContent = '';
+    setCopyConfirmation();
     const recipe = currentRecipe();
     if (!recipe) return;
     if (!$('manual-copy').hidden) {
@@ -348,6 +349,14 @@
     return copied;
   }
 
+  function setCopyConfirmation(message = '') {
+    window.clearTimeout(copyFeedbackTimeout);
+    $('copy-label').setAttribute('aria-hidden', String(Boolean(message)));
+    $('copied-label').setAttribute('aria-hidden', String(!message));
+    $('copy-feedback').textContent = message;
+    copyFeedbackTimeout = message ? window.setTimeout(setCopyConfirmation, 3000) : undefined;
+  }
+
   $('copy').addEventListener('click', async () => {
     const copy = $('copy');
     const restoreCopyFocus = document.activeElement === copy;
@@ -356,7 +365,7 @@
     const unit = state.unit;
     const recipe = currentRecipe();
     const text = App.recipeText(recipe, servings, unit);
-    $('copy-feedback').textContent = '';
+    setCopyConfirmation();
     $('feedback').textContent = '';
     copy.disabled = true;
     let copied = false;
@@ -382,7 +391,7 @@
     if (copied) {
       $('manual-copy').hidden = true;
       if (state.selected === selected && state.servings === servings && state.unit === unit) {
-        $('copy-feedback').textContent = `${recipe.name} recipe copied to clipboard.`;
+        setCopyConfirmation(`${recipe.name} recipe copied to clipboard.`);
       }
     } else {
       $('manual-copy').hidden = false;
