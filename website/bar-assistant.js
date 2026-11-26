@@ -713,10 +713,15 @@
       return makeReply('I could not find ' + titled(query) + ' in your recipes. Try the drink\'s full name.', STARTER_QUESTIONS);
     }
     if (hit.kind === 'many') {
+      const followUps = hit.recipes.slice(0, 3).map(r => {
+        if (servings === null || servings === undefined) return 'Scale the ' + r.name + ' for 4';
+        if (servings === 0.5) return 'Half the ' + r.name;
+        return 'Scale the ' + r.name + ' for ' + formatNumber(servings);
+      });
       return clarification(
         hit.recipes,
         'Which drink should I scale?',
-        hit.recipes.slice(0, 3).map(r => 'Scale the ' + r.name + ' for 4')
+        followUps
       );
     }
     if (servings === null || servings === undefined) {
@@ -759,10 +764,15 @@
       return makeReply('I could not find ' + titled(query) + ' in your recipes.', ['What can I make?']);
     }
     if (hit.kind === 'many') {
+      const followUps = hit.recipes.slice(0, 3).map(r => (
+        servings === 1
+          ? 'How do I make a ' + r.name + '?'
+          : 'How do I make a ' + r.name + ' for ' + formatNumber(servings) + '?'
+      ));
       return clarification(
         hit.recipes,
         'Which drink do you mean?',
-        hit.recipes.slice(0, 3).map(r => 'How do I make a ' + r.name + '?')
+        followUps
       );
     }
     return answerScaledRecipe(hit.recipe, servings, state, true);
