@@ -253,10 +253,10 @@
   function updatePanelOrder() {
     const workspace = $('workspace');
     const bar = workspace.querySelector('.bar-panel');
-    if (phone.matches ? bar === workspace.lastElementChild : bar === workspace.firstElementChild) return;
+    if (singleColumn.matches ? bar === workspace.lastElementChild : bar === workspace.firstElementChild) return;
 
     const focused = document.activeElement;
-    if (phone.matches) workspace.append(bar);
+    if (singleColumn.matches) workspace.append(bar);
     else workspace.prepend(bar);
     if (bar.contains(focused)) focused.focus();
   }
