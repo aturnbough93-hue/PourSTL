@@ -818,7 +818,7 @@
     if (mode === 'outOfStock') {
       const stocked = new Set(state.inventory);
       const unstocked = App.listIngredients(state)
-        .filter(item => !stocked.has(item.id) && !ASSUMED_AVAILABLE.has(item.id))
+        .filter(item => !stocked.has(item.id))
         .map(item => item.name)
         .sort((a, b) => a.localeCompare(b));
       lines.push('PourSTL Web tracks stocked bottles and a shopping list rather than a separate out-of-stock status.');
