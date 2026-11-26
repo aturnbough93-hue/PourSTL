@@ -153,6 +153,15 @@ class ReleaseChecks(unittest.TestCase):
             reasons = declaration.get("NSPrivacyAccessedAPITypeReasons")
             self.assertIsInstance(reasons, list)
             self.assertTrue(reasons and all(isinstance(reason, str) and reason for reason in reasons))
+        if any(
+            re.search(r"\bUserDefaults\b|@AppStorage\b", source.read_text())
+            for source in (ROOT / "PourSTL").rglob("*.swift")
+        ):
+            self.assertIn(
+                "NSPrivacyAccessedAPICategoryUserDefaults",
+                {declaration["NSPrivacyAccessedAPIType"] for declaration in declarations},
+                "Swift uses UserDefaults or @AppStorage; declare the UserDefaults API category and its reasons",
+            )
         self.assertIn("PrivacyInfo.xcprivacy", self.app_resources())
 
     def test_settings_links_have_website_pages(self):
