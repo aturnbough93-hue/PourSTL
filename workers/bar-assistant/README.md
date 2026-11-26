@@ -1,9 +1,9 @@
 # PourSTL Bar Assistant Worker
 
 The Worker answers general cocktail and bartending questions through Workers AI.
-Neither the offline iOS Bar Assistant nor PourSTL Web calls the Worker. It has
-no access to either app's stored data. Each accepted question starts a single
-model turn without conversation history.
+The Bar Assistant in both the iPhone app and PourSTL Web uses local rules.
+Neither app calls the Worker, and it has no access to either app's stored data.
+Each accepted API question starts a single model turn without conversation history.
 
 ## API
 

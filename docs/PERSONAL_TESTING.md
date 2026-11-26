@@ -2,6 +2,8 @@
 
 Open [PourSTL Web](https://pourstl.com/try) from a phone or computer. The web app works without an account and stores recipes, favorites, inventory, and shopping data in that browser. On iPhone, use Safari’s Share menu and choose Add to Home Screen for an app icon.
 
+Open **Bar Assistant** in the web header and try “What can I make?” or “Scale the Negroni for 4.” After the app has cached, try again offline. Close and reopen the assistant to verify that the conversation clears. It uses local rules and does not call the separate Worker.
+
 ## Download the native simulator app
 
 A Mac with Xcode and an installed iOS Simulator runtime is required. This is an unsigned **iOS Simulator** app, not an iPhone installation or TestFlight build.

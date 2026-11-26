@@ -135,12 +135,23 @@ favorites, recipe matching, inventory, shopping, scaling, and a prep timer.
 Scaling goes up to 24 servings; Pro costing and CSV prep sheets are iPhone-only.
 The web app saves state in the browser, shares saved changes across tabs on the
 same origin, and migrates existing demo inventory and shopping data.
-Its service worker caches the app after the first load and is scoped to `/try`,
-not the marketing or support pages. A production build versions the cache
-using the static site's content.
+
+**Bar Assistant** in the header uses local rules and this browser's recipes and
+My Bar to answer supported questions about what you can make, ingredient
+stand-ins, and scaled measures. Stock checks use ingredient presence, not
+quantities or dietary suitability. Questions and replies are not sent or saved;
+closing the dialog clears them.
+
+The service worker is scoped to `/try`, not the marketing or support pages.
+It caches the app, including the assistant script, after the first load. A
+production build versions the cache using the static site's content.
 
 When verifying `/try` on a Pages preview, check these flows:
 
+- After the app has cached, go offline and reload `/try` to verify that the
+  app loads from cache. Then open **Bar Assistant** and try “What can I make?”
+  or “Scale the Negroni for 4.” Close with **Done** and reopen to confirm the
+  conversation cleared.
 - At phone widths (700px and below), recipe search and results come before the
   recipe detail and My Bar. **My Bar & tools** jumps to the bar panel;
   **Back to recipes** in the detail returns focus to the selected result.
