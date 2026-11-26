@@ -39,7 +39,7 @@ struct SettingsView: View {
                 .foregroundStyle(PourColor.textPrimary)
         }
         .accessibilityLabel(title)
-        .accessibilityHint("Opens \(url.host() ?? "the website") in Safari")
+        .accessibilityHint("Opens \(url.host() ?? "the website") in your browser")
         .accessibilityIdentifier(url.absoluteString)
     }
 
