@@ -176,10 +176,13 @@
   ];
 
   const PRIVACY_PHRASES = [
-    'upload', 'send my', 'send this', 'cloud', 'internet', 'chatgpt', 'openai',
+    'upload', 'send my', 'send this', 'the cloud', 'to cloud', 'cloud sync', 'cloud ai',
+    'internet', 'chatgpt', 'openai',
     'api key', 'off this device', 'off the phone', 'remote model', 'remote server',
     'who can see', 'is this private', 'privacy', 'train a model', 'go online',
     'are you online', 'use the internet',
+    'questions saved', 'chats saved', 'history saved',
+    'save my questions', 'store my questions', 'keep my questions',
   ];
 
   const NUMBER_WORDS = {
@@ -856,7 +859,7 @@
       case 'help':
       case 'unrecognized':
         return makeReply(
-          'I\'m an offline recipe helper with a fixed set of question patterns. Ask what you can make with My Bar, a stand-in for an ingredient, missing ingredients, or scaled measures. Stock matching checks ingredient presence, not bottle quantities or dietary needs.',
+          'I\'m an offline recipe helper with a fixed set of question patterns. Ask what you can make with My Bar, a stand-in for an ingredient, missing ingredients, or scaled measures. Stock matching checks ingredient presence, not bottle quantities or dietary needs. This conversation is cleared when you close the dialog.',
           STARTER_QUESTIONS
         );
       case 'inventory':
