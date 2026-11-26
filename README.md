@@ -69,8 +69,9 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 - Custom recipe editor with glass-type picker mapped to SF Symbols
 - Timer view: large circular progress ring, haptic ticks at 10s/5s/done
 - Settings: manual dark/light/system appearance (persisted), preferred measurement unit (oz/ml) applied app-wide
+- Settings → Support offers three browser links: [Get support](https://pourstl.com/support), [Privacy policy](https://pourstl.com/privacy), and [PourSTL website](https://pourstl.com). The store-recovery screen’s **Get help** opens the same support page.
 - Ingredient normalization: local alias map ("London Dry Gin", "Beefeater" → gin) powering matching, "What can I make", and search
-- Empty / error states throughout; everything works fully offline
+- Empty / error states throughout; local recipe and bar tools work offline
 - XCTest coverage for unit conversion, ingredient normalization, recipe/data integrity, barcode parsing/catalog/confirm/add/camera availability, assistant responses, and StoreKit entitlement/purchase/restore behavior
 - `pourstl://` deep links (`pourstl://recipe?name=Negroni`, `pourstl://tab/bar`); legacy `pour://` links remain supported
 - Bar Assistant: free offline recipe and inventory helper with supported question patterns, scaled measures, and ingredient stand-ins. Questions clear when the sheet closes; no model or remote AI service is used. Availability checks ingredient presence, not quantities or dietary suitability.
