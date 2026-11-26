@@ -626,6 +626,34 @@ final class QAPassTests: XCTestCase {
         XCTAssertEqual(after, [tapLabel], "\(title) must end with exactly \(tapLabel) selected; found \(after)")
     }
 
+    func testAX5MyBarStockFiltersWrapAndKeepSelectionVisible() throws {
+        launch(extra: [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-deepLink=pourstl://tab/bar"
+        ])
+
+        let all = app.buttons["All, selected"]
+        let inStock = app.buttons["In stock, not selected"]
+        let out = app.buttons["Out, not selected"]
+        let low = app.buttons["Low, not selected"]
+        XCTAssertTrue(all.waitForExistence(timeout: 8))
+        for chip in [all, inStock, out, low] {
+            XCTAssertTrue(chip.isHittable, "\(chip) should be visible without swiping")
+            XCTAssertGreaterThanOrEqual(chip.frame.minX, app.frame.minX)
+            XCTAssertLessThanOrEqual(chip.frame.maxX, app.frame.maxX)
+        }
+        XCTAssertGreaterThan(low.frame.minY, all.frame.maxY)
+        XCTAssertTrue(all.isSelected)
+
+        out.tap()
+        let selected = app.buttons["Out, selected"]
+        XCTAssertTrue(selected.waitForExistence(timeout: 5))
+        XCTAssertTrue(selected.isHittable)
+        XCTAssertTrue(selected.isSelected)
+        XCTAssertFalse(app.buttons["All, not selected"].isSelected)
+        XCTAssertTrue(app.buttons["Edit Aperol"].waitForExistence(timeout: 5))
+    }
+
     func testAX5RecipeActionsUseFullWidthAndScrollAway() throws {
         launch(extra: [
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
