@@ -74,8 +74,11 @@ final class QAPassTests: XCTestCase {
         app.buttons["Cancel"].tap()
         app.buttons["Close scanner"].tap()
         XCTAssertTrue(app.navigationBars["My Bar"].waitForExistence(timeout: 8))
+        filterInventory("Tanqueray")
+        XCTAssertTrue(app.staticTexts["No ingredients found"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.buttons["Edit Tanqueray"].exists)
-        XCTAssertTrue(app.buttons["Edit Angostura Bitters"].exists)
+        filterInventory("Angostura Bitters")
+        XCTAssertTrue(app.buttons["Edit Angostura Bitters"].waitForExistence(timeout: 8))
     }
 
     func testUnknownCodeSavesOutOfStockWhenToggleIsOff() throws {
@@ -533,9 +536,8 @@ final class QAPassTests: XCTestCase {
     }
 
     private func openScanner() {
-        if !app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 2),
-           app.buttons["Cancel"].exists {
-            app.buttons["Cancel"].tap()
+        if !app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 2) {
+            dismissInventorySearch()
         }
         XCTAssertTrue(app.buttons["Scan barcode to add ingredient"].waitForExistence(timeout: 5))
         app.buttons["Scan barcode to add ingredient"].tap()
@@ -634,10 +636,7 @@ final class QAPassTests: XCTestCase {
 
     private func addBottle(_ name: String, inStock: Bool, lowStock: Bool = false) {
         if !app.buttons["Add inventory item"].waitForExistence(timeout: 2) {
-            let cancel = app.buttons["Cancel"]
-            if cancel.exists {
-                cancel.tap()
-            }
+            dismissInventorySearch()
         }
         XCTAssertTrue(app.buttons["Add inventory item"].waitForExistence(timeout: 5))
         app.buttons["Add inventory item"].firstMatch.tap()
@@ -679,6 +678,16 @@ final class QAPassTests: XCTestCase {
         search.typeText(query)
         if app.keyboards.buttons["Search"].exists {
             app.keyboards.buttons["Search"].tap()
+        }
+    }
+
+    private func dismissInventorySearch() {
+        let close = app.navigationBars["My Bar"].buttons["Close"]
+        let cancel = app.buttons["Cancel"]
+        if close.exists {
+            close.tap()
+        } else if cancel.exists {
+            cancel.tap()
         }
     }
 
