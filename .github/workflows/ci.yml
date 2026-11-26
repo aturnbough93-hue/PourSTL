@@ -5,12 +5,13 @@ on:
     branches: [main, 'codex/**']
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: quality-${{ github.workflow }}-${{ github.ref }}
+  group: quality-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -24,10 +25,22 @@ jobs:
           persist-credentials: false
       - run: python3 scripts/check_website.py
       - run: node --check website/site.js
+      - run: node --check website/try.js
+      - run: node --check website/demo-core.js
       - name: Browser demo logic regression tests
         run: node scripts/test_demo.cjs
       - name: Check Cloudflare production and preview builds
         run: python3 -m unittest discover -s scripts -p 'test_build_website.py' -v
+
+  release-metadata:
+    name: Release metadata and tracked secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 scripts/check_release.py -v
 
   ios:
     name: iOS tests and downloadable simulator app

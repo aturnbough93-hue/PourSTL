@@ -42,8 +42,8 @@
   <h2>The current iPhone app</h2>
   <p>PourSTL stores recipes, ingredient lists, inventory, shopping lists, favorites, venue names and check-in state, and preferences locally. Venue check-in is a label you select in the app; it does not use your location. The current code does not include an account service, advertising SDK, analytics SDK, or a network service for uploading this data.</p>
   <p>When you use the Share action, recipe text goes to the app or person you select in the iOS share sheet. That destination handles the shared text under its own privacy practices.</p>
-  <h2>Bar Assistant on iPhone</h2>
-  <p>The iPhone Bar Assistant uses on-device rules to answer supported questions from recipes and inventory. Questions and replies stay in the app’s memory while the assistant is open; they are not uploaded or saved to the recipe database. It does not record your voice or search the web.</p>
+  <h2>Bar Assistant on iPhone and PourSTL Web</h2>
+  <p>The Bar Assistant in both the iPhone app and PourSTL Web uses local rules to answer supported questions from your recipes and inventory. Questions and replies stay in memory while the assistant is open and clear when you close it; they are not uploaded or saved to the recipe database. It does not record your voice or search the web.</p>
   <h2>Separate Bar Assistant API</h2>
   <p>Neither the iPhone app nor PourSTL Web uses the API at <code>assistant.pourstl.com</code>. It requires a bearer token and has no access to recipes, inventory, or other data stored in either app.</p>
   <p>If you use the API directly, it receives your question and a random conversation ID, and Cloudflare Workers AI processes the question. Cloudflare Agent Tracing is enabled for every AI turn and records the question and generated answer. The conversation ID groups those records; it does not give the AI access to earlier questions. Do not include personal or confidential information.</p>
