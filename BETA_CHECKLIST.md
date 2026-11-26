@@ -18,10 +18,10 @@ source review or a historical simulator run.
 - Before publishing, run [Release checks](.github/workflows/release-checks.yml)
   on the exact candidate ref and wait for all jobs to pass. A `v*` tag push
   and a published GitHub Release also rerun the checks; publication itself
-  does not wait for Actions. The build number must increase from the previous
-  reachable `v*` tag or the supplied `base_ref`. Without either baseline,
-  only build-number consistency is checked; provide `base_ref` to compare a
-  first tagged release with an earlier distributed build.
+  does not wait for Actions. The build number must increase from the highest
+  reachable `v*` tag not on the candidate commit or the supplied `base_ref`.
+  Without either baseline, only build-number consistency is checked; provide
+  `base_ref` to compare a first tagged release with an earlier distributed build.
 - A person still verifies distribution signing and provisioning, the
   signed archive and App Store Connect/TestFlight settings (including privacy
   labels), physical-device and Apple sandbox behavior, VoiceOver and other

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       base_ref:
-        description: Build-number baseline (defaults to the previous reachable v* tag)
+        description: Build-number baseline (defaults to the highest reachable v* tag not on the candidate commit)
         required: false
         type: string
 
@@ -37,7 +37,15 @@ jobs:
         run: |
           base_ref="$BASE_REF"
           if [[ -z "$base_ref" ]]; then
-            if ! base_ref=$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null); then
+            head_tags=$(git tag --points-at HEAD)
+            merged_tags=$(git tag --merged HEAD --list 'v*' --sort=-v:refname)
+            while IFS= read -r tag; do
+              if [[ -n "$tag" && $'\n'"$head_tags"$'\n' != *$'\n'"$tag"$'\n'* ]]; then
+                base_ref="refs/tags/$tag"
+                break
+              fi
+            done <<< "$merged_tags"
+            if [[ -z "$base_ref" ]]; then
               echo "::notice::No earlier reachable v* tag; no build-number comparison. Set base_ref to compare with an earlier build."
               exit 0
             fi
