@@ -342,3 +342,31 @@ test('/try starts cleanly and orders panels for desktop and single-column viewpo
   assert.equal(desktop.byId.get('workspace').firstElementChild, desktop.barPanel);
   assert.equal(desktop.doc.activeElement, stockInput);
 });
+
+test('service worker redirects /try/ to the cached offline app route', async () => {
+  const origin = 'https://pourstl.com';
+  const handlers = new Map();
+  const appPage = new Response('PourSTL Web');
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'website', 'web-app-worker.js'), 'utf8');
+  vm.runInNewContext(worker, {
+    self: { location: { origin }, addEventListener: (type, handler) => handlers.set(type, handler) },
+    caches: { open: async () => ({ match: async entry => entry === '/try' ? appPage : undefined }) },
+    fetch: () => { throw new Error('Network unavailable'); },
+    URL,
+    Response,
+  });
+  function dispatch(request) {
+    let response;
+    handlers.get('fetch')({ request, respondWith: value => { response = value; } });
+    return response;
+  }
+  const request = { url: origin + '/try/?saved=1', method: 'GET', mode: 'navigate' };
+  const redirect = await dispatch(request);
+  assert.ok(redirect, 'worker handles the trailing-slash navigation');
+  assert.equal(redirect.status, 308);
+  const url = redirect.headers.get('Location');
+  assert.equal(url, origin + '/try?saved=1');
+  assert.equal(await dispatch({ ...request, url }), appPage);
+  assert.equal(dispatch({ ...request, mode: 'cors' }), undefined);
+  assert.equal(dispatch({ ...request, url: origin + '/support/' }), undefined);
+});
