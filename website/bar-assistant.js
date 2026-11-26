@@ -65,8 +65,6 @@
     ['club soda', 'soda-water'],
     ['sparkling water', 'soda-water'],
     ['seltzer', 'soda-water'],
-    ['prosecco', 'sparkling-wine'],
-    ['champagne', 'sparkling-wine'],
   ]);
 
   const ASSUMED_AVAILABLE = new Set(['ice', 'water', 'crushed-ice', 'hot-water']);
@@ -106,6 +104,9 @@
     'orange-bitters': ['angostura-bitters'],
     'triple-sec': ['orange-curacao'],
     'orange-curacao': ['triple-sec'],
+    prosecco: ['champagne', 'sparkling-wine'],
+    champagne: ['prosecco', 'sparkling-wine'],
+    'sparkling-wine': ['prosecco', 'champagne'],
   };
 
   const DIETARY_MARKERS = [
@@ -428,11 +429,11 @@
 
   function canonicalID(raw) {
     const cleaned = cleanText(raw);
-    if (EXTRA_ALIASES.has(cleaned)) return EXTRA_ALIASES.get(cleaned);
     const slug = cleaned.replace(/\s+/g, '-');
-    if (EXTRA_ALIASES.has(slug)) return EXTRA_ALIASES.get(slug);
     const catalogMatch = App.inventory.find(item => item.id === slug);
     if (catalogMatch) return catalogMatch.id;
+    if (EXTRA_ALIASES.has(cleaned)) return EXTRA_ALIASES.get(cleaned);
+    if (EXTRA_ALIASES.has(slug)) return EXTRA_ALIASES.get(slug);
     return slug;
   }
 
@@ -681,7 +682,7 @@
 
     if (ASSUMED_AVAILABLE.has(cid)) {
       lines.push(canonicalDisplay + ' is treated as already on hand.');
-    } else if (stocked.has(cid)) {
+    } else if (stocked.has(cid) || stocked.has(normalizedSlug)) {
       lines.push(display + ' is in your bar.');
     } else {
       lines.push(display + ' is not in your bar.');
