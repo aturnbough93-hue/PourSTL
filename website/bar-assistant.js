@@ -233,7 +233,7 @@
   function trimFiller(raw) {
     let text = String(raw || '').trim();
     const articles = ['the ', 'a ', 'an ', 'my ', 'our '];
-    const suffixes = [' please', ' tonight', ' right now', ' now'];
+    const suffixes = ['please', 'tonight', 'right now', 'now'];
     let changed = true;
     while (changed) {
       changed = false;
@@ -244,8 +244,11 @@
         }
       }
       for (const suffix of suffixes) {
-        if (text.endsWith(suffix)) {
-          text = text.slice(0, -suffix.length).trim();
+        if (text === suffix) {
+          text = '';
+          changed = true;
+        } else if (text.endsWith(' ' + suffix)) {
+          text = text.slice(0, -(suffix.length + 1)).trim();
           changed = true;
         }
       }
