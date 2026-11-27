@@ -176,7 +176,7 @@ def find_beta_group(groups: list, name: str, internal: bool) -> Optional[dict]:
         mismatched = True
     if mismatched:
         expected_type = "internal" if internal else "external"
-        raise RuntimeError(f"TestFlight group {name!r} is not an {expected_type} group")
+        raise RuntimeError(f"No {expected_type} TestFlight beta group named {name!r}; the matching group is not an {expected_type} group")
     return None
 
 
