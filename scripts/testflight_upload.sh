@@ -86,7 +86,7 @@ mkdir -p "$export_path"
 # Archives must be signed, but archive-time development profiles require a
 # registered device. Use an ad-hoc intermediate signature; export re-signs for
 # App Store distribution with cloud-managed signing assets.
-xcodebuild \
+xcodebuild archive \
   -project PourSTL.xcodeproj \
   -scheme PourSTL \
   -configuration Release \
@@ -99,8 +99,7 @@ xcodebuild \
   -allowProvisioningUpdates \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-  -authenticationKeyPath "$key_path" \
-  archive
+  -authenticationKeyPath "$key_path"
 
 xcodebuild -exportArchive \
   -archivePath "$archive_path" \

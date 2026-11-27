@@ -69,6 +69,7 @@ class AppStoreConnectClient:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
+            timeout=30,
         )
         if result.returncode != 0:
             detail = result.stderr.decode(errors="replace").strip()
