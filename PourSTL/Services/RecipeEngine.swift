@@ -180,9 +180,20 @@ struct EventPrepPlan {
         var isOptional: Bool { id.optional }
     }
 
+    struct ShoppingItem: Identifiable {
+        let id: String
+        let name: String
+        let requirements: [Ingredient]
+    }
+
     let batches: [Batch]
     let ingredients: [Ingredient]
-    var shopping: [Ingredient] { ingredients.filter { !$0.isOptional && !$0.isStocked } }
+    var shopping: [ShoppingItem] {
+        let missing = ingredients.filter { !$0.isOptional && !$0.isStocked }
+        return Dictionary(grouping: missing, by: \.id.product).compactMap { product, requirements in
+            requirements.first.map { ShoppingItem(id: product, name: $0.name, requirements: requirements) }
+        }.sorted { ($0.name, $0.id) < ($1.name, $1.id) }
+    }
 
     init(recipes: [Recipe], guests: Int, drinksPerGuest: Int, inventory: [InventoryItem]) {
         guard !recipes.isEmpty, (1...RecipeScaling.proMaximumServings).contains(guests), (1...5).contains(drinksPerGuest) else {

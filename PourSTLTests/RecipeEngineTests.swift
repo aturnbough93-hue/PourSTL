@@ -182,6 +182,8 @@ final class RecipeEngineTests: XCTestCase {
         let plan = EventPrepPlan(recipes: [first, second], guests: 4, drinksPerGuest: 1, inventory: [])
         XCTAssertEqual(plan.ingredients.map { BatchPrepSheet.prepMeasure($0.measure) }, ["2 rinses", "rinse"])
         XCTAssertEqual(plan.ingredients.map(\.recipes), [["Second"], ["First"]])
+        XCTAssertEqual(plan.shopping.map(\.name), ["Absinthe"])
+        XCTAssertEqual(plan.shopping.first?.requirements.map(\.recipes), [["Second"], ["First"]])
         XCTAssertFalse(plan.csv(unit: .oz).contains("0 rinses"))
     }
 

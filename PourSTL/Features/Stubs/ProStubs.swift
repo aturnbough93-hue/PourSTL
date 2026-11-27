@@ -335,7 +335,16 @@ struct EventPlannerSheet: View {
                                 Text("All required ingredients are marked in stock.")
                             }
                             ForEach(plan.shopping) { entry in
-                                LabeledContent(entry.name, value: BatchPrepSheet.prepMeasure(entry.measure.converted(to: settings.unit)))
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(entry.name)
+                                    ForEach(entry.requirements) { requirement in
+                                        let amount = BatchPrepSheet.prepMeasure(requirement.measure.converted(to: settings.unit))
+                                        Text("\(amount) — \(requirement.recipes.joined(separator: ", "))")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .accessibilityElement(children: .combine)
                             }
                         } header: {
                             Text("Shopping list")
