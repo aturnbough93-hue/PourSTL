@@ -219,6 +219,17 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertEqual(plan.lines.map(\.packages), [1])
     }
 
+    func testEditingParDoesNotRestockAnItemWithAStalePackageCount() throws {
+        let item = InventoryItem(name: "Gin", isInStock: false)
+        item.quantity = 2
+        let onHand = try XCTUnwrap(item.stockedPackageQuantity)
+        XCTAssertEqual(onHand, 0)
+        item.setParLevel(onHand: Int(onHand), minimum: 4, packageUnit: nil)
+        XCTAssertFalse(item.isInStock)
+        let plan = ReorderPlan(items: [item], prices: [:], currency: "USD")
+        XCTAssertEqual(plan.lines.map(\.packages), [4])
+    }
+
 }
 
 final class DeepLinkRouterTests: XCTestCase {

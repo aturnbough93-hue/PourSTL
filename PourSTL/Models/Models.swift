@@ -122,6 +122,10 @@ final class InventoryItem {
         InventoryCategory(rawValue: category) ?? .other
     }
 
+    var stockedPackageQuantity: Double? {
+        isInStock ? quantity : 0
+    }
+
     func setParLevel(onHand: Int, minimum: Int, packageUnit: String?) {
         quantity = Double(onHand)
         lowStockThreshold = minimum > 0 ? Double(minimum) : nil

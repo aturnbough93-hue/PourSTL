@@ -462,7 +462,7 @@ private struct ParLevelEditor: View {
 
     init(item: InventoryItem) {
         self.item = item
-        _onHand = State(initialValue: Self.packageCount(item.quantity))
+        _onHand = State(initialValue: Self.packageCount(item.stockedPackageQuantity))
         _par = State(initialValue: Self.packageCount(item.lowStockThreshold))
         _packageUnit = State(initialValue: item.reorderPackageUnit)
     }
