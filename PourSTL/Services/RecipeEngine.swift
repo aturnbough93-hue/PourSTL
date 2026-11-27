@@ -172,7 +172,7 @@ struct EventPrepPlan {
         }
 
         let id: Key
-        let name: String
+        var name: String
         var measure: Measure
         var recipes: [String]
         var isStocked: Bool
@@ -192,6 +192,18 @@ struct EventPrepPlan {
 
     let batches: [Batch]
     let ingredients: [Ingredient]
+
+    private static func canonicalDisplayName(_ product: String) -> String {
+        guard let initial = product.first else { return product }
+        return initial.uppercased() + String(product.dropFirst())
+    }
+
+    private static func missingDisplayName(for entry: Ingredient, product: String) -> String {
+        entry.missingNames.first { IngredientNormalizer.normalize($0) == product }
+            ?? entry.missingNames.first
+            ?? entry.name
+    }
+
     var shopping: [ShoppingItem] {
         let missing = ingredients.filter { !$0.isOptional && $0.hasMissingRequirements }
         return Dictionary(grouping: missing, by: \.id.product).compactMap { product, entries in
@@ -199,13 +211,13 @@ struct EventPrepPlan {
                 var requirement = entry
                 requirement.measure = entry.missingMeasure
                 requirement.recipes = entry.missingRecipes
+                requirement.name = Self.missingDisplayName(for: entry, product: product)
                 requirement.isStocked = false
                 return requirement
             }
-            return requirements.first.map { first in
-                let displayName = first.missingNames.first { IngredientNormalizer.normalize($0) == product }
-                    ?? first.missingNames.first
-                    ?? first.name
+            return requirements.first.map { _ in
+                let displayName = requirements.first { IngredientNormalizer.normalize($0.name) == product }?.name
+                    ?? Self.canonicalDisplayName(product)
                 return ShoppingItem(id: product, name: displayName, requirements: requirements)
             }
         }.sorted { ($0.name, $0.id) < ($1.name, $1.id) }
@@ -274,7 +286,7 @@ struct EventPrepPlan {
         }
         let shoppingRows = shopping.flatMap { item in
             item.requirements.map { requirement in
-                ["Shopping", requirement.recipes.joined(separator: ", "), "", item.name,
+                ["Shopping", requirement.recipes.joined(separator: ", "), "", requirement.name,
                  BatchPrepSheet.prepMeasure(requirement.measure.converted(to: unit)),
                  "Not in My Bar", requirement.isOptional ? "Yes" : "No", ""]
             }
