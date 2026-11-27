@@ -373,9 +373,16 @@
         copied = true;
       }
     } catch (_) { /* Some browsers require the legacy copy fallback. */ }
-    if (copied || fallbackCopy(text)) {
+    if (!copied) {
+      const focusedBeforeFallback = document.activeElement;
+      copied = fallbackCopy(text);
+      if (copied && focusedBeforeFallback && focusedBeforeFallback !== document.body &&
+          document.activeElement === document.body) {
+        focusedBeforeFallback.focus({ preventScroll: true });
+      }
+    }
+    if (copied) {
       $('shopping-copy-fallback').hidden = true;
-      $('copy-shopping').focus({ preventScroll: true });
       feedback('Shopping list copied to clipboard.');
     } else {
       $('shopping-copy-fallback').hidden = false;

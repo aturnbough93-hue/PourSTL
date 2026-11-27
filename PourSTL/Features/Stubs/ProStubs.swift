@@ -464,14 +464,18 @@ private struct ParLevelEditor: View {
     @Environment(\.locale) private var locale
     @Environment(AppSettings.self) private var settings
     @Environment(ProEntitlementStore.self) private var pro
-    @State private var onHand: Int
+    private let initialOnHand: Int?
+    @State private var onHand: Int?
     @State private var par: Int
     @State private var packageUnit: String?
     @State private var saveError = false
 
     init(item: InventoryItem) {
         self.item = item
-        _onHand = State(initialValue: Self.packageCount(item.stockedPackageQuantity))
+        let initialCount = item.stockedPackageQuantity.map { Self.packageCount($0) }
+        initialOnHand = initialCount
+        // Keep the default zero for a stocked item in the prompt until a count is entered.
+        _onHand = State(initialValue: item.isInStock && initialCount == 0 ? nil : initialCount)
         _par = State(initialValue: Self.packageCount(item.lowStockThreshold))
         _packageUnit = State(initialValue: item.reorderPackageUnit)
     }
@@ -489,7 +493,7 @@ private struct ParLevelEditor: View {
         Form {
             if unlocked {
                 Section {
-                    TextField("Packages on hand", value: $onHand, format: .number).keyboardType(.numberPad)
+                    TextField("Packages on hand", value: $onHand, format: .number, prompt: Text("0")).keyboardType(.numberPad)
                     TextField("Par (minimum packages)", value: $par, format: .number).keyboardType(.numberPad)
                 } footer: {
                     Text("Use whole packages from 0 to 999. Set par to 0 to stop tracking this item.")
@@ -513,7 +517,7 @@ private struct ParLevelEditor: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save", action: save)
-                    .disabled(!unlocked || !(0...999).contains(onHand) || !(0...999).contains(par))
+                    .disabled(!unlocked || !(0...999).contains(onHand ?? 0) || !(0...999).contains(par))
             }
         }
         .alert("Par level couldn’t be saved", isPresented: $saveError) {
@@ -522,8 +526,9 @@ private struct ParLevelEditor: View {
     }
 
     private func save() {
-        guard unlocked, (0...999).contains(onHand), (0...999).contains(par) else { return }
-        item.setParLevel(onHand: onHand, minimum: par, packageUnit: packageUnit)
+        guard unlocked, (0...999).contains(onHand ?? 0), (0...999).contains(par) else { return }
+        item.setParLevel(onHand: onHand ?? initialOnHand ?? 0, minimum: par, packageUnit: packageUnit,
+                         updateStockStatus: onHand != nil)
         do {
             try modelContext.save()
             dismiss()

@@ -126,11 +126,11 @@ final class InventoryItem {
         isInStock ? quantity : 0
     }
 
-    func setParLevel(onHand: Int, minimum: Int, packageUnit: String?) {
+    func setParLevel(onHand: Int, minimum: Int, packageUnit: String?, updateStockStatus: Bool = true) {
         quantity = Double(onHand)
         lowStockThreshold = minimum > 0 ? Double(minimum) : nil
         reorderPackageUnit = packageUnit
-        if onHand > 0 { isInStock = true }
+        if updateStockStatus { isInStock = onHand > 0 }
     }
 
     /// Stable identity for barcode matching. Two rows can share a display name;

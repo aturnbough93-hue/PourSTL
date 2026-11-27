@@ -156,6 +156,31 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertTrue(plan.csv(unit: .oz).contains("\"Batch\",\"'=First\",\"3\",\"Gin\",\"3 oz\""))
     }
 
+    func testEventPlanCombinesTeaspoonsWithMillilitersButKeepsCountsSeparate() throws {
+        let first = recipe(name: "First", lines: [("Sugar", 2, "tsp", false)])
+        let second = recipe(name: "Second", lines: [("Sugar", 5, "ml", false), ("Sugar", 1, "cube", false)])
+        let plan = EventPrepPlan(recipes: [first, second], guests: 4, drinksPerGuest: 1, inventory: [])
+        XCTAssertEqual(plan.ingredients.map(\.measure.unit), [.cube, .milliliter])
+        let volume = try XCTUnwrap(plan.ingredients.first { $0.measure.unit == .milliliter })
+        XCTAssertEqual(volume.measure.amount, 4 * 4.92892 + 10, accuracy: 0.0001)
+        XCTAssertEqual(volume.recipes, ["First", "Second"])
+        XCTAssertTrue(plan.csv(unit: .ml).contains(#""Batch","First","2","Sugar","4 tsp""#))
+    }
+
+    func testEventShoppingIncludesMergedProductIfAnyLabelIsMissing() {
+        let first = recipe(name: "First", lines: [("Ango", 1, "dash", false)])
+        let second = recipe(name: "Second", lines: [("Angostura bitters", 1, "dash", false)])
+        let bottle = InventoryItem(name: "House bottle")
+        bottle.canonicalOverride = "ango"
+        XCTAssertTrue(RecipeEngine.match(first, inventory: [bottle]).canMake)
+        XCTAssertFalse(RecipeEngine.match(second, inventory: [bottle]).canMake)
+        for recipes in [[first, second], [second, first]] {
+            let plan = EventPrepPlan(recipes: recipes, guests: 2, drinksPerGuest: 1, inventory: [bottle])
+            XCTAssertEqual(plan.ingredients.map(\.isStocked), [false])
+            XCTAssertEqual(plan.shopping.map(\.id), ["angostura bitters"])
+        }
+    }
+
     func testEventPlanDoesNotMixPartsFromDifferentRecipes() {
         let recipes = ["First", "Second"].map { recipe(name: $0, lines: [("Gin", 1, "part", false)]) }
         let plan = EventPrepPlan(recipes: recipes, guests: 3, drinksPerGuest: 2, inventory: [])
@@ -219,6 +244,20 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertTrue(item.isInStock)
         XCTAssertEqual(plan.lines.map(\.onHand), [2])
         XCTAssertEqual(plan.lines.map(\.packages), [1])
+    }
+
+    func testParOnlySavePreservesStockUntilZeroIsEntered() {
+        let item = InventoryItem(name: "Gin")
+        XCTAssertNil(item.stockedPackageQuantity)
+        for par in [3, 4] {
+            item.setParLevel(onHand: 0, minimum: par, packageUnit: nil, updateStockStatus: false)
+            XCTAssertTrue(item.isInStock)
+            XCTAssertEqual(ReorderPlan(items: [item], prices: [:], currency: "USD").lines.map(\.packages), [par])
+        }
+        item.setParLevel(onHand: 0, minimum: 4, packageUnit: nil)
+        XCTAssertFalse(item.isInStock)
+        let drink = recipe(name: "Martini", lines: [("Gin", 1, "oz", false)])
+        XCTAssertFalse(RecipeEngine.match(drink, inventory: [item]).canMake)
     }
 
     func testEditingParDoesNotRestockAnItemWithAStalePackageCount() throws {

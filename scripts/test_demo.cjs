@@ -447,6 +447,37 @@ test('successful recipe copy announces beside its action and restores focus to C
   assert.equal(page.doc.activeElement, copy);
 });
 
+for (const mode of ['clipboard', 'legacy', 'manual']) {
+  test(`shopping copy preserves or restores focus as appropriate for ${mode}`, async () => {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+    const page = bootTryPage({
+      initialState: Demo.addIngredient(Demo.defaults(), 'Gin', 'shopping'),
+      clipboardWrite: () => promise,
+      execCommandResult: mode === 'legacy',
+    });
+    const copy = page.byId.get('copy-shopping');
+    const input = page.byId.get('shopping-name');
+    copy.focus();
+    const pending = copy.listeners.get('click')[0]();
+    input.focus();
+    if (mode === 'clipboard') resolve();
+    else reject(new Error('denied'));
+    await pending;
+
+    if (mode === 'manual') {
+      const text = page.byId.get('shopping-copy-text');
+      assert.equal(page.byId.get('shopping-copy-fallback').hidden, false);
+      assert.equal(page.doc.activeElement, text);
+      assert.equal(text.selected, true);
+    } else {
+      assert.equal(page.doc.activeElement, input);
+      assert.equal(input.focusCount, mode === 'legacy' ? 2 : 1);
+      assert.equal(page.byId.get('feedback').textContent, 'Shopping list copied to clipboard.');
+    }
+  });
+}
+
 test('pending recipe copy preserves focus moved to another control', async () => {
   let completeClipboardWrite;
   const clipboardWrite = new Promise(resolve => { completeClipboardWrite = resolve; });

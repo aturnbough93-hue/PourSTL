@@ -175,7 +175,7 @@ struct EventPrepPlan {
         let name: String
         var measure: Measure
         var recipes: [String]
-        let isStocked: Bool
+        var isStocked: Bool
 
         var isOptional: Bool { id.optional }
     }
@@ -210,12 +210,20 @@ struct EventPrepPlan {
         var entries: [Ingredient.Key: Ingredient] = [:]
         for (index, batch) in batches.enumerated() {
             for line in batch.recipe.sortedIngredients {
-                let measure = line.measure.scaled(by: Double(batch.servings)).converted(to: .ml)
+                let scaled = line.measure.scaled(by: Double(batch.servings))
+                let measure: Measure
+                if scaled.unit == .teaspoon, let milliliters = scaled.milliliters {
+                    measure = Measure(amount: milliliters, unit: .milliliter)
+                } else {
+                    measure = scaled.converted(to: .ml)
+                }
                 let key = Ingredient.Key(product: RecipeCostLine.productName(line.name), unit: measure.unit,
                                          optional: line.isOptional, unmeasured: BatchPrepSheet.isUnmeasured(measure),
                                          relativeRecipe: measure.unit == .part ? index : nil)
+                let isStocked = RecipeEngine.isStocked(line, in: stocked)
                 var entry = entries[key] ?? Ingredient(id: key, name: line.name, measure: Measure(amount: 0, unit: measure.unit),
-                                                       recipes: [], isStocked: RecipeEngine.isStocked(line, in: stocked))
+                                                       recipes: [], isStocked: isStocked)
+                entry.isStocked = entry.isStocked && isStocked
                 entry.measure.amount += measure.amount
                 if !entry.recipes.contains(batch.recipe.name) { entry.recipes.append(batch.recipe.name) }
                 entries[key] = entry
