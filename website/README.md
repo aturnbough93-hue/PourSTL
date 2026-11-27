@@ -136,6 +136,9 @@ Scaling goes up to 24 servings; Pro costing and CSV prep sheets are iPhone-only.
 The web app saves state in the browser, shares saved changes across tabs on the
 same origin, and migrates existing demo inventory and shopping data.
 
+In My Bar, `Rye` counts as rye whiskey for recipe matching, including for
+previously saved `Rye` entries. It does not count as bourbon.
+
 **Bar Assistant** in the header uses local rules and this browser's recipes and
 My Bar to answer supported questions about what you can make, ingredient
 stand-ins, and scaled measures. Stock checks use ingredient presence, not
