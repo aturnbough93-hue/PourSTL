@@ -593,8 +593,8 @@ struct ReorderPlan {
             NSDecimalRound(&rounded, &deficit, 0, .up)
             let packages = NSDecimalNumber(decimal: rounded).intValue
             let chosen = item.reorderPackageUnit
-            let available = RecipeCostLine.packageUnits(for: item.name, currency: currency, prices: prices)
-            let unit = chosen ?? (available.count == 1 ? available.first : nil)
+            let packageUnits = RecipeCostLine.packageUnits(for: item.name, currency: currency, prices: prices)
+            let unit = chosen ?? (packageUnits.count == 1 ? packageUnits.first : nil)
             let price = unit.flatMap { prices["\(currency)|\($0)|\(RecipeCostLine.productName(item.name))"] }
             let cost = price.flatMap { package -> Decimal? in
                 guard !package.price.isNaN, package.price >= 0, !package.yield.isNaN, package.yield > 0 else { return nil }
