@@ -313,9 +313,9 @@ private struct MenuPriceEditor: View {
     let recipe: Recipe
     let currency: String
 
-    @Environment(\ توسعه.modelContext) private var modelContext
-    @Environment(\ توسعه.dismiss) private var dismiss
-    @Environment(\ توسعه.locale) private var locale
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
     @State private var price = ""
     @State private var showSaveError = false
 
