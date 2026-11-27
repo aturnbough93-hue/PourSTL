@@ -165,11 +165,22 @@ def list_beta_groups(client: AppStoreConnectClient, app_id: str) -> list:
     return client.request("GET", "/v1/betaGroups?" + query(params)).get("data", [])
 
 
+def find_beta_group(groups: list, name: str, internal: bool) -> Optional[dict]:
+    for group in groups:
+        attributes = group.get("attributes") or {}
+        if attributes.get("name") == name:
+            if attributes.get("isInternalGroup") != internal:
+                expected_type = "internal" if internal else "external"
+                raise RuntimeError(f"TestFlight group {name!r} is not an {expected_type} group")
+            return group
+    return None
+
+
 def find_or_create_beta_group(client: AppStoreConnectClient, app_id: str, name: str, internal: bool, create: bool) -> dict:
     groups = list_beta_groups(client, app_id)
-    for group in groups:
-        if (group.get("attributes") or {}).get("name") == name:
-            return group
+    group = find_beta_group(groups, name, internal)
+    if group is not None:
+        return group
     if not create:
         names = ", ".join(sorted((group.get("attributes") or {}).get("name", "") for group in groups)) or "none"
         raise RuntimeError(f"No TestFlight beta group named {name!r}. Existing groups: {names}")
@@ -237,8 +248,9 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
 
-    check = subcommands.add_parser("check-app", help="Verify that the App Store Connect app record exists")
+    check = subcommands.add_parser("check-app", help="Verify the App Store Connect app and optional internal beta group")
     check.add_argument("--bundle-id", default=DEFAULT_BUNDLE_ID)
+    check.add_argument("--beta-group", help="Check the named internal beta group if it exists")
 
     resolve = subcommands.add_parser("resolve-build-number", help="Print the requested or next integer build number")
     resolve.add_argument("--bundle-id", default=DEFAULT_BUNDLE_ID)
@@ -255,9 +267,16 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "check-app":
-            app = find_app(client_from_environment(), args.bundle_id)
+            client = client_from_environment()
+            app = find_app(client, args.bundle_id)
             attrs = app.get("attributes") or {}
             print(f"Found app {attrs.get('name', '(unnamed)')} ({args.bundle_id}), App Store ID {app['id']}.")
+            if args.beta_group:
+                groups = list_beta_groups(client, app["id"])
+                if find_beta_group(groups, args.beta_group, internal=True) is None:
+                    print(f"TestFlight group {args.beta_group!r} can be created during upload.")
+                else:
+                    print(f"Found internal TestFlight group {args.beta_group!r}.")
         elif args.command == "resolve-build-number":
             print(resolve_build_number(client_from_environment(), args.bundle_id, args.build_number))
         elif args.command == "wait-and-assign":

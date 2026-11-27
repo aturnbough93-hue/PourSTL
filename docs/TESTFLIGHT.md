@@ -51,13 +51,14 @@ After the secrets and manual Apple records exist:
 2. Run it from `main` once release-blocking PRs are merged.
 3. Leave **build_number** blank for automatic numbering.
 4. Use beta group `App Store Connect Users` unless Andrew chooses another internal group.
-5. Wait for the workflow to finish. The final log line reports the App Store Connect build number and beta-group assignment.
+5. Select **check_only** for the first run. This checks the selected iOS SDK, access to the app record and beta groups, and the proposed build number. The check does not archive, upload, or change App Store Connect settings.
+6. Run again with **check_only** cleared when ready to upload. The final log line reports the App Store Connect build number and beta-group assignment.
 
-The workflow is manual-only and has `contents: read`; it does not run on every pull request and does not expose secrets to forked code.
+The manual workflow uses Xcode 26.3 and has `contents: read`.
 
 ## Upload from a trusted macOS session
 
-Use this only on a trusted Mac with Xcode configured:
+Use this on a trusted Mac with Xcode 26 or later selected and the iOS 26 SDK or later installed:
 
 ```bash
 export ASC_KEY_ID='...'
@@ -68,6 +69,7 @@ bash scripts/testflight_upload.sh --beta-group 'App Store Connect Users'
 ```
 
 A fixed positive integer can be supplied with `--build-number N`, but blank automatic numbering is preferred.
+Add `--check-only` to verify the setup before archiving or uploading.
 
 ## App metadata and subscriptions
 

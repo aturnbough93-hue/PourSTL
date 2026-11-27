@@ -7,8 +7,13 @@ cd "$(dirname "$0")/.."
 
 beta_group="App Store Connect Users"
 build_number=""
+check_only=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --check-only)
+      check_only=true
+      shift
+      ;;
     --beta-group)
       beta_group="${2:?Missing beta group name}"
       shift 2
@@ -24,16 +29,28 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+missing_variables=false
 for variable in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_TEAM_ID; do
   if [[ -z "${!variable:-}" ]]; then
     echo "Missing required environment variable: $variable" >&2
-    exit 1
+    missing_variables=true
   fi
 done
+if [[ "$missing_variables" == "true" ]]; then
+  exit 1
+fi
 if ! command -v xcodebuild >/dev/null 2>&1; then
   echo "xcodebuild is required; run this on macOS with Xcode installed." >&2
   exit 1
 fi
+xcodebuild -version
+sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+sdk_major="${sdk_version%%.*}"
+if [[ ! "$sdk_major" =~ ^[0-9]+$ ]] || (( sdk_major < 26 )); then
+  echo "App Store Connect requires the iOS 26 SDK or later; found $sdk_version." >&2
+  exit 1
+fi
+echo "Using iOS SDK $sdk_version"
 
 workdir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/pourstl-testflight.XXXXXX")"
 chmod 700 "$workdir"
@@ -53,15 +70,13 @@ export ASC_REWRITE_KEY=1
 
 # The first API helper call materializes AuthKey with mode 0600. xcodebuild uses
 # the same file for signing/provisioning and for the upload export.
-python3 scripts/app_store_connect.py check-app --bundle-id bar.pourstl.app
-if [[ -z "$build_number" ]]; then
-  build_number="$(python3 scripts/app_store_connect.py resolve-build-number --bundle-id bar.pourstl.app)"
-fi
-if ! [[ "$build_number" =~ ^[1-9][0-9]*$ ]]; then
-  echo "Build number must be a positive integer, got: $build_number" >&2
-  exit 1
-fi
+python3 scripts/app_store_connect.py check-app --beta-group "$beta_group"
+build_number="$(python3 scripts/app_store_connect.py resolve-build-number --build-number "$build_number")"
 echo "Using TestFlight build number $build_number"
+if [[ "$check_only" == "true" ]]; then
+  echo "TestFlight setup check complete. No build was archived or uploaded."
+  exit 0
+fi
 
 export_options="$workdir/ExportOptions.plist"
 python3 - "$APPLE_TEAM_ID" "$export_options" <<'PY'
