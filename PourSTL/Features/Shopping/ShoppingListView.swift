@@ -22,14 +22,15 @@ struct ShoppingListView: View {
     /// anything already waiting on the list.
     private var shoppingCandidates: [UnlockCandidate] {
         let pendingCanonicals = Set(pending.map(\.canonicalName))
-        return ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: inventory)
-            .filter { !pendingCanonicals.contains($0.canonicalName) }
+        return ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: inventory, excluding: pendingCanonicals)
     }
 
     var body: some View {
+        let candidates = shoppingCandidates
+
         NavigationStack {
             Group {
-                if items.isEmpty && shoppingCandidates.isEmpty {
+                if items.isEmpty && candidates.isEmpty {
                     EmptyStateView(
                         symbol: "cart",
                         title: "Shopping list is empty",
@@ -40,7 +41,7 @@ struct ShoppingListView: View {
                     }
                 } else {
                     List {
-                        shoppingInsightSection
+                        shoppingInsightSection(candidates)
                         if !pending.isEmpty {
                             Section("To buy (\(pending.count))") {
                                 ForEach(pending) { item in
@@ -118,8 +119,8 @@ struct ShoppingListView: View {
     /// Pro: the single bottles that complete the most otherwise-blocked drinks.
     /// Free users see a lock row only when such a bottle exists.
     @ViewBuilder
-    private var shoppingInsightSection: some View {
-        if !shoppingCandidates.isEmpty {
+    private func shoppingInsightSection(_ candidates: [UnlockCandidate]) -> some View {
+        if !candidates.isEmpty {
             Section {
                 if ProGate.isLocked(.shoppingInsights, isPro: pro.isPro) {
                     Button {
@@ -133,7 +134,7 @@ struct ShoppingListView: View {
                     .accessibilityAddTraits(.isButton)
                     .listRowBackground(PourColor.card)
                 } else {
-                    ForEach(shoppingCandidates) { candidate in
+                    ForEach(candidates) { candidate in
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(candidate.displayName)
@@ -169,16 +170,16 @@ struct ShoppingListView: View {
     private func addCandidate(_ candidate: UnlockCandidate) {
         guard !pending.contains(where: { $0.canonicalName == candidate.canonicalName }) else { return }
         modelContext.insert(ShoppingListItem(name: candidate.displayName))
-        saveChanges()
-        Haptics.success()
+        if saveChanges() { Haptics.success() }
     }
 
     private func shoppingRow(_ item: ShoppingListItem) -> some View {
         HStack(spacing: 12) {
             Button {
                 item.isPurchased.toggle()
-                saveChanges()
-                item.isPurchased ? Haptics.success() : Haptics.lightTick()
+                if saveChanges() {
+                    item.isPurchased ? Haptics.success() : Haptics.lightTick()
+                }
             } label: {
                 Image(systemName: item.isPurchased ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
@@ -201,7 +202,7 @@ struct ShoppingListView: View {
             }
             Spacer()
             if item.isPurchased {
-                let stocked = inventory.contains { $0.canonicalName == item.canonicalName && $0.isInStock && !$0.isLowStock }
+                let stocked = inventory.contains { $0.canonicalName == item.canonicalName && $0.isAvailable && !$0.isLowStock }
                 let justStocked = recentlyStocked.contains(item.persistentModelID)
                 Button {
                     stockBar(with: item)
@@ -233,7 +234,7 @@ struct ShoppingListView: View {
         do {
             let currentInventory = try modelContext.fetch(FetchDescriptor<InventoryItem>())
             if let existing = currentInventory.first(where: { $0.canonicalName == item.canonicalName }) {
-                existing.isInStock = true
+                existing.setAvailability(true)
                 existing.isLowStock = false
             } else {
                 modelContext.insert(InventoryItem(name: item.name, category: IngredientNormalizer.category(for: item.name)))
@@ -252,11 +253,15 @@ struct ShoppingListView: View {
         }
     }
 
-    private func saveChanges() {
-        do { try modelContext.save() }
-        catch {
+    @discardableResult
+    private func saveChanges() -> Bool {
+        do {
+            try modelContext.save()
+            return true
+        } catch {
             modelContext.rollback()
             showSaveError = true
+            return false
         }
     }
 }

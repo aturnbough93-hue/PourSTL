@@ -409,7 +409,7 @@ struct ParReorderSheet: View {
                             }
                         }
                     } footer: {
-                        Text("Enter the number of packages on hand and the minimum you want to keep. Keep package counts up to date after stocking My Bar. Out-of-stock items count as zero.")
+                        Text("Enter the number of packages on hand and the minimum you want to keep. The reorder estimate counts unrecorded and out-of-stock quantities as zero.")
                     }
                     Section {
                         if plan.lines.isEmpty {
@@ -420,7 +420,7 @@ struct ParReorderSheet: View {
                                     Text(line.cost.map(money) ?? "Unpriced")
                                 } label: {
                                     Text(line.name)
-                                    Text("Order \(line.packages) · \(line.onHand) on hand · par \(line.par)")
+                                    Text("Order \(line.packages) · \(packageQuantity(line.onHand)) on hand · par \(packageQuantity(line.par))")
                                 }
                             }
                             let pricedCount = plan.lines.compactMap(\.cost).count
@@ -455,6 +455,10 @@ struct ParReorderSheet: View {
     private func money(_ amount: Decimal) -> String {
         amount.formatted(.currency(code: currency).locale(locale))
     }
+
+    private func packageQuantity(_ amount: Double) -> String {
+        amount.formatted(.number.precision(.fractionLength(0...8)).locale(locale))
+    }
 }
 
 enum ParLevelSavePolicy {
@@ -479,6 +483,7 @@ private struct ParLevelEditor: View {
     @Environment(AppSettings.self) private var settings
     @Environment(ProEntitlementStore.self) private var pro
     private let initialOnHand: Int?
+    private let initialPar: Int
     @State private var onHandText: String
     @State private var didEditOnHand = false
     @State private var par: Int
@@ -487,13 +492,15 @@ private struct ParLevelEditor: View {
 
     init(item: InventoryItem) {
         self.item = item
-        let initialCount = item.stockedPackageQuantity.map { Self.packageCount($0) }
-        initialOnHand = initialCount
-        // Keep the default zero for a stocked item in the prompt until a count is entered.
-        let showsZeroPrompt = item.isInStock && initialCount == 0
-        let initialText = showsZeroPrompt || initialCount == nil ? "" : String(initialCount ?? 0)
+        let initialQuantity = item.stockedPackageQuantity
+        initialOnHand = initialQuantity.map { Self.packageCount($0) }
+        let initialText = initialQuantity.map {
+            $0.formatted(.number.grouping(.never).precision(.fractionLength(0...8)))
+        } ?? ""
         _onHandText = State(initialValue: initialText)
-        _par = State(initialValue: Self.packageCount(item.lowStockThreshold))
+        let startingPar = Self.packageCount(item.lowStockThreshold)
+        initialPar = startingPar
+        _par = State(initialValue: startingPar)
         _packageUnit = State(initialValue: item.reorderPackageUnit)
     }
 
@@ -503,7 +510,9 @@ private struct ParLevelEditor: View {
     }
 
     private var unlocked: Bool { !ProGate.isLocked(.parReorder, isPro: pro.isPro) }
-    private var enteredOnHand: Int? { ParLevelSavePolicy.parsedOnHand(onHandText) }
+    private var enteredOnHand: Int? {
+        didEditOnHand ? ParLevelSavePolicy.parsedOnHand(onHandText) : initialOnHand ?? 0
+    }
 
     var body: some View {
         let units = RecipeCostLine.packageUnits(for: item.name, currency: locale.currency?.identifier ?? "USD",
@@ -516,7 +525,7 @@ private struct ParLevelEditor: View {
                         .onChange(of: onHandText) { _, _ in didEditOnHand = true }
                     TextField("Par (minimum packages)", value: $par, format: .number).keyboardType(.numberPad)
                 } footer: {
-                    Text("Use whole packages from 0 to 999. Set par to 0 to stop tracking this item.")
+                    Text("Use whole packages from 0 to 999 here. To edit a partial bottle, open the item in My Bar. Set par to 0 to stop tracking this item.")
                 }
                 Section {
                     Picker("Saved package price", selection: $packageUnit) {
@@ -549,8 +558,14 @@ private struct ParLevelEditor: View {
         guard unlocked, let enteredOnHand, (0...999).contains(par) else { return }
         let values = ParLevelSavePolicy.values(enteredOnHand: enteredOnHand, initialOnHand: initialOnHand,
                                                didEditOnHand: didEditOnHand)
-        item.setParLevel(onHand: values.onHand, minimum: par, packageUnit: packageUnit,
-                         updateStockStatus: values.updateStockStatus)
+        if values.updateStockStatus {
+            item.quantity = Double(values.onHand)
+            item.isInStock = values.onHand > 0
+        }
+        if par != initialPar {
+            item.lowStockThreshold = par > 0 ? Double(par) : nil
+        }
+        item.reorderPackageUnit = packageUnit
         do {
             try modelContext.save()
             dismiss()

@@ -34,13 +34,18 @@ private struct RecipeServiceTools: View {
     private var batchPlan: BatchPlan? { BatchPlanner.plan(for: recipe, servings: activeServings) }
 
     var body: some View {
+        let costing = recipeCosting
+        let suggestedPrice = costing.priceEstimateCost.flatMap {
+            MenuPricing.suggestedMenuPrice(cost: $0, targetPercent: settings.targetPourCostPercent)
+        }
+
         NavigationStack {
             Form {
                 if entitlement.isPro {
-                    if opensMenuPricing { menuPricingSection }
+                    if opensMenuPricing { menuPricingSection(costing, suggestedPrice: suggestedPrice) }
                     batchSection
-                    costingSection
-                    if !opensMenuPricing { menuPricingSection }
+                    costingSection(costing, suggestedPrice: suggestedPrice)
+                    if !opensMenuPricing { menuPricingSection(costing, suggestedPrice: suggestedPrice) }
                 }
             }
             .navigationTitle(opensMenuPricing ? "Menu Pricing" : "Costing & Batch Prep")
@@ -100,7 +105,9 @@ private struct RecipeServiceTools: View {
                         .accessibilityIdentifier("pro-batch-water")
                 }
                 LabeledContent("Ready-to-pour yield", value: volumeText(plan.totalMilliliters))
-                LabeledContent("Pour per serving", value: volumeText(plan.perServingMilliliters))
+                LabeledContent("Pour per serving", value: BatchPlanner.pourMeasure(
+                    milliliters: plan.perServingMilliliters, unit: unit, locale: locale
+                ))
             }
             if !ProGate.isLocked(.batchExport, isPro: entitlement.isPro) {
                 Button("Export prep sheet (CSV)", systemImage: "square.and.arrow.up") { exporting = true }
@@ -117,6 +124,8 @@ private struct RecipeServiceTools: View {
         var text = "The prep sheet includes scaled ingredient measures, optional ingredients, and ingredient notes."
         if let plan = batchPlan {
             if let profile = plan.profile { text += " \(profile.assumption)" }
+            if plan.hasServiceIngredients { text += " Add service ingredients to each glass." }
+            text += " The pour is rounded down, so a little may be left over."
             if plan.excludesNonVolumeLines {
                 text += " Lines measured in parts or countables aren’t included in volume totals."
             }
@@ -125,23 +134,43 @@ private struct RecipeServiceTools: View {
     }
 
     private func volumeText(_ milliliters: Double) -> String {
-        Measure(amount: milliliters, unit: .milliliter).formatted(for: unit)
+        BatchPlanner.batchMeasure(milliliters: milliliters, unit: unit, locale: locale)
     }
 
-    private var costingSection: some View {
-        @Bindable var settings = settings
+    private struct RecipeCosting {
+        let ingredients: [IngredientLine]
+        let costs: [Decimal?]
+
+        var pricedCount: Int { costs.compactMap { $0 }.count }
+        var total: Decimal { costs.compactMap { $0 }.reduce(.zero, +) }
+        var isComplete: Bool { !ingredients.isEmpty && pricedCount == ingredients.count }
+
+        var priceEstimateCost: Decimal? {
+            let required = zip(ingredients, costs).filter { !$0.0.isOptional }
+            guard !required.isEmpty, required.allSatisfy({ $0.1 != nil }) else { return nil }
+            return total
+        }
+    }
+
+    private var recipeCosting: RecipeCosting {
         let ingredients = recipe.sortedIngredients
-        let costs = ingredients.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
-        let perDrink = costs.reduce(Decimal.zero, +)
-        let isComplete = !ingredients.isEmpty && costs.count == ingredients.count
-        let pricedPerDrink: Decimal? = costs.isEmpty ? nil : perDrink
+        let costs = ingredients.map {
+            RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency)
+        }
+        return RecipeCosting(ingredients: ingredients, costs: costs)
+    }
+
+    private func costingSection(_ costing: RecipeCosting, suggestedPrice: Decimal?) -> some View {
+        @Bindable var settings = settings
+        let perDrink = costing.total
+        let isComplete = costing.isComplete
         return Section {
-            if !costs.isEmpty {
+            if costing.pricedCount > 0 {
                 LabeledContent(isComplete ? "Per drink" : "Priced per drink", value: money(perDrink))
                 LabeledContent(isComplete ? "Batch total" : "Priced batch subtotal", value: money(perDrink * Decimal(activeServings)))
             }
             if !isComplete {
-                Text("\(costs.count) of \(ingredients.count) ingredient lines priced")
+                Text("\(costing.pricedCount) of \(costing.ingredients.count) ingredient lines priced")
                     .foregroundStyle(.secondary)
             }
             NavigationLink {
@@ -150,21 +179,20 @@ private struct RecipeServiceTools: View {
                 LabeledContent("Menu price", value: recipe.menuPrice.map { money(Decimal($0)) } ?? "Set price")
             }
             .accessibilityIdentifier("menu-price")
-            if let menuPrice = recipe.menuPrice, menuPrice > 0, let pricedPerDrink {
+            if let menuPrice = recipe.menuPrice, costing.pricedCount > 0 {
                 let menuPriceDecimal = Decimal(menuPrice)
-                if let percent = MenuPricing.pourCostPercent(cost: pricedPerDrink, menuPrice: menuPriceDecimal) {
+                if let percent = MenuPricing.pourCostPercent(cost: perDrink, menuPrice: menuPriceDecimal) {
                     LabeledContent(
                         isComplete ? "Pour cost" : "Priced pour cost",
                         value: percent.formatted(.number.precision(.fractionLength(1))) + "%"
                     )
                 }
-                if let profit = MenuPricing.profitPerDrink(cost: pricedPerDrink, menuPrice: menuPriceDecimal) {
-                    LabeledContent("Profit per drink", value: money(profit))
+                if let profit = MenuPricing.profitPerDrink(cost: perDrink, menuPrice: menuPriceDecimal) {
+                    LabeledContent(isComplete ? "Profit per drink" : "Priced profit per drink", value: money(profit))
                     LabeledContent(isComplete ? "Profit per batch" : "Priced profit per batch", value: money(profit * Decimal(activeServings)))
                 }
             }
-            if let pricedPerDrink, pricedPerDrink > 0,
-               let suggested = MenuPricing.suggestedMenuPrice(cost: pricedPerDrink, targetPercent: settings.targetPourCostPercent) {
+            if let suggested = suggestedPrice {
                 LabeledContent("Suggested menu price", value: money(suggested))
                 if abs((recipe.menuPrice ?? 0) - NSDecimalNumber(decimal: suggested).doubleValue) >= 0.005 {
                     Button("Use suggested price") { applySuggestedPrice(suggested) }
@@ -178,7 +206,7 @@ private struct RecipeServiceTools: View {
                 step: 1
             )
             .accessibilityIdentifier("target-pour-cost")
-            ForEach(ingredients) { ingredient in
+            ForEach(costing.ingredients) { ingredient in
                 let line = RecipeCostLine(ingredient: ingredient)
                 if line.quantity != nil {
                     let key = line.priceKey(currency: currency)
@@ -204,14 +232,9 @@ private struct RecipeServiceTools: View {
         amount.formatted(.currency(code: currency).locale(locale))
     }
 
-    private var menuPricingSection: some View {
+    private func menuPricingSection(_ costing: RecipeCosting, suggestedPrice: Decimal?) -> some View {
         @Bindable var settings = settings
-        let required = recipe.sortedIngredients.filter { !$0.isOptional }
-        let costs = required.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
-        let completeCost = !required.isEmpty && required.count == costs.count ? costs.reduce(0, +) : nil
-        let estimate = completeCost.flatMap {
-            MenuPricing.suggestedMenuPrice(cost: $0, targetPercent: settings.targetPourCostPercent)
-        }
+        let completeCost = costing.priceEstimateCost
         return Section {
             Button {
                 if ProGate.isLocked(.menuPricing, isPro: entitlement.isPro) { showMenuPricing = false }
@@ -226,13 +249,16 @@ private struct RecipeServiceTools: View {
                     in: MenuPricing.targetPercentRange,
                     step: 1
                 )
-                if let estimate, let completeCost {
+                if let estimate = suggestedPrice, let completeCost {
                     LabeledContent("Suggested price", value: money(estimate))
                     if let margin = MenuPricing.ingredientMargin(cost: completeCost, price: estimate) {
                         LabeledContent("Ingredient margin", value: margin.formatted(.percent.precision(.fractionLength(1))))
                     }
                 } else if completeCost == 0 {
-                    Text("Required ingredients cost nothing. A target pour cost doesn’t determine a menu price for this recipe.")
+                    Text("The priced ingredients cost nothing. A target pour cost doesn’t determine a menu price for this recipe.")
+                        .foregroundStyle(.secondary)
+                } else if completeCost != nil {
+                    Text("This target and ingredient cost would put the suggested price outside the supported range.")
                         .foregroundStyle(.secondary)
                 } else {
                     Text("Enter prices and measures for all required ingredients to estimate a menu price.")
@@ -242,7 +268,7 @@ private struct RecipeServiceTools: View {
         } header: {
             Text("Menu pricing")
         } footer: {
-            Text("Rounds the suggestion up to the next half unit of currency. Ingredient margin excludes optional items, labor, tax, and other overhead.")
+            Text("Suggestions round up to the next half unit of currency. The estimate includes optional ingredients when priced. Ingredient margin excludes labor, tax, and overhead.")
         }
     }
 }

@@ -601,11 +601,17 @@ private struct BarcodeConfirmSheet: View {
 
 struct BarcodeExistingSheet: View {
     let match: ExistingBarcodeMatch
+    var appliesInventoryDetails = false
     var onApply: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     private var action: BarcodeExistingAction {
         BarcodeResolver.existingAction(isInStock: match.isInStock, canAttachBarcode: match.canAttachBarcode)
+    }
+
+    private var primaryTitle: String {
+        if action == .none && appliesInventoryDetails { return "Save inventory details" }
+        return action.buttonTitle
     }
 
     var body: some View {
@@ -624,7 +630,7 @@ struct BarcodeExistingSheet: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(match.isInStock ? PourColor.canMake : PourColor.textSecondary)
                     .accessibilityLabel(match.isInStock ? "In stock" : "Out of stock")
-                Text(explanation)
+                Text(appliesInventoryDetails ? "\(explanation) Continue to save the inventory details you entered for this item." : explanation)
                     .font(.body)
                     .foregroundStyle(PourColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -633,17 +639,17 @@ struct BarcodeExistingSheet: View {
                     .foregroundStyle(PourColor.textTertiary)
                     .accessibilityLabel("Barcode \(BarcodeFormatting.spokenDigits(match.scannedCode))")
                     .speechSpellsOutCharacters()
-                Button(action.buttonTitle) {
-                    if action == .none {
+                Button(primaryTitle) {
+                    if action == .none && !appliesInventoryDetails {
                         dismiss()
                     } else {
                         onApply()
                     }
                 }
                 .buttonStyle(PourPrimaryButtonStyle())
-                .accessibilityLabel(action.buttonTitle)
+                .accessibilityLabel(primaryTitle)
                 .accessibilityAddTraits(.isButton)
-                if action != .none {
+                if action != .none || appliesInventoryDetails {
                     Button("Not now") { dismiss() }
                         .buttonStyle(PourSecondaryButtonStyle())
                         .accessibilityLabel("Not now")
