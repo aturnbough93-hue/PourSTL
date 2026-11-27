@@ -7,6 +7,9 @@ struct HomeView: View {
     @Query private var venues: [Venue]
     @Environment(DeepLinkRouter.self) private var router
     @Environment(AppSettings.self) private var settings
+    @Environment(ProEntitlementStore.self) private var pro
+    @State private var showEventPlanner = false
+    @State private var showEventUpsell = false
 
     @State private var searchText = ""
     @State private var selectedTag: String? = nil
@@ -86,6 +89,12 @@ struct HomeView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button {
+                            if ProGate.isLocked(.eventPlanner, isPro: pro.isPro) { showEventUpsell = true }
+                            else { showEventPlanner = true }
+                        } label: {
+                            Label("Event Planner", systemImage: pro.isPro ? "calendar" : "lock")
+                        }
                         Button { showAssistant = true } label: {
                             Label("Bar Assistant", systemImage: "sparkles")
                         }
@@ -115,6 +124,8 @@ struct HomeView: View {
                 RecipeDetailView(recipe: recipe)
             }
             .sheet(isPresented: $showAssistant) { AssistantSheet() }
+            .sheet(isPresented: $showEventPlanner) { EventPlannerSheet() }
+            .sheet(isPresented: $showEventUpsell) { ProUpsellView() }
             .sheet(isPresented: $showVoiceStub) { VoiceSearchPlaceholderView() }
             .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: $showVenueSheet) { VenueSheet() }
@@ -403,6 +414,10 @@ struct DrinkCard: View {
                 HStack(spacing: 6) {
                     if match.canMake {
                         StatusPill(kind: .canMake)
+                    } else if match.canMakeWithSwaps {
+                        Text("Can make with swaps")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(PourColor.almost)
                     } else if match.isAlmost {
                         StatusPill(kind: .almost)
                     }
@@ -417,7 +432,7 @@ struct DrinkCard: View {
         .background(PourColor.card, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(PourColor.border))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(recipe.name), \(recipe.glassType), \(match.canMake ? "can make" : match.isAlmost ? "missing \(match.missing.count) ingredient\(match.missing.count == 1 ? "" : "s")" : "not stocked")")
+        .accessibilityLabel("\(recipe.name), \(recipe.glassType), \(match.canMake ? "can make" : match.canMakeWithSwaps ? "can make with swaps" : match.isAlmost ? "missing \(match.missing.count) ingredient\(match.missing.count == 1 ? "" : "s")" : "not stocked")")
     }
 }
 
