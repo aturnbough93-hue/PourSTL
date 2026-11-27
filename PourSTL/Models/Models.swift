@@ -138,12 +138,14 @@ final class InventoryItem {
         if available, quantity == 0 { quantity = nil }
     }
 
-    func setParLevel(onHand: Int, minimum: Int, packageUnit: String?, updateStockStatus: Bool = true) {
+    func setParLevel(onHand: Int, minimum: Int?, packageUnit: String?, updateStockStatus: Bool = true) {
         if updateStockStatus {
             quantity = Double(onHand)
             isInStock = onHand > 0
         }
-        lowStockThreshold = minimum > 0 ? Double(minimum) : nil
+        if let minimum {
+            lowStockThreshold = minimum > 0 ? Double(minimum) : nil
+        }
         reorderPackageUnit = packageUnit
     }
 

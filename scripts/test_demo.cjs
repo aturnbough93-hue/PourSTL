@@ -478,6 +478,24 @@ for (const mode of ['clipboard', 'legacy', 'manual']) {
   });
 }
 
+test('a rejected clipboard write cannot show a shopping list cleared during the write', async () => {
+  let rejectClipboard;
+  const clipboardWrite = new Promise((_, reject) => { rejectClipboard = reject; });
+  const page = bootTryPage({
+    initialState: Demo.addIngredient(Demo.defaults(), 'Gin', 'shopping'),
+    clipboardWrite: () => clipboardWrite,
+  });
+  const pendingCopy = page.byId.get('copy-shopping').listeners.get('click')[0]();
+
+  page.byId.get('reset-dialog').close = () => {};
+  page.byId.get('confirm-reset').listeners.get('click')[0]();
+  rejectClipboard(new Error('denied'));
+  await pendingCopy;
+
+  assert.equal(page.byId.get('shopping-copy-fallback').hidden, true);
+  assert.equal(page.byId.get('shopping-copy-text').value ?? '', '');
+});
+
 test('pending recipe copy preserves focus moved to another control', async () => {
   let completeClipboardWrite;
   const clipboardWrite = new Promise(resolve => { completeClipboardWrite = resolve; });

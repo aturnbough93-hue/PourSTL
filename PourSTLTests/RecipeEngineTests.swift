@@ -287,6 +287,18 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertFalse(RecipeEngine.match(drink, inventory: [item]).canMake)
     }
 
+    func testParSavePreservesUneditedFractionalThresholdAndCanClearIt() {
+        let item = InventoryItem(name: "Gin")
+        item.lowStockThreshold = 0.5
+
+        item.setParLevel(onHand: 2, minimum: nil, packageUnit: "ml")
+        XCTAssertEqual(item.lowStockThreshold, 0.5)
+
+        item.setParLevel(onHand: 0, minimum: 0, packageUnit: "ml", updateStockStatus: false)
+        XCTAssertNil(item.lowStockThreshold)
+        XCTAssertEqual(item.quantity, 2)
+    }
+
     func testReorderUsesZeroForUnavailableItemsAndRoundsUpFractionalDeficits() {
         let unknown = InventoryItem(name: "Gin", isInStock: false)
         unknown.lowStockThreshold = 3

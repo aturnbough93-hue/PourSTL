@@ -483,10 +483,10 @@ private struct ParLevelEditor: View {
     @Environment(AppSettings.self) private var settings
     @Environment(ProEntitlementStore.self) private var pro
     private let initialOnHand: Int?
-    private let initialPar: Int
+    private let initialOnHandText: String
+    private let initialParText: String
     @State private var onHandText: String
-    @State private var didEditOnHand = false
-    @State private var par: Int
+    @State private var parText: String
     @State private var packageUnit: String?
     @State private var saveError = false
 
@@ -494,13 +494,13 @@ private struct ParLevelEditor: View {
         self.item = item
         let initialQuantity = item.stockedPackageQuantity
         initialOnHand = initialQuantity.map { Self.packageCount($0) }
-        let initialText = initialQuantity.map {
-            $0.formatted(.number.grouping(.never).precision(.fractionLength(0...8)))
-        } ?? ""
-        _onHandText = State(initialValue: initialText)
-        let startingPar = Self.packageCount(item.lowStockThreshold)
-        initialPar = startingPar
-        _par = State(initialValue: startingPar)
+        let format = FloatingPointFormatStyle<Double>().grouping(.never).precision(.significantDigits(1...17))
+        let onHand = initialQuantity.map { $0.formatted(format) } ?? ""
+        let par = (item.lowStockThreshold ?? 0).formatted(format)
+        initialOnHandText = onHand
+        initialParText = par
+        _onHandText = State(initialValue: onHand)
+        _parText = State(initialValue: par)
         _packageUnit = State(initialValue: item.reorderPackageUnit)
     }
 
@@ -510,8 +510,13 @@ private struct ParLevelEditor: View {
     }
 
     private var unlocked: Bool { !ProGate.isLocked(.parReorder, isPro: pro.isPro) }
+    private var didEditOnHand: Bool { onHandText != initialOnHandText }
+    private var didEditPar: Bool { parText != initialParText }
     private var enteredOnHand: Int? {
         didEditOnHand ? ParLevelSavePolicy.parsedOnHand(onHandText) : initialOnHand ?? 0
+    }
+    private var enteredPar: Int? {
+        didEditPar ? ParLevelSavePolicy.parsedOnHand(parText) : 0
     }
 
     var body: some View {
@@ -522,8 +527,8 @@ private struct ParLevelEditor: View {
                 Section {
                     TextField("Packages on hand", text: $onHandText, prompt: Text("0"))
                         .keyboardType(.numberPad)
-                        .onChange(of: onHandText) { _, _ in didEditOnHand = true }
-                    TextField("Par (minimum packages)", value: $par, format: .number).keyboardType(.numberPad)
+                    TextField("Par (minimum packages)", text: $parText)
+                        .keyboardType(.numberPad)
                 } footer: {
                     Text("Use whole packages from 0 to 999 here. To edit a partial bottle, open the item in My Bar. Set par to 0 to stop tracking this item.")
                 }
@@ -546,7 +551,7 @@ private struct ParLevelEditor: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save", action: save)
-                    .disabled(!unlocked || enteredOnHand == nil || !(0...999).contains(par))
+                    .disabled(!unlocked || enteredOnHand == nil || enteredPar == nil)
             }
         }
         .alert("Par level couldn’t be saved", isPresented: $saveError) {
@@ -555,17 +560,11 @@ private struct ParLevelEditor: View {
     }
 
     private func save() {
-        guard unlocked, let enteredOnHand, (0...999).contains(par) else { return }
+        guard unlocked, let enteredOnHand, let enteredPar else { return }
         let values = ParLevelSavePolicy.values(enteredOnHand: enteredOnHand, initialOnHand: initialOnHand,
                                                didEditOnHand: didEditOnHand)
-        if values.updateStockStatus {
-            item.quantity = Double(values.onHand)
-            item.isInStock = values.onHand > 0
-        }
-        if par != initialPar {
-            item.lowStockThreshold = par > 0 ? Double(par) : nil
-        }
-        item.reorderPackageUnit = packageUnit
+        item.setParLevel(onHand: values.onHand, minimum: didEditPar ? enteredPar : nil, packageUnit: packageUnit,
+                         updateStockStatus: values.updateStockStatus)
         do {
             try modelContext.save()
             dismiss()

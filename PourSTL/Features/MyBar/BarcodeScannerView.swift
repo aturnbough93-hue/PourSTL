@@ -616,49 +616,50 @@ struct BarcodeExistingSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "square.stack.3d.up")
-                    .font(.system(size: 48, weight: .regular))
-                    .foregroundStyle(PourColor.accent)
-                    .accessibilityHidden(true)
-                Text(match.name)
-                    .font(.pourTitle2)
-                    .foregroundStyle(PourColor.textPrimary)
-                    .multilineTextAlignment(.center)
-                    .accessibilityAddTraits(.isHeader)
-                Label(match.isInStock ? "In stock" : "Out of stock", systemImage: match.isInStock ? "checkmark.circle.fill" : "circle")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(match.isInStock ? PourColor.canMake : PourColor.textSecondary)
-                    .accessibilityLabel(match.isInStock ? "In stock" : "Out of stock")
-                Text(appliesInventoryDetails ? "\(explanation) Continue to save the inventory details you entered for this item." : explanation)
-                    .font(.body)
-                    .foregroundStyle(PourColor.textSecondary)
-                    .multilineTextAlignment(.center)
-                Text(BarcodeFormatting.grouped(match.scannedCode))
-                    .font(.body.monospacedDigit())
-                    .foregroundStyle(PourColor.textTertiary)
-                    .accessibilityLabel("Barcode \(BarcodeFormatting.spokenDigits(match.scannedCode))")
-                    .speechSpellsOutCharacters()
-                Button(primaryTitle) {
-                    if action == .none && !appliesInventoryDetails {
-                        dismiss()
-                    } else {
-                        onApply()
+            ScrollView {
+                VStack(spacing: 20) {
+                    Image(systemName: "square.stack.3d.up")
+                        .font(.system(size: 48, weight: .regular))
+                        .foregroundStyle(PourColor.accent)
+                        .accessibilityHidden(true)
+                    Text(match.name)
+                        .font(.pourTitle2)
+                        .foregroundStyle(PourColor.textPrimary)
+                        .multilineTextAlignment(.center)
+                        .accessibilityAddTraits(.isHeader)
+                    Label(match.isInStock ? "In stock" : "Out of stock", systemImage: match.isInStock ? "checkmark.circle.fill" : "circle")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(match.isInStock ? PourColor.canMake : PourColor.textSecondary)
+                        .accessibilityLabel(match.isInStock ? "In stock" : "Out of stock")
+                    Text(appliesInventoryDetails ? "\(explanation) Continue to save the inventory details you entered for this item." : explanation)
+                        .font(.body)
+                        .foregroundStyle(PourColor.textSecondary)
+                        .multilineTextAlignment(.center)
+                    Text(BarcodeFormatting.grouped(match.scannedCode))
+                        .font(.body.monospacedDigit())
+                        .foregroundStyle(PourColor.textTertiary)
+                        .accessibilityLabel("Barcode \(BarcodeFormatting.spokenDigits(match.scannedCode))")
+                        .speechSpellsOutCharacters()
+                    Button(primaryTitle) {
+                        if action == .none && !appliesInventoryDetails {
+                            dismiss()
+                        } else {
+                            onApply()
+                        }
+                    }
+                    .buttonStyle(PourPrimaryButtonStyle())
+                    .accessibilityLabel(primaryTitle)
+                    .accessibilityAddTraits(.isButton)
+                    if action != .none || appliesInventoryDetails {
+                        Button("Not now") { dismiss() }
+                            .buttonStyle(PourSecondaryButtonStyle())
+                            .accessibilityLabel("Not now")
+                            .accessibilityAddTraits(.isButton)
                     }
                 }
-                .buttonStyle(PourPrimaryButtonStyle())
-                .accessibilityLabel(primaryTitle)
-                .accessibilityAddTraits(.isButton)
-                if action != .none || appliesInventoryDetails {
-                    Button("Not now") { dismiss() }
-                        .buttonStyle(PourSecondaryButtonStyle())
-                        .accessibilityLabel("Not now")
-                        .accessibilityAddTraits(.isButton)
-                }
-                Spacer(minLength: 0)
+                .padding(24)
+                .frame(maxWidth: .infinity)
             }
-            .padding(24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(PourColor.background)
             .navigationTitle("Already in your bar")
             .navigationBarTitleDisplayMode(.inline)
