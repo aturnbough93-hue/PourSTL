@@ -5,6 +5,7 @@ import UIKit
 struct MyBarView: View {
     @Query(sort: \InventoryItem.name) private var items: [InventoryItem]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var showSaveError = false
     @State private var searchText = ""
@@ -171,39 +172,58 @@ struct MyBarView: View {
             .accessibilityLabel("\(item.name), \(item.isInStock ? "in stock" : "not in stock")")
             .accessibilityAddTraits(item.isInStock ? [.isButton, .isSelected] : .isButton)
 
-            Button {
-                editingItem = item
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
-                        .font(.body)
-                        .foregroundStyle(item.isInStock ? PourColor.textPrimary : PourColor.textSecondary)
-                    if let subtitle = Self.rowSubtitle(for: item) {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(PourColor.textTertiary)
-                    }
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    inventoryNameButton(item)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    lowStockButton(item)
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
-            }
-            .accessibilityLabel("Edit \(item.name)")
-            .accessibilityAddTraits(.isButton)
-
-            Spacer()
-
-            if item.isLowStock {
-                Button {
-                    item.isLowStock = false
-                    saveChanges()
-                } label: {
-                    StatusPill(kind: .lowStock)
-                }
-                .accessibilityLabel("\(item.name), low stock")
-                .accessibilityAddTraits(.isButton)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                inventoryNameButton(item)
+                Spacer()
+                lowStockButton(item)
             }
         }
         .frame(minHeight: 52)
         .buttonStyle(.borderless)
         .listRowBackground(PourColor.card)
+    }
+
+    private func inventoryNameButton(_ item: InventoryItem) -> some View {
+        Button {
+            editingItem = item
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.body)
+                    .foregroundStyle(item.isInStock ? PourColor.textPrimary : PourColor.textSecondary)
+                if let subtitle = Self.rowSubtitle(for: item) {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(PourColor.textTertiary)
+                }
+            }
+        }
+        .accessibilityLabel("Edit \(item.name)")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    @ViewBuilder
+    private func lowStockButton(_ item: InventoryItem) -> some View {
+        if item.isLowStock {
+            Button {
+                item.isLowStock = false
+                saveChanges()
+            } label: {
+                StatusPill(kind: .lowStock)
+            }
+            .accessibilityLabel("\(item.name), low stock")
+            .accessibilityAddTraits(.isButton)
+        }
     }
 
     private func saveChanges() {
