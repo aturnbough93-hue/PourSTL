@@ -396,8 +396,8 @@ final class ProEntitlementStoreTests: XCTestCase {
         let unlocked = try await waitUntil { [store = self.store!] in
             store.isPro && store.activeProductIDs.contains(ProProductID.yearly)
         }
-        let frameworkIDs = await currentStoreKitProductIDs() ?? []
-        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
+        let frameworkIDs = await currentStoreKitProductIDs()
+        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(Self.describe(frameworkIDs)); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
     }
 
@@ -454,8 +454,8 @@ final class ProEntitlementStoreTests: XCTestCase {
             return !store.isPro
         }
         if !removed {
-            let frameworkIDs = await currentStoreKitProductIDs() ?? []
-            XCTFail("Expired subscription stayed active. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted())")
+            let frameworkIDs = await currentStoreKitProductIDs()
+            XCTFail("Expired subscription stayed active. Current verified products: \(Self.describe(frameworkIDs)); store products: \(store.activeProductIDs.sorted())")
         }
         XCTAssertFalse(
             store.activeProductIDs.contains(ProProductID.monthly),
@@ -526,6 +526,10 @@ final class ProEntitlementStoreTests: XCTestCase {
             XCTFail("Transaction.currentEntitlements did not finish within \(StoreKitEntitlementReader.defaultTimeoutSeconds) seconds in this test's StoreKit fixture")
         }
         return ids
+    }
+
+    private static func describe(_ productIDs: Set<String>?) -> String {
+        productIDs.map { "\($0.sorted())" } ?? "unknown (the read timed out)"
     }
 
     private static func storeKitProductIDs() async -> Set<String> {
