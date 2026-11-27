@@ -120,7 +120,10 @@ final class ProEntitlementLogicTests: XCTestCase {
         for capability in ProGate.freeOffline {
             XCTAssertFalse(ProGate.isLocked(capability, isPro: false), capability.rawValue)
         }
-        XCTAssertEqual(ProGate.paid, [.recipeCosting, .largeBatches, .batchExport, .inventoryOperations, .shoppingInsights])
+        XCTAssertEqual(ProGate.paid, [
+            .recipeCosting, .largeBatches, .batchExport, .inventoryOperations, .shoppingInsights,
+            .eventPlanner, .menuPricing, .parReorder,
+        ])
         for capability in ProGate.paid {
             XCTAssertTrue(ProGate.isLocked(capability, isPro: false), capability.rawValue)
             XCTAssertFalse(ProGate.isLocked(capability, isPro: true), capability.rawValue)

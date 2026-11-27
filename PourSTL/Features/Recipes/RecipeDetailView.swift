@@ -6,6 +6,7 @@ private struct RecipeServiceTools: View {
     let recipe: Recipe
     @Binding var servings: Int
     let unit: UnitPreference
+    let opensMenuPricing: Bool
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
@@ -15,6 +16,15 @@ private struct RecipeServiceTools: View {
     @State private var exporting = false
     @State private var exportError = false
     @State private var showSaveError = false
+    @State private var showMenuPricing: Bool
+
+    init(recipe: Recipe, servings: Binding<Int>, unit: UnitPreference, opensMenuPricing: Bool) {
+        self.recipe = recipe
+        _servings = servings
+        self.unit = unit
+        self.opensMenuPricing = opensMenuPricing
+        _showMenuPricing = State(initialValue: opensMenuPricing)
+    }
 
     private var currency: String { locale.currency?.identifier ?? "USD" }
     private var activeServings: Int { min(max(servings, 1), RecipeScaling.proMaximumServings) }
@@ -27,11 +37,13 @@ private struct RecipeServiceTools: View {
         NavigationStack {
             Form {
                 if entitlement.isPro {
+                    if opensMenuPricing { menuPricingSection }
                     batchSection
                     costingSection
+                    if !opensMenuPricing { menuPricingSection }
                 }
             }
-            .navigationTitle("Costing & Batch Prep")
+            .navigationTitle(opensMenuPricing ? "Menu Pricing" : "Costing & Batch Prep")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -191,6 +203,48 @@ private struct RecipeServiceTools: View {
     private func money(_ amount: Decimal) -> String {
         amount.formatted(.currency(code: currency).locale(locale))
     }
+
+    private var menuPricingSection: some View {
+        @Bindable var settings = settings
+        let required = recipe.sortedIngredients.filter { !$0.isOptional }
+        let costs = required.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
+        let completeCost = !required.isEmpty && required.count == costs.count ? costs.reduce(0, +) : nil
+        let estimate = completeCost.flatMap {
+            MenuPricing.suggestedMenuPrice(cost: $0, targetPercent: settings.targetPourCostPercent)
+        }
+        return Section {
+            Button {
+                if ProGate.isLocked(.menuPricing, isPro: entitlement.isPro) { showMenuPricing = false }
+                else { showMenuPricing.toggle() }
+            } label: {
+                Label(showMenuPricing ? "Hide menu price estimate" : "Estimate menu price", systemImage: "percent")
+            }
+            if showMenuPricing && !ProGate.isLocked(.menuPricing, isPro: entitlement.isPro) {
+                Stepper(
+                    "Target pour cost: \(settings.targetPourCostPercent.formatted(.number.precision(.fractionLength(0))))%",
+                    value: $settings.targetPourCostPercent,
+                    in: MenuPricing.targetPercentRange,
+                    step: 1
+                )
+                if let estimate, let completeCost {
+                    LabeledContent("Suggested price", value: money(estimate))
+                    if let margin = MenuPricing.ingredientMargin(cost: completeCost, price: estimate) {
+                        LabeledContent("Ingredient margin", value: margin.formatted(.percent.precision(.fractionLength(1))))
+                    }
+                } else if completeCost == 0 {
+                    Text("Required ingredients cost nothing. A target pour cost doesn’t determine a menu price for this recipe.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Enter prices and measures for all required ingredients to estimate a menu price.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Menu pricing")
+        } footer: {
+            Text("Rounds the suggestion up to the next half unit of currency. Ingredient margin excludes optional items, labor, tax, and other overhead.")
+        }
+    }
 }
 
 private struct IngredientPriceEditor: View {
@@ -259,9 +313,9 @@ private struct MenuPriceEditor: View {
     let recipe: Recipe
     let currency: String
 
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.locale) private var locale
+    @Environment(\ توسعه.modelContext) private var modelContext
+    @Environment(\ توسعه.dismiss) private var dismiss
+    @Environment(\ توسعه.locale) private var locale
     @State private var price = ""
     @State private var showSaveError = false
 
@@ -323,7 +377,7 @@ private struct MenuPriceEditor: View {
     }
 }
 
-private struct BatchPrepDocument: FileDocument {
+struct BatchPrepDocument: FileDocument {
     static let readableContentTypes: [UTType] = [.commaSeparatedText]
     let content: String
 
@@ -357,6 +411,7 @@ struct RecipeDetailView: View {
     @State private var showTimer = false
     @State private var showEdit = false
     @State private var showServiceTools = false
+    @State private var openMenuPricing = false
     @State private var showPro = false
     @State private var addedToList = false
     @State private var shoppingConfirmationTask: Task<Void, Never>?
@@ -423,7 +478,7 @@ struct RecipeDetailView: View {
             RecipeEditorView(recipe: recipe, makingVariation: !recipe.isCustom)
         }
         .sheet(isPresented: $showServiceTools) {
-            RecipeServiceTools(recipe: recipe, servings: $servings, unit: effectiveUnit)
+            RecipeServiceTools(recipe: recipe, servings: $servings, unit: effectiveUnit, opensMenuPricing: openMenuPricing)
         }
         .sheet(isPresented: $showPro) { ProUpsellView() }
         .onChange(of: maximumServings) { _, limit in
@@ -612,10 +667,11 @@ struct RecipeDetailView: View {
 
     private func ingredientRow(_ line: IngredientLine) -> some View {
         let isMissingRequired = match.missing.contains { $0.persistentModelID == line.persistentModelID }
+        let swap = isMissingRequired ? match.substitute(for: line) : nil
         let isMissingOptional = match.missingOptional.contains { $0.persistentModelID == line.persistentModelID }
         let measure = line.measure.scaled(by: scaleFactor).formatted(for: effectiveUnit)
         let accessibilityStatus = if isMissingRequired {
-            ", missing"
+            swap.map { ", missing; try \($0) to taste" } ?? ", missing"
         } else if isMissingOptional {
             ", optional, not stocked"
         } else if line.isOptional {
@@ -632,6 +688,11 @@ struct RecipeDetailView: View {
                 if isMissingRequired {
                     StatusPill(kind: .missing)
                         .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
+                    if let swap {
+                        Text("Try \(swap) to taste")
+                            .font(.caption)
+                            .foregroundStyle(PourColor.textSecondary)
+                    }
                 } else if line.isOptional {
                     Text(isMissingOptional ? "Optional · not stocked" : "Optional")
                         .font(.caption)
@@ -713,7 +774,12 @@ struct RecipeDetailView: View {
     private func addMissingToShoppingList() {
         do {
             let existing = try modelContext.fetch(FetchDescriptor<ShoppingListItem>())
-            for line in ShoppingListPlanner.ingredientsToAdd(match.missing + match.missingOptional, existing: existing) {
+            let missing = match.missing + match.missingOptional
+            let missingNames = Set(missing.map(\.canonicalName))
+            for item in existing where !item.isPurchased && missingNames.contains(item.canonicalName) {
+                item.addSourceRecipe(recipe.name)
+            }
+            for line in ShoppingListPlanner.ingredientsToAdd(missing, existing: existing) {
                 modelContext.insert(ShoppingListItem(name: line.name, sourceRecipeName: recipe.name))
             }
             try modelContext.save()
@@ -797,19 +863,27 @@ struct RecipeDetailView: View {
     }
 
     private var serviceToolsAction: some View {
-        Button {
-            if ProGate.isLocked(.recipeCosting, isPro: entitlement.isPro) {
-                showPro = true
-            } else {
-                showServiceTools = true
-            }
-        } label: {
-            Label("Costing & Batch Prep", systemImage: entitlement.isPro ? "chart.bar" : "lock")
-                .frame(maxWidth: .infinity, minHeight: 44)
+        VStack(spacing: 8) {
+            serviceButton("Costing & Batch Prep", symbol: "chart.bar", capability: .recipeCosting)
+            serviceButton("Menu Pricing", symbol: "percent", capability: .menuPricing)
         }
         .buttonStyle(.bordered)
         .tint(PourColor.accent)
-        .accessibilityHint(entitlement.isPro ? "Opens service tools" : "Requires PourSTL Pro")
+    }
+
+    private func serviceButton(_ title: String, symbol: String, capability: PourCapability) -> some View {
+        let locked = ProGate.isLocked(capability, isPro: entitlement.isPro)
+        return Button {
+            if locked { showPro = true }
+            else {
+                openMenuPricing = capability == .menuPricing
+                showServiceTools = true
+            }
+        } label: {
+            Label(title, systemImage: locked ? "lock" : symbol)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .accessibilityHint(locked ? "Requires PourSTL Pro" : "Opens service tools")
     }
 
     private func actionButton(_ symbol: String, label: String, selected: Bool = false, action: @escaping () -> Void) -> some View {

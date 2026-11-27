@@ -29,6 +29,31 @@ test('new bars start empty and the starter bar can make a Negroni without garnis
   assert.deepEqual(match.optionalMissing.map(item => item.id), ['orange-twist']);
 });
 
+test('shopping text groups pending items and retains multiple source recipes without duplicate entries', () => {
+  let state = Demo.addIngredient(Demo.defaults(), 'Ice', 'shopping');
+  const gin = { id: 'gin', name: 'Gin', optional: false };
+  state = Demo.addMissing(state, { name: 'Negroni', ingredients: [gin] });
+  state = Demo.addMissing(state, { name: 'Martini', ingredients: [gin] });
+  state = Demo.addMissing(state, { name: 'Negroni', ingredients: [gin] });
+  state = Demo.validateState(JSON.parse(JSON.stringify(state)));
+  assert.equal(Demo.shoppingText(state), 'PourSTL Shopping List\n\nFor recipes\n• Gin — for Martini, Negroni\n\nOther items\n• Ice');
+  assert.deepEqual(Demo.removeShoppingItem(state, 'gin').shoppingRecipes, {});
+  assert.deepEqual(Demo.purchase(state, 'gin').shoppingRecipes, {});
+});
+
+test('the browser suggests stocked swaps only for measurable ingredient lines', () => {
+  const lime = { id: 'lime-juice', unit: 'oz', optional: false };
+  const syrup = { id: 'simple-syrup', unit: 'oz', optional: false };
+  const recipe = { ingredients: [lime, syrup] };
+  const inventory = ['lemon-juice', 'demerara-syrup'];
+  const match = Demo.matchRecipe(recipe, inventory);
+  assert.equal(match.canMake, false);
+  assert.equal(Demo.canMakeWithSwaps(match, inventory), true);
+  assert.equal(Demo.stockedSwap(lime, inventory), 'Lemon juice');
+  assert.equal(Demo.stockedSwap({ ...lime, unit: 'wedge' }, inventory), null);
+  assert.equal(Demo.canMakeWithSwaps(match, ['lemon-juice']), false);
+});
+
 test('taking a bottle out of stock immediately changes matching and can-make filter', () => {
   const state = Demo.defaults();
   state.inventory = Demo.starterInventory.slice();
@@ -421,6 +446,37 @@ test('successful recipe copy announces beside its action and restores focus to C
   assert.equal(page.byId.get('copy-feedback').textContent, '');
   assert.equal(page.doc.activeElement, copy);
 });
+
+for (const mode of ['clipboard', 'legacy', 'manual']) {
+  test(`shopping copy preserves or restores focus as appropriate for ${mode}`, async () => {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+    const page = bootTryPage({
+      initialState: Demo.addIngredient(Demo.defaults(), 'Gin', 'shopping'),
+      clipboardWrite: () => promise,
+      execCommandResult: mode === 'legacy',
+    });
+    const copy = page.byId.get('copy-shopping');
+    const input = page.byId.get('shopping-name');
+    copy.focus();
+    const pending = copy.listeners.get('click')[0]();
+    input.focus();
+    if (mode === 'clipboard') resolve();
+    else reject(new Error('denied'));
+    await pending;
+
+    if (mode === 'manual') {
+      const text = page.byId.get('shopping-copy-text');
+      assert.equal(page.byId.get('shopping-copy-fallback').hidden, false);
+      assert.equal(page.doc.activeElement, text);
+      assert.equal(text.selected, true);
+    } else {
+      assert.equal(page.doc.activeElement, input);
+      assert.equal(input.focusCount, mode === 'legacy' ? 2 : 1);
+      assert.equal(page.byId.get('feedback').textContent, 'Shopping list copied to clipboard.');
+    }
+  });
+}
 
 test('pending recipe copy preserves focus moved to another control', async () => {
   let completeClipboardWrite;

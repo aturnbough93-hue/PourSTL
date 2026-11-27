@@ -132,7 +132,7 @@ response headers after publishing.
 
 `/try` opens the web app. It includes the native recipe catalog, custom recipes,
 favorites, recipe matching, inventory, shopping, scaling, and a prep timer.
-Scaling goes up to 24 servings; Pro costing and CSV prep sheets are iPhone-only.
+Scaling goes up to 24 servings. Stocked swap suggestions and plain-text shopping list copy work on the web. Pro costing, menu pricing, event planning, par-level reorders, and CSV exports are iPhone-only.
 The web app saves state in the browser, shares saved changes across tabs on the
 same origin, and migrates existing demo inventory and shopping data.
 

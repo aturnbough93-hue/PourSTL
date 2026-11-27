@@ -75,6 +75,14 @@ struct ShoppingListView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    if !pending.isEmpty {
+                        ShareLink(item: ShoppingListPlanner.shareText(pending)) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        .accessibilityLabel("Share shopping list")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showAdd = true
                     } label: {
@@ -185,8 +193,8 @@ struct ShoppingListView: View {
                     .font(.body)
                     .foregroundStyle(item.isPurchased ? PourColor.textTertiary : PourColor.textPrimary)
                     .strikethrough(item.isPurchased, color: PourColor.textTertiary)
-                if let source = item.sourceRecipeName {
-                    Text("for \(source)")
+                if !item.sourceRecipeNames.isEmpty {
+                    Text("for \(item.sourceRecipeNames.sorted().joined(separator: ", "))")
                         .font(.caption)
                         .foregroundStyle(PourColor.textTertiary)
                 }

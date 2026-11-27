@@ -67,6 +67,11 @@
           </form>
           <p class="section-note" id="shopping-empty">No ingredients added yet.</p>
           <ul id="shopping" class="shopping-list"></ul>
+          <button type="button" id="copy-shopping" class="secondary" disabled>Copy shopping list</button>
+          <div id="shopping-copy-fallback" hidden>
+            <label for="shopping-copy-text">Copy shopping list text</label>
+            <textarea id="shopping-copy-text" readonly rows="5"></textarea>
+          </div>
         </section>
         <section class="recipe-timer" aria-labelledby="timer-title">
           <h2 id="timer-title">Prep timer</h2>
