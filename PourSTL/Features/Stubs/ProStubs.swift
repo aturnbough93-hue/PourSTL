@@ -514,9 +514,7 @@ private struct ParLevelEditor: View {
 
     private func save() {
         guard unlocked, (0...999).contains(onHand), (0...999).contains(par) else { return }
-        item.quantity = Double(onHand)
-        item.lowStockThreshold = par > 0 ? Double(par) : nil
-        item.reorderPackageUnit = packageUnit
+        item.setParLevel(onHand: onHand, minimum: par, packageUnit: packageUnit)
         do {
             try modelContext.save()
             dismiss()

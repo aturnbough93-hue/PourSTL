@@ -210,6 +210,15 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertTrue(plan.csv(currency: "USD").contains("\"'+Other\",\"0\",\"3\",\"3\",\"\",\"USD\""))
     }
 
+    func testEnteringPackagesOnHandRestocksItemForReorder() {
+        let item = InventoryItem(name: "Gin", isInStock: false)
+        item.setParLevel(onHand: 2, minimum: 3, packageUnit: "ml")
+        let plan = ReorderPlan(items: [item], prices: [:], currency: "USD")
+        XCTAssertTrue(item.isInStock)
+        XCTAssertEqual(plan.lines.map(\.onHand), [2])
+        XCTAssertEqual(plan.lines.map(\.packages), [1])
+    }
+
 }
 
 final class DeepLinkRouterTests: XCTestCase {
