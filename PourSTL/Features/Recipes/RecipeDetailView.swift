@@ -10,11 +10,12 @@ private struct RecipeServiceTools: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
     @Environment(ProEntitlementStore.self) private var entitlement
     @State private var exporting = false
     @State private var exportError = false
-    @State private var targetPourCost = 25
+    @State private var showSaveError = false
     @State private var showMenuPricing: Bool
 
     init(recipe: Recipe, servings: Binding<Int>, unit: UnitPreference, opensMenuPricing: Bool) {
@@ -30,15 +31,21 @@ private struct RecipeServiceTools: View {
     private var batchSize: Binding<Int> {
         Binding(get: { activeServings }, set: { servings = $0 })
     }
+    private var batchPlan: BatchPlan? { BatchPlanner.plan(for: recipe, servings: activeServings) }
 
     var body: some View {
+        let costing = recipeCosting
+        let suggestedPrice = costing.priceEstimateCost.flatMap {
+            MenuPricing.suggestedMenuPrice(cost: $0, targetPercent: settings.targetPourCostPercent)
+        }
+
         NavigationStack {
             Form {
                 if entitlement.isPro {
-                    if opensMenuPricing { menuPricingSection }
+                    if opensMenuPricing { menuPricingSection(costing, suggestedPrice: suggestedPrice) }
                     batchSection
-                    costingSection
-                    if !opensMenuPricing { menuPricingSection }
+                    costingSection(costing, suggestedPrice: suggestedPrice)
+                    if !opensMenuPricing { menuPricingSection(costing, suggestedPrice: suggestedPrice) }
                 }
             }
             .navigationTitle(opensMenuPricing ? "Menu Pricing" : "Costing & Batch Prep")
@@ -63,6 +70,23 @@ private struct RecipeServiceTools: View {
             } message: {
                 Text("Choose another location and try again.")
             }
+            .alert("Menu price wasn’t saved", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Check available device storage and try again.")
+            }
+        }
+    }
+
+    private func applySuggestedPrice(_ price: Decimal) {
+        guard entitlement.isPro, recipeCosting.isComplete else { return }
+        recipe.menuPrice = NSDecimalNumber(decimal: price).doubleValue
+        do {
+            try modelContext.save()
+            Haptics.success()
+        } catch {
+            modelContext.rollback()
+            showSaveError = true
         }
     }
 
@@ -75,6 +99,17 @@ private struct RecipeServiceTools: View {
             }
             .pickerStyle(.navigationLink)
             .accessibilityIdentifier("pro-batch-servings")
+            if let plan = batchPlan {
+                LabeledContent("Measured volume", value: volumeText(plan.measuredMilliliters))
+                if let water = plan.waterMilliliters, water > 0 {
+                    LabeledContent("Water to add", value: volumeText(water))
+                        .accessibilityIdentifier("pro-batch-water")
+                }
+                LabeledContent("Ready-to-pour yield", value: volumeText(plan.totalMilliliters))
+                LabeledContent("Pour per serving", value: BatchPlanner.pourMeasure(
+                    milliliters: plan.perServingMilliliters, unit: unit, locale: locale
+                ))
+            }
             if !ProGate.isLocked(.batchExport, isPro: entitlement.isPro) {
                 Button("Export prep sheet (CSV)", systemImage: "square.and.arrow.up") { exporting = true }
                     .disabled(recipe.sortedIngredients.isEmpty)
@@ -82,25 +117,103 @@ private struct RecipeServiceTools: View {
         } header: {
             Text("Batch prep")
         } footer: {
-            Text("The prep sheet includes scaled ingredient measures, optional ingredients, and ingredient notes.")
+            Text(batchFooter)
         }
     }
 
-    private var costingSection: some View {
+    private var batchFooter: String {
+        var text = "The prep sheet includes scaled ingredient measures, optional ingredients, and ingredient notes."
+        if let plan = batchPlan {
+            if let profile = plan.profile { text += " \(profile.assumption)" }
+            if plan.hasServiceToppers { text += " Add toppers to each glass at service." }
+            if plan.hasOptionalIngredients {
+                text += " Optional ingredients are excluded from the volume. Follow the recipe if using them."
+            }
+            text += " The pour is rounded down, so a little may be left over."
+            if plan.excludesNonVolumeLines {
+                text += " Lines measured in parts or countables aren’t included in volume totals."
+            }
+        }
+        return text
+    }
+
+    private func volumeText(_ milliliters: Double) -> String {
+        BatchPlanner.batchMeasure(milliliters: milliliters, unit: unit, locale: locale)
+    }
+
+    private struct RecipeCosting {
+        let ingredients: [IngredientLine]
+        let costs: [Decimal?]
+
+        var pricedCount: Int { costs.compactMap { $0 }.count }
+        var total: Decimal { costs.compactMap { $0 }.reduce(.zero, +) }
+        var isComplete: Bool { !ingredients.isEmpty && pricedCount == ingredients.count }
+
+        var priceEstimateCost: Decimal? {
+            let required = zip(ingredients, costs).filter { !$0.0.isOptional }
+            guard !required.isEmpty, required.allSatisfy({ $0.1 != nil }) else { return nil }
+            return total
+        }
+    }
+
+    private var recipeCosting: RecipeCosting {
         let ingredients = recipe.sortedIngredients
-        let costs = ingredients.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
-        let perDrink = costs.reduce(Decimal.zero, +)
-        let isComplete = !ingredients.isEmpty && costs.count == ingredients.count
+        let costs = ingredients.map {
+            RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency)
+        }
+        return RecipeCosting(ingredients: ingredients, costs: costs)
+    }
+
+    private func costingSection(_ costing: RecipeCosting, suggestedPrice: Decimal?) -> some View {
+        @Bindable var settings = settings
+        let perDrink = costing.total
+        let isComplete = costing.isComplete
         return Section {
-            if !costs.isEmpty {
+            if costing.pricedCount > 0 {
                 LabeledContent(isComplete ? "Per drink" : "Priced per drink", value: money(perDrink))
                 LabeledContent(isComplete ? "Batch total" : "Priced batch subtotal", value: money(perDrink * Decimal(activeServings)))
             }
             if !isComplete {
-                Text("\(costs.count) of \(ingredients.count) ingredient lines priced")
+                Text("\(costing.pricedCount) of \(costing.ingredients.count) ingredient lines priced")
                     .foregroundStyle(.secondary)
             }
-            ForEach(ingredients) { ingredient in
+            NavigationLink {
+                MenuPriceEditor(recipe: recipe, currency: currency)
+            } label: {
+                LabeledContent("Menu price", value: recipe.menuPrice.map { money(Decimal($0)) } ?? "Set price")
+            }
+            .accessibilityIdentifier("menu-price")
+            if let menuPrice = recipe.menuPrice, costing.pricedCount > 0 {
+                let menuPriceDecimal = Decimal(menuPrice)
+                if let percent = MenuPricing.pourCostPercent(cost: perDrink, menuPrice: menuPriceDecimal) {
+                    LabeledContent(
+                        isComplete ? "Pour cost" : "Priced pour cost",
+                        value: percent.formatted(.number.precision(.fractionLength(1))) + "%"
+                    )
+                }
+                if let profit = MenuPricing.profitPerDrink(cost: perDrink, menuPrice: menuPriceDecimal) {
+                    LabeledContent(isComplete ? "Profit per drink" : "Priced profit per drink", value: money(profit))
+                    LabeledContent(isComplete ? "Profit per batch" : "Priced profit per batch", value: money(profit * Decimal(activeServings)))
+                }
+            }
+            if let suggested = suggestedPrice {
+                LabeledContent(isComplete ? "Suggested menu price" : "Menu price estimate", value: money(suggested))
+                if !isComplete {
+                    Text("Price every listed ingredient to apply this estimate, or enter a menu price manually.")
+                        .foregroundStyle(.secondary)
+                } else if abs((recipe.menuPrice ?? 0) - NSDecimalNumber(decimal: suggested).doubleValue) >= 0.005 {
+                    Button("Use suggested price") { applySuggestedPrice(suggested) }
+                        .accessibilityIdentifier("use-suggested-price")
+                }
+            }
+            Stepper(
+                "Target pour cost: \(settings.targetPourCostPercent.formatted(.number.precision(.fractionLength(0))))%",
+                value: $settings.targetPourCostPercent,
+                in: MenuPricing.targetPercentRange,
+                step: 1
+            )
+            .accessibilityIdentifier("target-pour-cost")
+            ForEach(costing.ingredients) { ingredient in
                 let line = RecipeCostLine(ingredient: ingredient)
                 if line.quantity != nil {
                     let key = line.priceKey(currency: currency)
@@ -126,11 +239,9 @@ private struct RecipeServiceTools: View {
         amount.formatted(.currency(code: currency).locale(locale))
     }
 
-    private var menuPricingSection: some View {
-        let required = recipe.sortedIngredients.filter { !$0.isOptional }
-        let costs = required.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
-        let completeCost = !required.isEmpty && required.count == costs.count ? costs.reduce(0, +) : nil
-        let estimate = completeCost.flatMap { MenuPriceEstimate(cost: $0, targetPercent: targetPourCost) }
+    private func menuPricingSection(_ costing: RecipeCosting, suggestedPrice: Decimal?) -> some View {
+        @Bindable var settings = settings
+        let completeCost = costing.priceEstimateCost
         return Section {
             Button {
                 if ProGate.isLocked(.menuPricing, isPro: entitlement.isPro) { showMenuPricing = false }
@@ -139,12 +250,22 @@ private struct RecipeServiceTools: View {
                 Label(showMenuPricing ? "Hide menu price estimate" : "Estimate menu price", systemImage: "percent")
             }
             if showMenuPricing && !ProGate.isLocked(.menuPricing, isPro: entitlement.isPro) {
-                Stepper("Target pour cost: \(targetPourCost)%", value: $targetPourCost, in: 1...100)
-                if let estimate {
-                    LabeledContent("Suggested price", value: money(estimate.price))
-                    LabeledContent("Ingredient margin", value: estimate.ingredientMargin.formatted(.percent.precision(.fractionLength(1))))
+                Stepper(
+                    "Target pour cost: \(settings.targetPourCostPercent.formatted(.number.precision(.fractionLength(0))))%",
+                    value: $settings.targetPourCostPercent,
+                    in: MenuPricing.targetPercentRange,
+                    step: 1
+                )
+                if let estimate = suggestedPrice, let completeCost {
+                    LabeledContent("Suggested price", value: money(estimate))
+                    if let margin = MenuPricing.ingredientMargin(cost: completeCost, price: estimate) {
+                        LabeledContent("Ingredient margin", value: margin.formatted(.percent.precision(.fractionLength(1))))
+                    }
                 } else if completeCost == 0 {
-                    Text("Required ingredients cost nothing. A target pour cost doesn’t determine a menu price for this recipe.")
+                    Text("The priced ingredients cost nothing. A target pour cost doesn’t determine a menu price for this recipe.")
+                        .foregroundStyle(.secondary)
+                } else if completeCost != nil {
+                    Text("This target and ingredient cost would put the suggested price outside the supported range.")
                         .foregroundStyle(.secondary)
                 } else {
                     Text("Enter prices and measures for all required ingredients to estimate a menu price.")
@@ -154,7 +275,7 @@ private struct RecipeServiceTools: View {
         } header: {
             Text("Menu pricing")
         } footer: {
-            Text("Rounds up to the next whole currency unit. Ingredient margin excludes optional items, labor, tax, and other overhead.")
+            Text("Suggestions round up to the next half unit of currency. The estimate includes optional ingredients when priced. Ingredient margin excludes labor, tax, and overhead.")
         }
     }
 }
@@ -217,6 +338,74 @@ private struct IngredientPriceEditor: View {
             let format = Decimal.FormatStyle(locale: locale).grouping(.never).precision(.fractionLength(0...12))
             price = existing.price.formatted(format)
             yield = existing.yield.formatted(format)
+        }
+    }
+}
+
+private struct MenuPriceEditor: View {
+    let recipe: Recipe
+    let currency: String
+
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @State private var price = ""
+    @State private var showSaveError = false
+
+    private var parsed: Decimal? {
+        let strategy = Decimal.FormatStyle(locale: locale).parseStrategy
+        guard let value = try? strategy.parse(price), (0...1_000_000).contains(value) else { return nil }
+        return value
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Menu price (\(currency))", text: $price)
+                    .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("menu-price-field")
+            } footer: {
+                Text("What a guest pays for one serving. Pour cost and profit use priced ingredient lines.")
+            }
+            if recipe.menuPrice != nil {
+                Button("Remove menu price", role: .destructive) {
+                    recipe.menuPrice = nil
+                    saveAndDismiss()
+                }
+                .accessibilityIdentifier("remove-menu-price")
+            }
+        }
+        .navigationTitle(recipe.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    guard let parsed else { return }
+                    recipe.menuPrice = NSDecimalNumber(decimal: parsed).doubleValue
+                    saveAndDismiss()
+                }
+                .disabled(parsed == nil)
+            }
+        }
+        .onAppear {
+            guard let existing = recipe.menuPrice else { return }
+            let format = Decimal.FormatStyle(locale: locale).grouping(.never).precision(.fractionLength(0...12))
+            price = Decimal(existing).formatted(format)
+        }
+        .alert("Menu price wasn’t saved", isPresented: $showSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your edits are still here. Check available device storage and try again.")
+        }
+    }
+
+    private func saveAndDismiss() {
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            modelContext.rollback()
+            showSaveError = true
         }
     }
 }

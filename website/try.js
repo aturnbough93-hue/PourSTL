@@ -373,6 +373,7 @@
         copied = true;
       }
     } catch (_) { /* Some browsers require the legacy copy fallback. */ }
+    if (App.shoppingText(state) !== text) return;
     if (!copied) {
       const focusedBeforeFallback = document.activeElement;
       copied = fallbackCopy(text);

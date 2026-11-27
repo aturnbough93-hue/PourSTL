@@ -44,6 +44,8 @@ enum PourCapability: String, CaseIterable, Equatable {
     case recipeCosting
     case largeBatches
     case batchExport
+    case inventoryOperations
+    case shoppingInsights
     case eventPlanner
     case menuPricing
     case parReorder
@@ -62,16 +64,20 @@ enum ProGate {
     ]
 
     static let paid: Set<PourCapability> = [
-        .recipeCosting, .largeBatches, .batchExport, .eventPlanner, .menuPricing, .parReorder,
+        .recipeCosting, .largeBatches, .batchExport, .inventoryOperations, .shoppingInsights,
+        .eventPlanner, .menuPricing, .parReorder,
     ]
 
     static let features: [ProFeature] = [
         ProFeature(id: "costing", symbol: "chart.bar", text: "Estimate ingredient cost per drink and per batch"),
+        ProFeature(id: "pricing", symbol: "dollarsign.circle", text: "Set menu prices, see pour cost and profit, and get a suggested price at your target pour cost"),
         ProFeature(id: "batches", symbol: "square.resize", text: "Plan batches of up to 200 servings"),
-        ProFeature(id: "export", symbol: "square.and.arrow.up", text: "Export ingredient quantities as a CSV prep sheet"),
+        ProFeature(id: "dilution", symbol: "drop", text: "Batch dilution water and ready-to-pour yield, with stated assumptions"),
+        ProFeature(id: "export", symbol: "square.and.arrow.up", text: "Export prep sheets as CSV, garnishes separated"),
         ProFeature(id: "events", symbol: "calendar", text: "Plan multiple drinks for an event with a combined shopping list and CSV"),
-        ProFeature(id: "menu", symbol: "percent", text: "Set a target pour cost and get a suggested menu price"),
         ProFeature(id: "reorder", symbol: "shippingbox", text: "Track package par levels and export estimated reorders"),
+        ProFeature(id: "inventory", symbol: "shippingbox", text: "Bottle costs, stock thresholds, and bar value at cost"),
+        ProFeature(id: "shopping", symbol: "cart", text: "See which single bottle unlocks the most drinks"),
     ]
 
     static func isLocked(_ capability: PourCapability, isPro: Bool) -> Bool {

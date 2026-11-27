@@ -133,7 +133,7 @@ struct OnboardingView: View {
             if let existing = byCanonical[canonical] {
                 // Replay = restock: mark the bottle in stock rather than
                 // leaving it unavailable (or duplicating it).
-                existing.isInStock = true
+                existing.setAvailability(true)
                 existing.isLowStock = false
             } else {
                 modelContext.insert(InventoryItem(name: name, category: category, isInStock: true))

@@ -166,13 +166,17 @@ def list_beta_groups(client: AppStoreConnectClient, app_id: str) -> list:
 
 
 def find_beta_group(groups: list, name: str, internal: bool) -> Optional[dict]:
+    mismatched = False
     for group in groups:
         attributes = group.get("attributes") or {}
-        if attributes.get("name") == name:
-            if attributes.get("isInternalGroup") != internal:
-                expected_type = "internal" if internal else "external"
-                raise RuntimeError(f"TestFlight group {name!r} is not an {expected_type} group")
+        if attributes.get("name") != name:
+            continue
+        if attributes.get("isInternalGroup") == internal:
             return group
+        mismatched = True
+    if mismatched:
+        expected_type = "internal" if internal else "external"
+        raise RuntimeError(f"TestFlight group {name!r} is not an {expected_type} group")
     return None
 
 

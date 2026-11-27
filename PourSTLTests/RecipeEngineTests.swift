@@ -237,11 +237,13 @@ final class RecipeEngineTests: XCTestCase {
     }
 
     func testMenuPricingRoundsUpAndReportsMarginAtTheSuggestedPrice() throws {
-        let estimate = try XCTUnwrap(MenuPriceEstimate(cost: Decimal(string: "2.04")!, targetPercent: 25))
-        XCTAssertEqual(estimate.price, 9)
-        XCTAssertEqual(NSDecimalNumber(decimal: estimate.ingredientMargin).doubleValue, 0.773333, accuracy: 0.000001)
-        XCTAssertNil(MenuPriceEstimate(cost: 2, targetPercent: 0))
-        XCTAssertNil(MenuPriceEstimate(cost: 0, targetPercent: 25))
+        let cost = Decimal(string: "2.04")!
+        let price = try XCTUnwrap(MenuPricing.suggestedMenuPrice(cost: cost, targetPercent: 25))
+        XCTAssertEqual(price, Decimal(string: "8.5"))
+        let margin = try XCTUnwrap(MenuPricing.ingredientMargin(cost: cost, price: price))
+        XCTAssertEqual(NSDecimalNumber(decimal: margin).doubleValue, 0.76, accuracy: 0.000001)
+        XCTAssertNil(MenuPricing.suggestedMenuPrice(cost: 2, targetPercent: 0))
+        XCTAssertNil(MenuPricing.suggestedMenuPrice(cost: 0, targetPercent: 25))
     }
 
     func testReorderPlanUsesSavedProductPriceAndShowsUnpricedItems() {
@@ -275,13 +277,67 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertNil(item.stockedPackageQuantity)
         for par in [3, 4] {
             item.setParLevel(onHand: 0, minimum: par, packageUnit: nil, updateStockStatus: false)
-            XCTAssertTrue(item.isInStock)
+            XCTAssertTrue(item.isAvailable)
+            XCTAssertNil(item.quantity)
             XCTAssertEqual(ReorderPlan(items: [item], prices: [:], currency: "USD").lines.map(\.packages), [par])
         }
         item.setParLevel(onHand: 0, minimum: 4, packageUnit: nil)
         XCTAssertFalse(item.isInStock)
         let drink = recipe(name: "Martini", lines: [("Gin", 1, "oz", false)])
         XCTAssertFalse(RecipeEngine.match(drink, inventory: [item]).canMake)
+    }
+
+    func testParSavePreservesUneditedFractionalThresholdAndCanClearIt() {
+        let item = InventoryItem(name: "Gin")
+        item.lowStockThreshold = 0.5
+
+        let unchanged = ParLevelSavePolicy.minimumEdit("٠٫٥", original: "٠٫٥")
+        XCTAssertTrue(unchanged.isValid)
+        item.setParLevel(onHand: 2, minimum: unchanged.value, packageUnit: "ml")
+        XCTAssertEqual(item.lowStockThreshold, 0.5)
+
+        let clear = ParLevelSavePolicy.minimumEdit("٠", original: "٠٫٥")
+        XCTAssertTrue(clear.isValid)
+        item.setParLevel(onHand: 0, minimum: clear.value, packageUnit: "ml", updateStockStatus: false)
+        XCTAssertNil(item.lowStockThreshold)
+        XCTAssertEqual(item.quantity, 2)
+
+        let localized = ParLevelSavePolicy.minimumEdit("١٢", original: "٠٫٥")
+        XCTAssertTrue(localized.isValid)
+        XCTAssertEqual(localized.value, 12)
+        XCTAssertFalse(ParLevelSavePolicy.minimumEdit("١٫٢", original: "٠٫٥").isValid)
+        XCTAssertFalse(ParLevelSavePolicy.minimumEdit("١٠٠٠", original: "٠٫٥").isValid)
+    }
+
+    func testReorderUsesZeroForUnavailableItemsAndRoundsUpFractionalDeficits() {
+        let unknown = InventoryItem(name: "Gin", isInStock: false)
+        unknown.lowStockThreshold = 3
+        let unavailable = InventoryItem(name: "Campari", isInStock: false)
+        unavailable.quantity = 1.5
+        unavailable.lowStockThreshold = 3
+        let stocked = InventoryItem(name: "Vermouth")
+        stocked.quantity = 1.5
+        stocked.lowStockThreshold = 4
+        let partialPar = InventoryItem(name: "Port")
+        partialPar.quantity = 1.2
+        partialPar.lowStockThreshold = 2.2
+        let items = [unknown, unavailable, stocked, partialPar]
+        let plan = ReorderPlan(items: items, prices: [:], currency: "USD")
+        XCTAssertEqual(plan.lines.map(\.onHand), [0, 0, 1.5, 1.2])
+        XCTAssertEqual(plan.lines.map(\.packages), [3, 3, 3, 1])
+        XCTAssertTrue(plan.csv(currency: "USD").contains(#""Vermouth","1.5","4","3""#))
+    }
+
+    func testZeroQuantityDoesNotCountAsStockUntilRestocked() {
+        let gin = InventoryItem(name: "Gin")
+        gin.quantity = 0
+        let drink = recipe(name: "Martini", lines: [("Gin", 1, "oz", false)])
+        XCTAssertFalse(RecipeEngine.match(drink, inventory: [gin]).canMake)
+        XCTAssertEqual(EventPrepPlan(recipes: [drink], guests: 1, drinksPerGuest: 1, inventory: [gin]).shopping.count, 1)
+        XCTAssertFalse(BarcodeStockSnapshot(item: gin).isInStock)
+        gin.setAvailability(true)
+        XCTAssertNil(gin.quantity)
+        XCTAssertTrue(RecipeEngine.match(drink, inventory: [gin]).canMake)
     }
 
     func testParLevelSaveTreatsClearedPackageCountAsExplicitZero() {
@@ -425,6 +481,318 @@ final class RecipeVariationTests: XCTestCase {
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<IngredientLine>()), 2)
         XCTAssertTrue(retained.isFavorite)
         XCTAssertEqual(retained.remoteID, "bundled-classic")
+    }
+}
+
+final class BatchPlannerTests: XCTestCase {
+
+    private func recipe(method: String, lines: [(String, Double, String)]) -> Recipe {
+        let r = Recipe(name: "Batch test", glassType: "Coupe", method: method)
+        for (index, line) in lines.enumerated() {
+            r.ingredients.append(IngredientLine(name: line.0, amount: line.1, unit: line.2, position: index))
+        }
+        return r
+    }
+
+    func testMethodInference() {
+        XCTAssertEqual(DilutionProfile.forMethod("Shaken"), .shaken)
+        XCTAssertEqual(DilutionProfile.forMethod("stirred"), .stirred)
+        XCTAssertEqual(DilutionProfile.forMethod("Built"), .built)
+        XCTAssertEqual(DilutionProfile.forMethod("Muddled"), .muddled)
+        XCTAssertEqual(DilutionProfile.forMethod("Blended"), .blended)
+        XCTAssertEqual(DilutionProfile.forMethod("Layered"), .layered)
+        XCTAssertEqual(DilutionProfile.forMethod("Hot"), .hot)
+        XCTAssertNil(DilutionProfile.forMethod("Rolled"))
+        XCTAssertNil(DilutionProfile.forMethod(""))
+    }
+
+    func testStirredBatchWaterAndYield() {
+        let negroni = recipe(method: "Stirred", lines: [
+            ("Gin", 1, "oz"), ("Campari", 1, "oz"), ("Sweet Vermouth", 1, "oz"),
+        ])
+        let plan = BatchPlanner.plan(for: negroni, servings: 20)
+        XCTAssertEqual(plan?.profile, .stirred)
+        XCTAssertFalse(plan?.excludesNonVolumeLines ?? true)
+        // 60 oz measured; stirred assumes 20% water.
+        XCTAssertEqual(plan?.measuredMilliliters ?? 0, 1774.41, accuracy: 0.001)
+        XCTAssertEqual(plan?.waterMilliliters ?? 0, 354.882, accuracy: 0.001)
+        XCTAssertEqual(plan?.totalMilliliters ?? 0, 2129.292, accuracy: 0.001)
+        XCTAssertEqual(plan?.perServingMilliliters ?? 0, 106.4646, accuracy: 0.001)
+    }
+
+    func testShakenAssumesMoreWaterThanStirred() {
+        let margarita = recipe(method: "Shaken", lines: [
+            ("Tequila", 2, "oz"), ("Orange Liqueur", 1, "oz"), ("Lime Juice", 1, "oz"),
+        ])
+        let plan = BatchPlanner.plan(for: margarita, servings: 1)
+        XCTAssertEqual(plan?.waterMilliliters ?? 0, 29.5735, accuracy: 0.001)
+        XCTAssertEqual(plan?.totalMilliliters ?? 0, 147.8675, accuracy: 0.001)
+    }
+
+    func testBuiltAddsNoWaterButKeepsYield() throws {
+        let mule = recipe(method: "Built", lines: [
+            ("Vodka", 2, "oz"), ("Ginger Beer", 0, "top up"),
+        ])
+        let plan = try XCTUnwrap(BatchPlanner.plan(for: mule, servings: 10))
+        XCTAssertEqual(plan.profile, .built)
+        // Built drinks dilute in the glass: a zero water addition, not no answer.
+        XCTAssertEqual(plan.waterMilliliters ?? -1, 0, accuracy: 0.0001)
+        XCTAssertNotNil(plan.waterMilliliters)
+        XCTAssertFalse(plan.excludesNonVolumeLines, "Top-ups are excluded by design, not a caveat")
+        XCTAssertEqual(plan.measuredMilliliters, 591.47, accuracy: 0.001)
+        XCTAssertEqual(plan.totalMilliliters, 591.47, accuracy: 0.001)
+    }
+
+    func testUnknownMethodSkipsDilutionAssumption() {
+        let punch = recipe(method: "", lines: [("Rum", 2, "oz")])
+        let plan = BatchPlanner.plan(for: punch, servings: 4)
+        XCTAssertNil(plan?.profile)
+        XCTAssertNil(plan?.waterMilliliters)
+        XCTAssertEqual(plan?.measuredMilliliters ?? 0, 236.588, accuracy: 0.001)
+        XCTAssertEqual(plan?.totalMilliliters ?? 0, 236.588, accuracy: 0.001)
+    }
+
+    func testPartsAndCountablesAreExcludedAndFlagged() {
+        let drink = recipe(method: "Shaken", lines: [
+            ("Gin", 2, "oz"), ("Simple Syrup", 1, "part"), ("Sugar", 1, "cube"),
+        ])
+        let plan = BatchPlanner.plan(for: drink, servings: 1)
+        XCTAssertTrue(plan?.excludesNonVolumeLines ?? false)
+        XCTAssertEqual(plan?.measuredMilliliters ?? 0, 59.147, accuracy: 0.001)
+    }
+
+    func testOnlyCountablesMeansNoPlan() {
+        let garnishOnly = recipe(method: "Shaken", lines: [("Lemon", 1, "wedge")])
+        XCTAssertNil(BatchPlanner.plan(for: garnishOnly, servings: 1))
+    }
+
+    func testPerServingMeasureDoesNotRoundUp() throws {
+        let daiquiri = recipe(method: "Shaken", lines: [
+            ("Rum", 2.5, "oz"), ("Lime Juice", 0.75, "oz"), ("Simple Syrup", 0.5, "oz"),
+        ])
+        let plan = try XCTUnwrap(BatchPlanner.plan(for: daiquiri, servings: 100))
+        let locale = Locale(identifier: "en_US_POSIX")
+        XCTAssertEqual(BatchPlanner.pourMeasure(milliliters: plan.perServingMilliliters, unit: .oz, locale: locale), "4.68 oz")
+        XCTAssertEqual(BatchPlanner.pourMeasure(milliliters: 100.19, unit: .ml, locale: locale), "100.1 ml")
+        XCTAssertTrue(BatchPrepSheet.csv(for: daiquiri, servings: 100, unit: .oz).contains(#""Pour per serving","4.68 oz""#))
+    }
+
+    func testMeasuredToppersAndOptionalLiquidsStayOutOfDilution() throws {
+        let french75 = recipe(method: "Shaken", lines: [
+            ("Gin", 1, "oz"), ("Lemon Juice", 0.5, "oz"), ("Simple Syrup", 0.5, "oz"),
+        ])
+        french75.ingredients.append(IngredientLine(name: "Champagne", amount: 2, unit: "oz", note: "to top", position: 3))
+        french75.ingredients.append(IngredientLine(name: "Bitters", amount: 0.25, unit: "oz", isOptional: true, position: 4))
+        let plan = try XCTUnwrap(BatchPlanner.plan(for: french75, servings: 10))
+        XCTAssertEqual(plan.measuredMilliliters, 20 * Measure.millilitersPerOunce, accuracy: 0.0001)
+        XCTAssertEqual(plan.waterMilliliters ?? 0, 5 * Measure.millilitersPerOunce, accuracy: 0.0001)
+        XCTAssertTrue(plan.hasServiceToppers)
+        XCTAssertTrue(plan.hasOptionalIngredients)
+        XCTAssertFalse(plan.excludesNonVolumeLines)
+        let csv = BatchPrepSheet.csv(for: french75, servings: 10, unit: .oz)
+        XCTAssertTrue(csv.contains(#""Champagne","20 oz","No","Add at service · to top""#))
+        XCTAssertTrue(csv.contains(#""Pour per serving","2.5 oz""#))
+    }
+
+    func testOptionalIngredientFollowsRecipeInsteadOfTopperInstructions() throws {
+        let sour = recipe(method: "Shaken", lines: [("Bourbon", 2, "oz")])
+        sour.ingredients.append(IngredientLine(name: "Egg White", amount: 1, unit: "each", isOptional: true, position: 1))
+        let plan = try XCTUnwrap(BatchPlanner.plan(for: sour, servings: 4))
+        XCTAssertTrue(plan.hasOptionalIngredients)
+        XCTAssertFalse(plan.hasServiceToppers)
+        let csv = BatchPrepSheet.csv(for: sour, servings: 4, unit: .oz)
+        XCTAssertTrue(csv.contains(#""Egg White","4","Yes","Follow the recipe if using""#))
+        XCTAssertFalse(csv.contains("Add toppers to each glass"))
+    }
+
+    func testBatchCSVDoesNotDuplicateGarnishAliasesAndKeepsCompoundGuidance() {
+        let manhattan = recipe(method: "Stirred", lines: [("Rye Whiskey", 2, "oz")])
+        manhattan.garnish = "Cocktail cherry"
+        manhattan.ingredients.append(IngredientLine(name: "Maraschino Cherry", amount: 1, unit: "each", isOptional: true, position: 1))
+        let single = BatchPrepSheet.csv(for: manhattan, servings: 2, unit: .oz)
+        XCTAssertTrue(single.contains(#""Maraschino Cherry","2","Yes""#))
+        XCTAssertFalse(single.contains("Cocktail cherry"))
+
+        manhattan.garnish = "Cocktail cherry and orange twist"
+        let compound = BatchPrepSheet.csv(for: manhattan, servings: 2, unit: .oz)
+        XCTAssertTrue(compound.contains(#""Cocktail cherry and orange twist","","Yes","Garnish at service""#))
+    }
+}
+
+final class MenuPricingTests: XCTestCase {
+
+    func testPourCostPercent() {
+        XCTAssertEqual(MenuPricing.pourCostPercent(cost: 1.5, menuPrice: 12) ?? 0, 12.5, accuracy: 0.0001)
+        XCTAssertEqual(MenuPricing.pourCostPercent(cost: 0, menuPrice: 12) ?? -1, 0, accuracy: 0.0001)
+        XCTAssertNil(MenuPricing.pourCostPercent(cost: 1.5, menuPrice: 0))
+        XCTAssertNil(MenuPricing.pourCostPercent(cost: 1.5, menuPrice: -5))
+        XCTAssertNil(MenuPricing.pourCostPercent(cost: -1, menuPrice: 12))
+    }
+
+    func testProfitPerDrink() {
+        XCTAssertEqual(MenuPricing.profitPerDrink(cost: 1.5, menuPrice: 12), Decimal(string: "10.5"))
+        XCTAssertNil(MenuPricing.profitPerDrink(cost: -1, menuPrice: 12))
+    }
+
+    func testSuggestedPriceRoundsUpToHalfSteps() {
+        // Exact half-step results stay put.
+        XCTAssertEqual(MenuPricing.suggestedMenuPrice(cost: 1.5, targetPercent: 20), Decimal(string: "7.5"))
+        XCTAssertEqual(MenuPricing.suggestedMenuPrice(cost: 2, targetPercent: 25), Decimal(string: "8"))
+        // Anything between steps rounds up, never down.
+        XCTAssertEqual(MenuPricing.suggestedMenuPrice(cost: 1.55, targetPercent: 20), Decimal(string: "8"))
+        XCTAssertEqual(MenuPricing.suggestedMenuPrice(cost: 0.04, targetPercent: 20), Decimal(string: "0.5"))
+        let justAbove = Decimal(string: "1.600000000001")!
+        XCTAssertEqual(MenuPricing.suggestedMenuPrice(cost: justAbove, targetPercent: 20), Decimal(string: "8.5"))
+        XCTAssertEqual(MenuPricing.suggestedMenuPrice(cost: 2, targetPercent: 100), 2)
+        XCTAssertNil(MenuPricing.suggestedMenuPrice(cost: 0, targetPercent: 20))
+        XCTAssertNil(MenuPricing.suggestedMenuPrice(cost: 1.5, targetPercent: 0))
+    }
+
+    func testVariationCopiesMenuPrice() {
+        let classic = Recipe(name: "House Classic", glassType: "Coupe", method: "Stirred")
+        classic.menuPrice = 9.5
+        let variation = classic.makeVariation(named: "My House Classic")
+        XCTAssertEqual(variation.menuPrice, 9.5)
+        variation.menuPrice = 12
+        XCTAssertEqual(classic.menuPrice, 9.5)
+        variation.menuPrice = nil
+        XCTAssertEqual(classic.menuPrice, 9.5)
+    }
+
+    func testTargetPourCostPersists() throws {
+        let suite = "PourSTLTests.TargetPourCost.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.targetPourCostPercent, MenuPricing.defaultTargetPercent)
+        settings.targetPourCostPercent = 22.5
+
+        let reloaded = AppSettings(defaults: try XCTUnwrap(UserDefaults(suiteName: suite)))
+        XCTAssertEqual(reloaded.targetPourCostPercent, 22.5)
+    }
+
+    func testTargetPourCostFallsBackWhenStoredValueIsOutOfRange() throws {
+        let suite = "PourSTLTests.TargetPourCostInvalid.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(300.0, forKey: "pour.targetPourCostPercent")
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.targetPourCostPercent, MenuPricing.defaultTargetPercent)
+    }
+}
+
+final class InventoryOperationsTests: XCTestCase {
+
+    private func item(name: String, cost: Double? = nil, quantity: Double? = nil, inStock: Bool = true) -> InventoryItem {
+        let item = InventoryItem(name: name, category: .other, isInStock: inStock)
+        item.bottleCost = cost
+        item.quantity = quantity
+        return item
+    }
+
+    func testValuationSumsPricedInStockBottles() {
+        let items = [
+            item(name: "Gin", cost: 30),
+            item(name: "Campari", cost: 20, quantity: 2),
+            item(name: "Vermouth", cost: 12, quantity: 0),
+            item(name: "Orange Bitters"),
+        ]
+        // 30×1 + 20×2 + 12×0 = 70; unpriced items are skipped.
+        XCTAssertEqual(InventoryOperations.valuation(items: items), Decimal(string: "70"))
+    }
+
+    func testValuationIgnoresOutOfStockAndUnpriced() {
+        XCTAssertNil(InventoryOperations.valuation(items: [item(name: "Gin")]))
+        XCTAssertNil(InventoryOperations.valuation(items: [item(name: "Gin", cost: 30, inStock: false)]))
+        XCTAssertNil(InventoryOperations.valuation(items: [item(name: "Gin", cost: 0)]))
+        XCTAssertNil(InventoryOperations.valuation(items: []))
+    }
+
+    func testEffectiveLowStock() {
+        let flagged = item(name: "Gin")
+        flagged.isLowStock = true
+        XCTAssertTrue(InventoryOperations.isEffectivelyLow(flagged))
+
+        let atThreshold = item(name: "Campari", quantity: 1)
+        atThreshold.lowStockThreshold = 1
+        XCTAssertTrue(InventoryOperations.isEffectivelyLow(atThreshold))
+
+        let aboveThreshold = item(name: "Vermouth", quantity: 3)
+        aboveThreshold.lowStockThreshold = 1
+        XCTAssertFalse(InventoryOperations.isEffectivelyLow(aboveThreshold))
+
+        let noThreshold = item(name: "Rum", quantity: 1)
+        XCTAssertFalse(InventoryOperations.isEffectivelyLow(noThreshold))
+
+        let negative = item(name: "Tequila", quantity: -2)
+        negative.lowStockThreshold = 1
+        XCTAssertFalse(InventoryOperations.isEffectivelyLow(negative))
+    }
+}
+
+final class ShoppingInsightsTests: XCTestCase {
+
+    private func recipe(name: String, lines: [(String, Double, String, Bool)]) -> Recipe {
+        let r = Recipe(name: name, glassType: "Coupe", method: "Shaken")
+        for (index, line) in lines.enumerated() {
+            r.ingredients.append(IngredientLine(name: line.0, amount: line.1, unit: line.2, isOptional: line.3, position: index))
+        }
+        return r
+    }
+
+    func testRanksSingleMissingIngredientByUnlockCount() {
+        let recipes = [
+            recipe(name: "Alpha", lines: [("Gin", 2, "oz", false), ("Campari", 1, "oz", false)]),
+            recipe(name: "Beta", lines: [("Gin", 2, "oz", false), ("Sweet Vermouth", 1, "oz", false)]),
+            recipe(name: "Delta", lines: [("Gin", 2.5, "oz", false), ("Campari", 1, "oz", false)]),
+            recipe(name: "Gamma", lines: [("Campari", 1, "oz", false), ("Sweet Vermouth", 1, "oz", false)]),
+        ]
+        let inventory = [InventoryItem(name: "Gin", category: .other, isInStock: true)]
+        let candidates = ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: inventory)
+        // Gamma misses two bottles, so no single purchase completes it.
+        XCTAssertEqual(candidates.map(\.canonicalName), ["campari", "sweet vermouth"])
+        XCTAssertEqual(candidates[0].unlockCount, 2)
+        XCTAssertEqual(candidates[0].displayName, "Campari")
+        XCTAssertEqual(candidates[1].unlockCount, 1)
+    }
+
+    func testRepeatedCanonicalIngredientVotesOnceAndExclusionsApplyBeforeLimit() {
+        let recipes = [
+            recipe(name: "Alpha", lines: [("Campari", 2, "oz", false), ("Campari", 1, "oz", false)]),
+            recipe(name: "Beta", lines: [("Campari", 1, "oz", false)]),
+            recipe(name: "Gamma", lines: [("Sweet Vermouth", 1, "oz", false)]),
+        ]
+        let best = ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: [], limit: 1)
+        XCTAssertEqual(best.map(\.canonicalName), ["campari"])
+        XCTAssertEqual(best.map(\.unlockCount), [2])
+        let next = ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: [], excluding: ["campari"], limit: 1)
+        XCTAssertEqual(next.map(\.canonicalName), ["sweet vermouth"])
+    }
+
+    func testOptionalIngredientsNeverCount() {
+        let recipes = [
+            recipe(name: "Martini", lines: [("Gin", 2.5, "oz", false), ("Orange Bitters", 1, "dashes", true)]),
+        ]
+        let inventory = [InventoryItem(name: "Gin", category: .other, isInStock: true)]
+        XCTAssertTrue(ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: inventory).isEmpty)
+    }
+
+    func testLimitAndEmptyCases() {
+        let recipes = [
+            recipe(name: "Alpha", lines: [("Gin", 2, "oz", false), ("Campari", 1, "oz", false)]),
+            recipe(name: "Beta", lines: [("Gin", 2, "oz", false), ("Sweet Vermouth", 1, "oz", false)]),
+        ]
+        let inventory = [InventoryItem(name: "Gin", category: .other, isInStock: true)]
+        XCTAssertEqual(ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: inventory, limit: 1).count, 1)
+        XCTAssertTrue(ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: inventory, limit: 0).isEmpty)
+        // Everything makeable → no candidates.
+        let stocked = [
+            InventoryItem(name: "Gin", category: .other, isInStock: true),
+            InventoryItem(name: "Campari", category: .other, isInStock: true),
+            InventoryItem(name: "Sweet Vermouth", category: .other, isInStock: true),
+        ]
+        XCTAssertTrue(ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: stocked).isEmpty)
     }
 }
 

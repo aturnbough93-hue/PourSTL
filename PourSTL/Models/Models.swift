@@ -15,6 +15,7 @@ final class Recipe {
     var isCustom: Bool = false
     var isFavorite: Bool = false
     var notes: String? = nil
+    var menuPrice: Double? = nil       // Pro: menu price per serving for pour-cost math
     var remoteID: String? = nil
     var createdAt: Date = Date()
 
@@ -58,6 +59,7 @@ final class Recipe {
             isCustom: true
         )
         variation.notes = notes
+        variation.menuPrice = menuPrice
         variation.ingredients = sortedIngredients.map { line in
             IngredientLine(name: line.name, amount: line.amount, unit: line.unit,
                            note: line.note, isOptional: line.isOptional, position: line.position)
@@ -122,15 +124,29 @@ final class InventoryItem {
         InventoryCategory(rawValue: category) ?? .other
     }
 
-    var stockedPackageQuantity: Double? {
-        isInStock ? quantity : 0
+    var isAvailable: Bool {
+        isInStock && quantity != 0
     }
 
-    func setParLevel(onHand: Int, minimum: Int, packageUnit: String?, updateStockStatus: Bool = true) {
-        quantity = Double(onHand)
-        lowStockThreshold = minimum > 0 ? Double(minimum) : nil
+    var stockedPackageQuantity: Double? {
+        isAvailable ? quantity : 0
+    }
+
+    /// A manual restock supplies availability even when the new quantity is unknown.
+    func setAvailability(_ available: Bool) {
+        isInStock = available
+        if available, quantity == 0 { quantity = nil }
+    }
+
+    func setParLevel(onHand: Int, minimum: Int?, packageUnit: String?, updateStockStatus: Bool = true) {
+        if updateStockStatus {
+            quantity = Double(onHand)
+            isInStock = onHand > 0
+        }
+        if let minimum {
+            lowStockThreshold = minimum > 0 ? Double(minimum) : nil
+        }
         reorderPackageUnit = packageUnit
-        if updateStockStatus { isInStock = onHand > 0 }
     }
 
     /// Stable identity for barcode matching. Two rows can share a display name;

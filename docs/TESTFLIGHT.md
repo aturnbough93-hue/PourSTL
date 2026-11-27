@@ -10,9 +10,9 @@ The first launch target is **internal TestFlight** from `main` after all release
 
 1. verifies the `bar.pourstl.app` app record exists;
 2. materializes the App Store Connect `.p8` key in a private temporary directory;
-3. resolves the next integer build number as latest App Store Connect build + 1 unless one is supplied;
+3. uses the latest App Store Connect build number + 1, or checks that a supplied number is higher;
 4. archives the Release app with `CURRENT_PROJECT_VERSION` overridden for that archive only, using an ad-hoc intermediate signature so no registered device is needed;
-5. re-signs for App Store distribution with cloud-managed automatic signing and exports directly to App Store Connect using the API key;
+5. re-signs for App Store distribution with cloud-managed automatic signing and uploads a TestFlight Internal Only build using the API key;
 6. polls until the uploaded build is `VALID`;
 7. finds the internal beta group (default `App Store Connect Users`), creates a missing custom group when necessary, and assigns the build unless the group already receives all builds.
 
@@ -54,11 +54,15 @@ After the secrets and manual Apple records exist:
 5. Select **check_only** for the first run. This checks the selected iOS SDK, access to the app record and beta groups, and the proposed build number. The check does not archive, upload, or change App Store Connect settings.
 6. Run again with **check_only** cleared when ready to upload. The final log line reports the App Store Connect build number and beta-group assignment.
 
-The manual workflow uses Xcode 26.3 and has `contents: read`.
+The upload job runs only from `main` on manual dispatch with `contents: read`.
+It selects Xcode 26.3 on the `macos-15` runner to meet Apple's iOS SDK
+requirements. TestFlight Internal Only builds can be distributed to internal
+tester groups. See Apple's [upload requirements](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds)
+and [internal tester setup](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/).
 
 ## Upload from a trusted macOS session
 
-Use this on a trusted Mac with Xcode 26 or later selected and the iOS 26 SDK or later installed:
+Use a trusted Mac with Xcode 26 or later selected and the iOS 26 SDK or later installed:
 
 ```bash
 export ASC_KEY_ID='...'
@@ -68,8 +72,7 @@ export APPLE_TEAM_ID='...'
 bash scripts/testflight_upload.sh --beta-group 'App Store Connect Users'
 ```
 
-A fixed positive integer can be supplied with `--build-number N`, but blank automatic numbering is preferred.
-Add `--check-only` to verify the setup before archiving or uploading.
+A fixed positive integer can be supplied with `--build-number N`, but blank automatic numbering is preferred. Add `--check-only` to verify the setup before archiving or uploading.
 
 ## App metadata and subscriptions
 
