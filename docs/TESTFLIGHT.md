@@ -40,7 +40,7 @@ Do these in the Apple account before running the workflow:
 7. **Store secrets securely.** Add these GitHub Actions repository secrets (or the equivalent Devin secrets for a trusted macOS session). Never commit or paste them in chat:
    - `ASC_KEY_ID`
    - `ASC_ISSUER_ID`
-   - `ASC_PRIVATE_KEY` — the complete `.p8` contents, including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`
+   - `ASC_PRIVATE_KEY` — the complete `.p8` file contents verbatim, including the `BEGIN PRIVATE KEY` and `END PRIVATE KEY` armor lines
    - `APPLE_TEAM_ID`
 
 ## Upload from GitHub Actions
