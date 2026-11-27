@@ -198,10 +198,13 @@ struct EventPrepPlan {
         return initial.uppercased() + String(product.dropFirst())
     }
 
-    private static func missingDisplayName(for entry: Ingredient, product: String) -> String {
-        entry.missingNames.first { IngredientNormalizer.normalize($0) == product }
-            ?? entry.missingNames.first
-            ?? entry.name
+    private static func shoppingDisplayName(for entries: [Ingredient], product: String) -> String {
+        let names = Array(Set(entries.flatMap(\.missingNames))).sorted()
+        if let canonical = names.first(where: { IngredientNormalizer.normalize($0) == product }) { return canonical }
+        return names.max {
+            if $0.count != $1.count { return $0.count < $1.count }
+            return $0 < $1
+        } ?? canonicalDisplayName(product)
     }
 
     var shopping: [ShoppingItem] {
@@ -211,14 +214,11 @@ struct EventPrepPlan {
                 var requirement = entry
                 requirement.measure = entry.missingMeasure
                 requirement.recipes = entry.missingRecipes
-                requirement.name = Self.missingDisplayName(for: entry, product: product)
                 requirement.isStocked = false
                 return requirement
             }
             return requirements.first.map { _ in
-                let displayName = requirements.first { IngredientNormalizer.normalize($0.name) == product }?.name
-                    ?? Self.canonicalDisplayName(product)
-                return ShoppingItem(id: product, name: displayName, requirements: requirements)
+                ShoppingItem(id: product, name: Self.shoppingDisplayName(for: entries, product: product), requirements: requirements)
             }
         }.sorted { ($0.name, $0.id) < ($1.name, $1.id) }
     }
@@ -286,7 +286,7 @@ struct EventPrepPlan {
         }
         let shoppingRows = shopping.flatMap { item in
             item.requirements.map { requirement in
-                ["Shopping", requirement.recipes.joined(separator: ", "), "", requirement.name,
+                ["Shopping", requirement.recipes.joined(separator: ", "), "", item.name,
                  BatchPrepSheet.prepMeasure(requirement.measure.converted(to: unit)),
                  "Not in My Bar", requirement.isOptional ? "Yes" : "No", ""]
             }

@@ -194,9 +194,15 @@ final class RecipeEngineTests: XCTestCase {
             let item = try XCTUnwrap(plan.shopping.first)
             XCTAssertEqual(plan.shopping.count, 1)
             XCTAssertEqual(item.name, "Angostura bitters")
-            XCTAssertEqual(item.requirements.map(\.name).sorted(), ["Ango", "Angostura bitters"])
+            XCTAssertTrue(plan.csv(unit: .oz).contains(#""Shopping","First","","Angostura bitters","1 dash""#))
             XCTAssertTrue(plan.csv(unit: .oz).contains(#""Shopping","Second","","Angostura bitters","1 drop""#))
         }
+    }
+
+    func testEventShoppingFallbackPreservesAliasPunctuation() {
+        let drink = recipe(name: "First", lines: [("Peychaud’s", 1, "dash", false)])
+        let plan = EventPrepPlan(recipes: [drink], guests: 1, drinksPerGuest: 1, inventory: [])
+        XCTAssertEqual(plan.shopping.first?.name, "Peychaud’s")
     }
 
     func testEventPlanDoesNotMixPartsFromDifferentRecipes() {
