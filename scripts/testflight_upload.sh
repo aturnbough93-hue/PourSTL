@@ -7,8 +7,13 @@ cd "$(dirname "$0")/.."
 
 beta_group="App Store Connect Users"
 build_number=""
+check_only=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --check-only)
+      check_only=true
+      shift
+      ;;
     --beta-group)
       beta_group="${2:?Missing beta group name}"
       shift 2
@@ -63,8 +68,13 @@ export ASC_REWRITE_KEY=1
 
 # Resolving the number checks the app record and materializes AuthKey. Xcode
 # uses the same key file for signing, provisioning, and the upload export.
+python3 scripts/app_store_connect.py check-app --bundle-id bar.pourstl.app --beta-group "$beta_group"
 build_number="$(python3 scripts/app_store_connect.py resolve-build-number --bundle-id bar.pourstl.app --build-number "$build_number")"
 echo "Using TestFlight build number $build_number"
+if [[ "$check_only" == "true" ]]; then
+  echo "TestFlight setup check complete. No build was archived or uploaded."
+  exit 0
+fi
 
 export_options="$workdir/ExportOptions.plist"
 python3 - "$APPLE_TEAM_ID" "$export_options" <<'PY'

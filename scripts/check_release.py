@@ -218,6 +218,8 @@ class ReleaseChecks(unittest.TestCase):
         self.assertIn("workflow_dispatch", workflow)
         self.assertIn("contents: read", workflow)
         self.assertIn("runs-on: macos-15", workflow)
+        self.assertRegex(workflow, r"DEVELOPER_DIR: /Applications/Xcode_26\.[0-9]+\.app/Contents/Developer")
+        self.assertIn("args+=(--check-only)", workflow)
         for secret in ("ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_PRIVATE_KEY", "APPLE_TEAM_ID"):
             with self.subTest(secret=secret):
                 self.assertIn(f"secrets.{secret}", workflow)
@@ -262,6 +264,16 @@ class ReleaseBuildNumberTests(unittest.TestCase):
 
 
 class AppStoreConnectHelperTests(unittest.TestCase):
+    def test_internal_beta_group_lookup_rejects_an_external_group(self):
+        external_group = {"id": "external-id", "attributes": {"name": "PourSTL Beta", "isInternalGroup": False}}
+        internal_group = {"id": "internal-id", "attributes": {"name": "Team", "isInternalGroup": True}}
+        groups = [external_group, internal_group]
+
+        self.assertEqual(app_store_connect.find_beta_group(groups, "Team", internal=True), internal_group)
+        self.assertIsNone(app_store_connect.find_beta_group(groups, "New Group", internal=True))
+        with self.assertRaisesRegex(RuntimeError, "not an internal group"):
+            app_store_connect.find_beta_group(groups, "PourSTL Beta", internal=True)
+
     def test_der_signature_becomes_raw_jws_signature(self):
         r = b"\x00" + b"\x01" * 32
         s = b"\x02" * 32
