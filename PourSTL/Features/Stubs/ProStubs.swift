@@ -465,8 +465,23 @@ enum ParLevelSavePolicy {
     static func parsedOnHand(_ text: String) -> Int? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return 0 }
-        guard let value = Int(trimmed), (0...999).contains(value) else { return nil }
+        let digits = trimmed.first == "+" ? trimmed.dropFirst() : trimmed[...]
+        guard !digits.isEmpty else { return nil }
+        var value = 0
+        for digit in digits {
+            guard digit.unicodeScalars.count == 1,
+                  let scalar = digit.unicodeScalars.first, CharacterSet.decimalDigits.contains(scalar),
+                  let number = digit.wholeNumberValue else { return nil }
+            value = value * 10 + number
+            guard value <= 999 else { return nil }
+        }
         return value
+    }
+
+    static func minimumEdit(_ text: String, original: String) -> (isValid: Bool, value: Int?) {
+        if text == original { return (true, nil) }
+        let value = parsedOnHand(text)
+        return (value != nil, value)
     }
 
     static func values(enteredOnHand: Int, initialOnHand: Int?, didEditOnHand: Bool) -> (onHand: Int, updateStockStatus: Bool) {
@@ -511,12 +526,11 @@ private struct ParLevelEditor: View {
 
     private var unlocked: Bool { !ProGate.isLocked(.parReorder, isPro: pro.isPro) }
     private var didEditOnHand: Bool { onHandText != initialOnHandText }
-    private var didEditPar: Bool { parText != initialParText }
     private var enteredOnHand: Int? {
         didEditOnHand ? ParLevelSavePolicy.parsedOnHand(onHandText) : initialOnHand ?? 0
     }
-    private var enteredPar: Int? {
-        didEditPar ? ParLevelSavePolicy.parsedOnHand(parText) : 0
+    private var minimumEdit: (isValid: Bool, value: Int?) {
+        ParLevelSavePolicy.minimumEdit(parText, original: initialParText)
     }
 
     var body: some View {
@@ -551,7 +565,7 @@ private struct ParLevelEditor: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save", action: save)
-                    .disabled(!unlocked || enteredOnHand == nil || enteredPar == nil)
+                    .disabled(!unlocked || enteredOnHand == nil || !minimumEdit.isValid)
             }
         }
         .alert("Par level couldn’t be saved", isPresented: $saveError) {
@@ -560,10 +574,11 @@ private struct ParLevelEditor: View {
     }
 
     private func save() {
-        guard unlocked, let enteredOnHand, let enteredPar else { return }
+        let minimum = minimumEdit
+        guard unlocked, let enteredOnHand, minimum.isValid else { return }
         let values = ParLevelSavePolicy.values(enteredOnHand: enteredOnHand, initialOnHand: initialOnHand,
                                                didEditOnHand: didEditOnHand)
-        item.setParLevel(onHand: values.onHand, minimum: didEditPar ? enteredPar : nil, packageUnit: packageUnit,
+        item.setParLevel(onHand: values.onHand, minimum: minimum.value, packageUnit: packageUnit,
                          updateStockStatus: values.updateStockStatus)
         do {
             try modelContext.save()

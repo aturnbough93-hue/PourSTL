@@ -291,12 +291,22 @@ final class RecipeEngineTests: XCTestCase {
         let item = InventoryItem(name: "Gin")
         item.lowStockThreshold = 0.5
 
-        item.setParLevel(onHand: 2, minimum: nil, packageUnit: "ml")
+        let unchanged = ParLevelSavePolicy.minimumEdit("٠٫٥", original: "٠٫٥")
+        XCTAssertTrue(unchanged.isValid)
+        item.setParLevel(onHand: 2, minimum: unchanged.value, packageUnit: "ml")
         XCTAssertEqual(item.lowStockThreshold, 0.5)
 
-        item.setParLevel(onHand: 0, minimum: 0, packageUnit: "ml", updateStockStatus: false)
+        let clear = ParLevelSavePolicy.minimumEdit("٠", original: "٠٫٥")
+        XCTAssertTrue(clear.isValid)
+        item.setParLevel(onHand: 0, minimum: clear.value, packageUnit: "ml", updateStockStatus: false)
         XCTAssertNil(item.lowStockThreshold)
         XCTAssertEqual(item.quantity, 2)
+
+        let localized = ParLevelSavePolicy.minimumEdit("١٢", original: "٠٫٥")
+        XCTAssertTrue(localized.isValid)
+        XCTAssertEqual(localized.value, 12)
+        XCTAssertFalse(ParLevelSavePolicy.minimumEdit("١٫٢", original: "٠٫٥").isValid)
+        XCTAssertFalse(ParLevelSavePolicy.minimumEdit("١٠٠٠", original: "٠٫٥").isValid)
     }
 
     func testReorderUsesZeroForUnavailableItemsAndRoundsUpFractionalDeficits() {
