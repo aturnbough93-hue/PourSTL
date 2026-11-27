@@ -104,6 +104,7 @@ final class InventoryItem {
     var quantity: Double? = nil
     var bottleCost: Double? = nil        // Pro
     var lowStockThreshold: Double? = nil // Pro
+    var reorderPackageUnit: String? = nil
     var canonicalOverride: String? = nil // user-mapped canonical ingredient
     var createdAt: Date = Date()
 
@@ -141,12 +142,22 @@ final class ShoppingListItem {
     var canonicalName: String = ""
     var isPurchased: Bool = false
     var sourceRecipeName: String? = nil
+    var additionalSourceRecipeNames: [String]? = nil
     var createdAt: Date = Date()
 
     init(name: String = "", canonicalName: String? = nil, sourceRecipeName: String? = nil) {
         self.name = name
         self.canonicalName = canonicalName ?? IngredientNormalizer.canonicalName(for: name)
         self.sourceRecipeName = sourceRecipeName
+    }
+
+    var sourceRecipeNames: [String] {
+        (sourceRecipeName.map { [$0] } ?? []) + (additionalSourceRecipeNames ?? [])
+    }
+
+    func addSourceRecipe(_ name: String) {
+        guard !sourceRecipeNames.contains(name) else { return }
+        additionalSourceRecipeNames = (additionalSourceRecipeNames ?? []) + [name]
     }
 }
 

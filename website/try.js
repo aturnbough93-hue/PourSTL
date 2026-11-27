@@ -98,6 +98,8 @@
     const names = new Map(App.listIngredients(state).map(item => [item.id, item.name]));
     $('shopping').replaceChildren();
     $('shopping-empty').hidden = state.shopping.length > 0;
+    $('copy-shopping').disabled = state.shopping.length === 0;
+    $('shopping-copy-fallback').hidden = true;
     for (const id of state.shopping) {
       const name = names.get(id);
       const row = node('li', 'shopping-item');
@@ -116,14 +118,17 @@
       remove.type = 'button';
       remove.setAttribute('aria-label', 'Remove ' + name + ' from shopping list');
       remove.addEventListener('click', () => {
-        state.shopping = state.shopping.filter(item => item !== id);
+        state = App.removeShoppingItem(state, id);
         render();
         save();
         $('shopping-name').focus({ preventScroll: true });
         feedback(name + ' removed from shopping list.');
       });
       actions.append(purchase, remove);
-      row.append(node('span', '', name), actions);
+      const sources = Object.hasOwn(state.shoppingRecipes, id) ? state.shoppingRecipes[id] : [];
+      const label = node('span', '', name);
+      if (sources.length) label.append(node('span', 'ingredient-note', 'for ' + sources.join(', ')));
+      row.append(label, actions);
       $('shopping').append(row);
     }
   }
@@ -153,7 +158,8 @@
       const label = node('span', '', recipe.name);
       const status = node('span', `availability${match.canMake ? ' ready' : ''}`);
       if (match.canMake) status.append(checkIcon());
-      status.append(document.createTextNode(match.canMake ? 'Can make' : `Missing ${match.missing.length}`));
+      status.append(document.createTextNode(match.canMake ? 'Can make' :
+        App.canMakeWithSwaps(match, state.inventory) ? 'Can make with swaps' : `Missing ${match.missing.length}`));
       button.append(label, status);
       button.addEventListener('click', () => {
         state.selected = recipe.id;
@@ -214,7 +220,9 @@
     $('recipe-status').classList.toggle('ready', match.canMake);
     $('recipe-status').replaceChildren();
     if (match.canMake) $('recipe-status').append(checkIcon());
-    $('recipe-status').append(document.createTextNode(match.canMake ? 'Can make' : `Missing ${match.missing.length} ${match.missing.length === 1 ? 'ingredient' : 'ingredients'}`));
+    $('recipe-status').append(document.createTextNode(match.canMake ? 'Can make' :
+      App.canMakeWithSwaps(match, state.inventory) ? 'Can make with swaps' :
+        `Missing ${match.missing.length} ${match.missing.length === 1 ? 'ingredient' : 'ingredients'}`));
     $('servings').textContent = String(state.servings);
     $('less').disabled = state.servings === 1;
     $('more').disabled = state.servings === 24;
@@ -224,7 +232,11 @@
     for (const item of recipe.ingredients) {
       const row = node('div', `ingredient-row${item.optional ? ' optional' : ''}`);
       const name = node('dt', '', item.name);
-      if (match.missing.includes(item)) name.append(' ', node('span', 'missing-label', 'Missing'));
+      if (match.missing.includes(item)) {
+        name.append(' ', node('span', 'missing-label', 'Missing'));
+        const swap = App.stockedSwap(item, state.inventory);
+        if (swap) name.append(node('span', 'ingredient-note', `Try ${swap} to taste`));
+      }
       if (item.optional) name.append(node('span', 'optional-label', ' · optional'));
       if (item.note) name.append(node('span', 'ingredient-note', item.note));
       row.append(name, node('dd', '', App.formatMeasure(item.amount, item.unit, state.servings, state.unit)));
@@ -233,7 +245,8 @@
     $('instructions').textContent = recipe.instructions;
     $('garnish').textContent = recipe.garnish ? `Garnish: ${recipe.garnish}.` : '';
     $('garnish').hidden = !recipe.garnish;
-    const unlisted = match.missing.filter(item => !state.shopping.includes(item.id));
+    const unlisted = match.missing.filter(item => !Object.hasOwn(state.shoppingRecipes, item.id)
+      || !state.shoppingRecipes[item.id].includes(recipe.name));
     $('add-missing').disabled = unlisted.length === 0;
     $('add-missing').textContent = match.canMake ? 'No missing ingredients'
       : unlisted.length ? 'Add missing to list' : 'Missing items on list';
@@ -332,7 +345,9 @@
     render();
     save();
     const added = state.shopping.length - previousCount;
-    feedback(`${added} missing ${added === 1 ? 'ingredient added' : 'ingredients added'} to your shopping list.`);
+    feedback(added
+      ? `${added} missing ${added === 1 ? 'ingredient added' : 'ingredients added'} to your shopping list.`
+      : 'Recipe noted on your shopping list.');
   });
 
   function fallbackCopy(text) {
@@ -348,6 +363,28 @@
     textarea.remove();
     return copied;
   }
+
+  $('copy-shopping').addEventListener('click', async () => {
+    const text = App.shoppingText(state);
+    let copied = false;
+    try {
+      if (window.navigator.clipboard && window.isSecureContext) {
+        await window.navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    } catch (_) { /* Some browsers require the legacy copy fallback. */ }
+    if (copied || fallbackCopy(text)) {
+      $('shopping-copy-fallback').hidden = true;
+      $('copy-shopping').focus({ preventScroll: true });
+      feedback('Shopping list copied to clipboard.');
+    } else {
+      $('shopping-copy-fallback').hidden = false;
+      $('shopping-copy-text').value = text;
+      $('shopping-copy-text').focus();
+      $('shopping-copy-text').select();
+      feedback('Your browser blocked clipboard access. The shopping list text is selected for manual copying.');
+    }
+  });
 
   function setCopyConfirmation(message = '') {
     window.clearTimeout(copyFeedbackTimeout);

@@ -1,8 +1,6 @@
 import SwiftUI
 import SwiftData
-
-/// Clean seams for out-of-scope Pro features. Each stub matches where the spec
-/// places the entry point and shows an honest, styled placeholder.
+import UniformTypeIdentifiers
 
 struct VoiceSearchPlaceholderView: View {
     @Environment(\.dismiss) private var dismiss
@@ -93,7 +91,7 @@ struct ProUpsellView: View {
                 .font(.pourTitle)
                 .foregroundStyle(PourColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Price your drinks and plan bigger batches for service and events.")
+            Text("Price your menu, plan event batches, and know what to reorder for your next service.")
                 .font(.body)
                 .foregroundStyle(PourColor.textSecondary)
                 .multilineTextAlignment(.center)
@@ -279,6 +277,256 @@ private struct PourSecondaryButtonStyle: ButtonStyle {
 
 /// Minimal local venue check-in (no cloud): create a venue, check in, check out.
 /// House specs and team features are Pro seams.
+struct EventPlannerSheet: View {
+    @Query(sort: \Recipe.name) private var recipes: [Recipe]
+    @Query private var inventory: [InventoryItem]
+    @Environment(ProEntitlementStore.self) private var pro
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.dismiss) private var dismiss
+    @State private var selected = Set<PersistentIdentifier>()
+    @State private var guests = 10
+    @State private var drinksPerGuest = 2
+    @State private var showRecipes = false
+    @State private var exporting = false
+    @State private var exportError = false
+
+    private var unlocked: Bool { !ProGate.isLocked(.eventPlanner, isPro: pro.isPro) }
+    private var plan: EventPrepPlan {
+        EventPrepPlan(recipes: recipes.filter { selected.contains($0.persistentModelID) },
+                      guests: guests, drinksPerGuest: drinksPerGuest, inventory: inventory)
+    }
+
+    var body: some View {
+        let plan = plan
+        NavigationStack {
+            Form {
+                if unlocked {
+                    Section {
+                        Stepper("Guests: \(guests)", value: $guests, in: 1...RecipeScaling.proMaximumServings)
+                        Stepper("Drinks per guest: \(drinksPerGuest)", value: $drinksPerGuest, in: 1...5)
+                        LabeledContent("Total drinks", value: (guests * drinksPerGuest).formatted())
+                        DisclosureGroup("Choose recipes (\(selected.count))", isExpanded: $showRecipes) {
+                            ForEach(recipes) { recipe in
+                                Toggle(recipe.name, isOn: recipeSelection(recipe.persistentModelID))
+                            }
+                        }
+                    } footer: {
+                        Text("Drinks are split evenly. Any extra servings go to the first recipes alphabetically.")
+                    }
+                    if !plan.batches.isEmpty {
+                        Section("Batches") {
+                            ForEach(plan.batches, id: \.recipe.persistentModelID) { batch in
+                                LabeledContent(batch.recipe.name, value: batch.servings.formatted())
+                            }
+                            Button("Export event prep (CSV)", systemImage: "square.and.arrow.up") { exporting = true }
+                        }
+                        Section("Combined ingredients") {
+                            ForEach(plan.ingredients) { entry in
+                                LabeledContent {
+                                    Text(BatchPrepSheet.prepMeasure(entry.measure.converted(to: settings.unit)))
+                                } label: {
+                                    Text(entry.name)
+                                    Text(entry.recipes.joined(separator: ", ") + (entry.isOptional ? " · optional" : ""))
+                                }
+                            }
+                        }
+                        Section {
+                            if plan.shopping.isEmpty {
+                                Text("All required ingredients are marked in stock.")
+                            }
+                            ForEach(plan.shopping) { entry in
+                                LabeledContent(entry.name, value: BatchPrepSheet.prepMeasure(entry.measure.converted(to: settings.unit)))
+                            }
+                        } header: {
+                            Text("Shopping list")
+                        } footer: {
+                            Text("Shows required ingredients not marked in stock. Check that you have enough of the ingredients already in My Bar.")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Event Planner")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .onChange(of: unlocked) { _, active in if !active { dismiss() } }
+            .fileExporter(isPresented: $exporting,
+                          document: unlocked ? BatchPrepDocument(content: plan.csv(unit: settings.unit)) : nil,
+                          contentType: .commaSeparatedText, defaultFilename: "PourSTL Event Prep") { result in
+                if case .failure = result { exportError = true }
+            }
+            .alert("Event prep couldn’t be exported", isPresented: $exportError) {
+                Button("OK", role: .cancel) {}
+            }
+        }
+    }
+
+    private func recipeSelection(_ id: PersistentIdentifier) -> Binding<Bool> {
+        Binding(get: { selected.contains(id) }, set: { active in
+            if active { selected.insert(id) } else { selected.remove(id) }
+        })
+    }
+}
+
+struct ParReorderSheet: View {
+    @Query(sort: \InventoryItem.name) private var items: [InventoryItem]
+    @Environment(ProEntitlementStore.self) private var pro
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.locale) private var locale
+    @Environment(\.dismiss) private var dismiss
+    @State private var exporting = false
+    @State private var exportError = false
+    @State private var showItems = false
+
+    private var currency: String { locale.currency?.identifier ?? "USD" }
+    private var unlocked: Bool { !ProGate.isLocked(.parReorder, isPro: pro.isPro) }
+
+    var body: some View {
+        let plan = ReorderPlan(items: items, prices: settings.ingredientPrices, currency: currency)
+        NavigationStack {
+            Form {
+                if unlocked {
+                    Section {
+                        if items.isEmpty {
+                            Text("Add ingredients in My Bar before setting par levels.")
+                        } else {
+                            DisclosureGroup("Set par levels", isExpanded: $showItems) {
+                                ForEach(items) { item in
+                                    NavigationLink {
+                                        ParLevelEditor(item: item)
+                                    } label: {
+                                        LabeledContent(item.name, value: item.lowStockThreshold?.formatted() ?? "Not set")
+                                    }
+                                }
+                            }
+                        }
+                    } footer: {
+                        Text("Enter the number of packages on hand and the minimum you want to keep. Keep package counts up to date after stocking My Bar. Out-of-stock items count as zero.")
+                    }
+                    Section {
+                        if plan.lines.isEmpty {
+                            Text("No items are below par.")
+                        } else {
+                            ForEach(plan.lines) { line in
+                                LabeledContent {
+                                    Text(line.cost.map(money) ?? "Unpriced")
+                                } label: {
+                                    Text(line.name)
+                                    Text("Order \(line.packages) · \(line.onHand) on hand · par \(line.par)")
+                                }
+                            }
+                            let pricedCount = plan.lines.compactMap(\.cost).count
+                            if pricedCount > 0 {
+                                LabeledContent(pricedCount == plan.lines.count ? "Estimated total" : "Priced subtotal",
+                                               value: money(plan.pricedSubtotal))
+                            }
+                            Button("Export reorder (CSV)", systemImage: "square.and.arrow.up") { exporting = true }
+                        }
+                    } header: {
+                        Text("Reorder list")
+                    } footer: {
+                        Text("Estimates use saved package prices for the same ingredient. Unpriced items aren’t included in the total.")
+                    }
+                }
+            }
+            .navigationTitle("Par Levels & Reorder")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .onChange(of: unlocked) { _, active in if !active { dismiss() } }
+            .fileExporter(isPresented: $exporting,
+                          document: unlocked ? BatchPrepDocument(content: plan.csv(currency: currency)) : nil,
+                          contentType: .commaSeparatedText, defaultFilename: "PourSTL Reorder") { result in
+                if case .failure = result { exportError = true }
+            }
+            .alert("Reorder list couldn’t be exported", isPresented: $exportError) {
+                Button("OK", role: .cancel) {}
+            }
+        }
+    }
+
+    private func money(_ amount: Decimal) -> String {
+        amount.formatted(.currency(code: currency).locale(locale))
+    }
+}
+
+private struct ParLevelEditor: View {
+    let item: InventoryItem
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(AppSettings.self) private var settings
+    @Environment(ProEntitlementStore.self) private var pro
+    @State private var onHand: Int
+    @State private var par: Int
+    @State private var packageUnit: String?
+    @State private var saveError = false
+
+    init(item: InventoryItem) {
+        self.item = item
+        _onHand = State(initialValue: Self.packageCount(item.quantity))
+        _par = State(initialValue: Self.packageCount(item.lowStockThreshold))
+        _packageUnit = State(initialValue: item.reorderPackageUnit)
+    }
+
+    private static func packageCount(_ value: Double?) -> Int {
+        guard let value, (0...999).contains(value) else { return 0 }
+        return Int(value)
+    }
+
+    private var unlocked: Bool { !ProGate.isLocked(.parReorder, isPro: pro.isPro) }
+
+    var body: some View {
+        let units = RecipeCostLine.packageUnits(for: item.name, currency: locale.currency?.identifier ?? "USD",
+                                                prices: settings.ingredientPrices)
+        Form {
+            if unlocked {
+                Section {
+                    TextField("Packages on hand", value: $onHand, format: .number).keyboardType(.numberPad)
+                    TextField("Par (minimum packages)", value: $par, format: .number).keyboardType(.numberPad)
+                } footer: {
+                    Text("Use whole packages from 0 to 999. Set par to 0 to stop tracking this item.")
+                }
+                Section {
+                    Picker("Saved package price", selection: $packageUnit) {
+                        Text("Automatic").tag(nil as String?)
+                        ForEach(units, id: \.self) { unit in
+                            Text("Yield in \(unit)").tag(Optional(unit))
+                        }
+                        if let packageUnit, !units.contains(packageUnit) {
+                            Text("Price unavailable").tag(Optional(packageUnit))
+                        }
+                    }
+                } footer: {
+                    Text("Automatic uses a saved price when there’s exactly one match. Enter package prices under Costing & Batch Prep in a recipe.")
+                }
+            }
+        }
+        .navigationTitle(item.name)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save", action: save)
+                    .disabled(!unlocked || !(0...999).contains(onHand) || !(0...999).contains(par))
+            }
+        }
+        .alert("Par level couldn’t be saved", isPresented: $saveError) {
+            Button("OK", role: .cancel) {}
+        }
+    }
+
+    private func save() {
+        guard unlocked, (0...999).contains(onHand), (0...999).contains(par) else { return }
+        item.quantity = Double(onHand)
+        item.lowStockThreshold = par > 0 ? Double(par) : nil
+        item.reorderPackageUnit = packageUnit
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            modelContext.rollback()
+            saveError = true
+        }
+    }
+}
+
 struct VenueSheet: View {
     @Query private var venues: [Venue]
     @Environment(\.modelContext) private var modelContext

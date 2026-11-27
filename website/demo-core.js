@@ -16,6 +16,12 @@
     ['angostura', 'angostura-bitters'], ['peychauds', 'peychauds-bitters'],
   ]);
   const volumeUnits = ['oz', 'ml'];
+  const swaps = {
+    'lemon-juice': ['lime-juice', 'Lime juice'],
+    'lime-juice': ['lemon-juice', 'Lemon juice'],
+    'simple-syrup': ['demerara-syrup', 'Demerara syrup'],
+    'demerara-syrup': ['simple-syrup', 'Simple syrup'],
+  };
   const countUnits = {
     each: ['', ''], dash: ['dash', 'dashes'], cube: ['cube', 'cubes'],
     twist: ['twist', 'twists'], wedge: ['wedge', 'wedges'], pinch: ['pinch', 'pinches'],
@@ -53,7 +59,7 @@
   function defaults() {
     return {
       version: 2, inventory: [], shopping: [], servings: 1, unit: 'oz', selected: 'negroni',
-      customRecipes: [], ingredientNames: [], favorites: [],
+      customRecipes: [], ingredientNames: [], favorites: [], shoppingRecipes: {},
     };
   }
 
@@ -120,8 +126,15 @@
     const allRecipes = new Set([...recipeIDs, ...customRecipes.keys()]);
     const stocked = cleanIDs(raw.inventory, allNames, legacyIngredientIDs);
     const shopping = cleanIDs(raw.shopping, allNames, legacyIngredientIDs);
+    const pending = raw.version === 1 ? shopping.filter(id => !stocked.includes(id)) : shopping;
     return {
-      version: 2, inventory: stocked, shopping: raw.version === 1 ? shopping.filter(id => !stocked.includes(id)) : shopping,
+      version: 2, inventory: stocked, shopping: pending,
+      shoppingRecipes: Object.fromEntries(pending.flatMap(id => {
+        const names = raw.shoppingRecipes?.[id];
+        if (!Array.isArray(names)) return [];
+        const sources = [...new Set(names.slice(0, 250).map(name => boundedText(name, 80)).filter(Boolean))];
+        return sources.length ? [[id, sources]] : [];
+      })),
       servings: boundedServings(raw.servings), unit: raw.unit === 'ml' ? 'ml' : 'oz',
       selected: allRecipes.has(raw.selected) ? raw.selected : fallback.selected,
       customRecipes: [...customRecipes.values()], ingredientNames: [...addedNames.values()],
@@ -146,6 +159,16 @@
     const missing = spec.ingredients.filter(item => !item.optional && !stocked.has(item.id));
     const optionalMissing = spec.ingredients.filter(item => item.optional && !stocked.has(item.id));
     return { canMake: missing.length === 0, missing, optionalMissing };
+  }
+
+  function stockedSwap(item, stockIDs) {
+    const swap = Object.hasOwn(swaps, item.id) ? swaps[item.id] : null;
+    return volumeUnits.includes(item.unit) && swap && stockIDs.includes(swap[0]) ? swap[1] : null;
+  }
+
+  function canMakeWithSwaps(match, stockIDs) {
+    return match.missing.length > 0 && match.missing.length <= 2 &&
+      match.missing.every(item => stockedSwap(item, stockIDs));
   }
 
   function searchRecipes(query, filter, state) {
@@ -198,7 +221,29 @@
     const spec = resolveRecipe(recipe, state.customRecipes);
     if (!spec) return state;
     const missing = matchRecipe(spec, state.inventory).missing.map(item => item.id);
-    return validateState({ ...state, shopping: [...state.shopping, ...missing] });
+    const shoppingRecipes = { ...state.shoppingRecipes };
+    for (const id of missing) {
+      const names = Object.hasOwn(shoppingRecipes, id) ? shoppingRecipes[id] : [];
+      shoppingRecipes[id] = [...names, spec.name];
+    }
+    return validateState({ ...state, shopping: [...state.shopping, ...missing], shoppingRecipes });
+  }
+
+  function removeShoppingItem(state, id) {
+    return validateState({ ...state, shopping: state.shopping.filter(item => item !== id) });
+  }
+
+  function shoppingText(state) {
+    const names = new Map(listIngredients(state).map(item => [item.id, item.name]));
+    const groups = [[], []];
+    for (const id of state.shopping) {
+      const sources = Object.hasOwn(state.shoppingRecipes, id) ? state.shoppingRecipes[id].slice().sort() : [];
+      const line = '• ' + names.get(id);
+      if (sources.length) groups[0].push(line + ' — for ' + sources.join(', '));
+      else groups[1].push(line);
+    }
+    return ['PourSTL Shopping List', ...groups.flatMap((lines, i) =>
+      lines.length ? [[i === 0 ? 'For recipes' : 'Other items', ...lines.sort()].join('\n')] : [])].join('\n\n');
   }
 
   function purchase(state, id) {
@@ -229,6 +274,6 @@
   return {
     inventory, recipes, units, starterInventory, maxCustomRecipes, defaults, validateState,
     validateRecipe, resolveRecipe, listIngredients, normalize, matchRecipe, searchRecipes, recipeEmptyState, formatMeasure,
-    addIngredient, addMissing, purchase, recipeText,
+    addIngredient, addMissing, removeShoppingItem, purchase, recipeText, shoppingText, stockedSwap, canMakeWithSwaps,
   };
 });

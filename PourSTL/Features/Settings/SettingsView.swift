@@ -77,7 +77,7 @@ struct SettingsView: View {
                     .accessibilityAddTraits(.isButton)
                 }
 
-                Section("Pro") {
+                Section("Bar") {
                     Button {
                         showVenue = true
                     } label: {
@@ -86,6 +86,9 @@ struct SettingsView: View {
                     }
                     .accessibilityLabel("Check in to venue")
                     .accessibilityAddTraits(.isButton)
+                }
+
+                Section("Pro") {
                     Button {
                         showPro = true
                     } label: {
@@ -100,6 +103,11 @@ struct SettingsView: View {
                     }
                     .accessibilityLabel(proAccessibilityLabel)
                     .accessibilityAddTraits(.isButton)
+                    ForEach(ProGate.features) { feature in
+                        Label(feature.text, systemImage: feature.symbol)
+                            .font(.subheadline)
+                            .foregroundStyle(PourColor.textSecondary)
+                    }
                 }
 
                 Section("Support") {

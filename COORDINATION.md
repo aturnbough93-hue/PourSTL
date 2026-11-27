@@ -1,5 +1,10 @@
 # Pour App Coordination Log
 
+## Free and Pro feature upgrade
+
+- Free iPhone and web users can share or copy a grouped shopping list with recipe names and see stocked citrus and syrup swaps on near-miss recipes.
+- iPhone Pro adds multi-recipe event prep, target-pour-cost menu pricing, and par-level reorder estimates with CSV export. Event shopping checks stock presence, not volume; reorder package counts are entered manually.
+
 ## Release handoff, 2026-11-25
 
 - **iPhone release candidate.** [#32](https://github.com/aturnbough93-hue/PourSTL/pull/32) merged the Pro tools and the accessibility and scanner work from [#23](https://github.com/aturnbough93-hue/PourSTL/pull/23) and [#27](https://github.com/aturnbough93-hue/PourSTL/pull/27). The iOS 26.5 simulator passed the five previously failing or targeted UI cases on that baseline, and the unsigned device archive compiled.

@@ -29,6 +29,31 @@ test('new bars start empty and the starter bar can make a Negroni without garnis
   assert.deepEqual(match.optionalMissing.map(item => item.id), ['orange-twist']);
 });
 
+test('shopping text groups pending items and retains multiple source recipes without duplicate entries', () => {
+  let state = Demo.addIngredient(Demo.defaults(), 'Ice', 'shopping');
+  const gin = { id: 'gin', name: 'Gin', optional: false };
+  state = Demo.addMissing(state, { name: 'Negroni', ingredients: [gin] });
+  state = Demo.addMissing(state, { name: 'Martini', ingredients: [gin] });
+  state = Demo.addMissing(state, { name: 'Negroni', ingredients: [gin] });
+  state = Demo.validateState(JSON.parse(JSON.stringify(state)));
+  assert.equal(Demo.shoppingText(state), 'PourSTL Shopping List\n\nFor recipes\n• Gin — for Martini, Negroni\n\nOther items\n• Ice');
+  assert.deepEqual(Demo.removeShoppingItem(state, 'gin').shoppingRecipes, {});
+  assert.deepEqual(Demo.purchase(state, 'gin').shoppingRecipes, {});
+});
+
+test('the browser suggests stocked swaps only for measurable ingredient lines', () => {
+  const lime = { id: 'lime-juice', unit: 'oz', optional: false };
+  const syrup = { id: 'simple-syrup', unit: 'oz', optional: false };
+  const recipe = { ingredients: [lime, syrup] };
+  const inventory = ['lemon-juice', 'demerara-syrup'];
+  const match = Demo.matchRecipe(recipe, inventory);
+  assert.equal(match.canMake, false);
+  assert.equal(Demo.canMakeWithSwaps(match, inventory), true);
+  assert.equal(Demo.stockedSwap(lime, inventory), 'Lemon juice');
+  assert.equal(Demo.stockedSwap({ ...lime, unit: 'wedge' }, inventory), null);
+  assert.equal(Demo.canMakeWithSwaps(match, ['lemon-juice']), false);
+});
+
 test('taking a bottle out of stock immediately changes matching and can-make filter', () => {
   const state = Demo.defaults();
   state.inventory = Demo.starterInventory.slice();

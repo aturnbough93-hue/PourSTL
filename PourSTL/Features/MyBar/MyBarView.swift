@@ -6,12 +6,15 @@ struct MyBarView: View {
     @Query(sort: \InventoryItem.name) private var items: [InventoryItem]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(ProEntitlementStore.self) private var pro
 
     @State private var showSaveError = false
     @State private var searchText = ""
     @State private var filter: StockFilter = .all
     @State private var showAdd = false
     @State private var showScanner = false
+    @State private var showReorder = false
+    @State private var showReorderUpsell = false
     @State private var editingItem: InventoryItem? = nil
 
     enum StockFilter: String, CaseIterable {
@@ -94,6 +97,15 @@ struct MyBarView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
+                        if ProGate.isLocked(.parReorder, isPro: pro.isPro) { showReorderUpsell = true }
+                        else { showReorder = true }
+                    } label: {
+                        Image(systemName: pro.isPro ? "shippingbox" : "lock")
+                    }
+                    .accessibilityLabel("Par Levels & Reorder")
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
                         showScanner = true
                     } label: {
                         Image(systemName: "barcode.viewfinder")
@@ -118,6 +130,8 @@ struct MyBarView: View {
             .sheet(isPresented: $showAdd) { InventoryEditSheet(item: nil) }
             .sheet(item: $editingItem) { item in InventoryEditSheet(item: item) }
             .sheet(isPresented: $showScanner) { BarcodeScannerView() }
+            .sheet(isPresented: $showReorder) { ParReorderSheet() }
+            .sheet(isPresented: $showReorderUpsell) { ProUpsellView() }
             .alert("Bar wasn’t updated", isPresented: $showSaveError) {
                 Button("OK", role: .cancel) {}
             } message: {
