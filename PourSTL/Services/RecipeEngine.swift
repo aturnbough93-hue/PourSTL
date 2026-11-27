@@ -178,6 +178,7 @@ struct EventPrepPlan {
         var isStocked: Bool
         var missingMeasure: Measure
         var missingRecipes: [String]
+        var missingNames: [String]
         var hasMissingRequirements: Bool
 
         var isOptional: Bool { id.optional }
@@ -201,7 +202,12 @@ struct EventPrepPlan {
                 requirement.isStocked = false
                 return requirement
             }
-            return requirements.first.map { ShoppingItem(id: product, name: $0.name, requirements: requirements) }
+            return requirements.first.map { first in
+                let displayName = first.missingNames.first { IngredientNormalizer.normalize($0) == product }
+                    ?? first.missingNames.first
+                    ?? first.name
+                return ShoppingItem(id: product, name: displayName, requirements: requirements)
+            }
         }.sorted { ($0.name, $0.id) < ($1.name, $1.id) }
     }
 
@@ -234,13 +240,14 @@ struct EventPrepPlan {
                 var entry = entries[key] ?? Ingredient(id: key, name: line.name, measure: Measure(amount: 0, unit: measure.unit),
                                                        recipes: [], isStocked: isStocked,
                                                        missingMeasure: Measure(amount: 0, unit: measure.unit),
-                                                       missingRecipes: [], hasMissingRequirements: false)
+                                                       missingRecipes: [], missingNames: [], hasMissingRequirements: false)
                 entry.isStocked = entry.isStocked && isStocked
                 entry.measure.amount += measure.amount
                 if !isStocked {
                     entry.hasMissingRequirements = true
                     entry.missingMeasure.amount += measure.amount
                     if !entry.missingRecipes.contains(batch.recipe.name) { entry.missingRecipes.append(batch.recipe.name) }
+                    if !entry.missingNames.contains(line.name) { entry.missingNames.append(line.name) }
                 }
                 if !entry.recipes.contains(batch.recipe.name) { entry.recipes.append(batch.recipe.name) }
                 entries[key] = entry
@@ -267,7 +274,7 @@ struct EventPrepPlan {
         }
         let shoppingRows = shopping.flatMap { item in
             item.requirements.map { requirement in
-                ["Shopping", requirement.recipes.joined(separator: ", "), "", requirement.name,
+                ["Shopping", requirement.recipes.joined(separator: ", "), "", item.name,
                  BatchPrepSheet.prepMeasure(requirement.measure.converted(to: unit)),
                  "Not in My Bar", requirement.isOptional ? "Yes" : "No", ""]
             }
