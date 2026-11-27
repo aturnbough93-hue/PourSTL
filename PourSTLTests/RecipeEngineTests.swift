@@ -576,11 +576,36 @@ final class BatchPlannerTests: XCTestCase {
         let plan = try XCTUnwrap(BatchPlanner.plan(for: french75, servings: 10))
         XCTAssertEqual(plan.measuredMilliliters, 20 * Measure.millilitersPerOunce, accuracy: 0.0001)
         XCTAssertEqual(plan.waterMilliliters ?? 0, 5 * Measure.millilitersPerOunce, accuracy: 0.0001)
-        XCTAssertTrue(plan.hasServiceIngredients)
+        XCTAssertTrue(plan.hasServiceToppers)
+        XCTAssertTrue(plan.hasOptionalIngredients)
         XCTAssertFalse(plan.excludesNonVolumeLines)
         let csv = BatchPrepSheet.csv(for: french75, servings: 10, unit: .oz)
         XCTAssertTrue(csv.contains(#""Champagne","20 oz","No","Add at service · to top""#))
         XCTAssertTrue(csv.contains(#""Pour per serving","2.5 oz""#))
+    }
+
+    func testOptionalIngredientFollowsRecipeInsteadOfTopperInstructions() throws {
+        let sour = recipe(method: "Shaken", lines: [("Bourbon", 2, "oz")])
+        sour.ingredients.append(IngredientLine(name: "Egg White", amount: 1, unit: "each", isOptional: true, position: 1))
+        let plan = try XCTUnwrap(BatchPlanner.plan(for: sour, servings: 4))
+        XCTAssertTrue(plan.hasOptionalIngredients)
+        XCTAssertFalse(plan.hasServiceToppers)
+        let csv = BatchPrepSheet.csv(for: sour, servings: 4, unit: .oz)
+        XCTAssertTrue(csv.contains(#""Egg White","4","Yes","Follow the recipe if using""#))
+        XCTAssertFalse(csv.contains("Add toppers to each glass"))
+    }
+
+    func testBatchCSVDoesNotDuplicateGarnishAliasesAndKeepsCompoundGuidance() {
+        let manhattan = recipe(method: "Stirred", lines: [("Rye Whiskey", 2, "oz")])
+        manhattan.garnish = "Cocktail cherry"
+        manhattan.ingredients.append(IngredientLine(name: "Maraschino Cherry", amount: 1, unit: "each", isOptional: true, position: 1))
+        let single = BatchPrepSheet.csv(for: manhattan, servings: 2, unit: .oz)
+        XCTAssertTrue(single.contains(#""Maraschino Cherry","2","Yes""#))
+        XCTAssertFalse(single.contains("Cocktail cherry"))
+
+        manhattan.garnish = "Cocktail cherry and orange twist"
+        let compound = BatchPrepSheet.csv(for: manhattan, servings: 2, unit: .oz)
+        XCTAssertTrue(compound.contains(#""Cocktail cherry and orange twist","","Yes","Garnish at service""#))
     }
 }
 

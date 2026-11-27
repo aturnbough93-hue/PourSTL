@@ -79,6 +79,7 @@ private struct RecipeServiceTools: View {
     }
 
     private func applySuggestedPrice(_ price: Decimal) {
+        guard entitlement.isPro, recipeCosting.isComplete else { return }
         recipe.menuPrice = NSDecimalNumber(decimal: price).doubleValue
         do {
             try modelContext.save()
@@ -124,7 +125,10 @@ private struct RecipeServiceTools: View {
         var text = "The prep sheet includes scaled ingredient measures, optional ingredients, and ingredient notes."
         if let plan = batchPlan {
             if let profile = plan.profile { text += " \(profile.assumption)" }
-            if plan.hasServiceIngredients { text += " Add service ingredients to each glass." }
+            if plan.hasServiceToppers { text += " Add toppers to each glass at service." }
+            if plan.hasOptionalIngredients {
+                text += " Optional ingredients are excluded from the volume. Follow the recipe if using them."
+            }
             text += " The pour is rounded down, so a little may be left over."
             if plan.excludesNonVolumeLines {
                 text += " Lines measured in parts or countables aren’t included in volume totals."
@@ -193,8 +197,11 @@ private struct RecipeServiceTools: View {
                 }
             }
             if let suggested = suggestedPrice {
-                LabeledContent("Suggested menu price", value: money(suggested))
-                if abs((recipe.menuPrice ?? 0) - NSDecimalNumber(decimal: suggested).doubleValue) >= 0.005 {
+                LabeledContent(isComplete ? "Suggested menu price" : "Menu price estimate", value: money(suggested))
+                if !isComplete {
+                    Text("Price every listed ingredient to apply this estimate, or enter a menu price manually.")
+                        .foregroundStyle(.secondary)
+                } else if abs((recipe.menuPrice ?? 0) - NSDecimalNumber(decimal: suggested).doubleValue) >= 0.005 {
                     Button("Use suggested price") { applySuggestedPrice(suggested) }
                         .accessibilityIdentifier("use-suggested-price")
                 }

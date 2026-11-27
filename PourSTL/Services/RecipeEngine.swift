@@ -166,8 +166,8 @@ struct BatchPlan: Equatable {
     /// True when some lines (parts, countables, rinses) are not
     /// volume-measurable and are excluded from the totals.
     let excludesNonVolumeLines: Bool
-    /// Toppers and optional ingredients are prepared separately from the batch.
-    let hasServiceIngredients: Bool
+    let hasServiceToppers: Bool
+    let hasOptionalIngredients: Bool
 
     /// Water to add for dilution. Zero for built/blended/hot methods; nil when
     /// the method is unrecognized and no dilution assumption applies.
@@ -186,10 +186,15 @@ enum BatchPlanner {
         let factor = Double(servings)
         var milliliters = 0.0
         var excludesNonVolume = false
-        var hasServiceIngredients = false
+        var hasServiceToppers = false
+        var hasOptionalIngredients = false
         for line in recipe.sortedIngredients {
-            if line.isOptional || isServiceTopper(line) {
-                hasServiceIngredients = true
+            if isServiceTopper(line) {
+                hasServiceToppers = true
+                continue
+            }
+            if line.isOptional {
+                hasOptionalIngredients = true
                 continue
             }
             let measure = line.measure
@@ -207,7 +212,8 @@ enum BatchPlanner {
             measuredMilliliters: milliliters,
             profile: profile,
             excludesNonVolumeLines: excludesNonVolume,
-            hasServiceIngredients: hasServiceIngredients
+            hasServiceToppers: hasServiceToppers,
+            hasOptionalIngredients: hasOptionalIngredients
         )
     }
 
@@ -361,7 +367,7 @@ enum BatchPrepSheet {
         var rows = ordered.map { line in
             let note = BatchPlanner.isServiceTopper(line)
                 ? ["Add at service", line.note].compactMap { $0 }.joined(separator: " · ")
-                : line.note ?? ""
+                : line.note ?? (line.isOptional ? "Follow the recipe if using" : "")
             return [
                 recipe.name, String(servings), line.name,
                 prepMeasure(line.measure.scaled(by: Double(servings)).converted(to: unit)),
@@ -369,7 +375,7 @@ enum BatchPrepSheet {
             ]
         }
         if let garnish = recipe.garnish?.trimmingCharacters(in: .whitespacesAndNewlines), !garnish.isEmpty,
-           !sorted.contains(where: { $0.isOptional && IngredientNormalizer.normalize($0.name) == IngredientNormalizer.normalize(garnish) }) {
+           !sorted.contains(where: { $0.isOptional && $0.canonicalName == IngredientNormalizer.canonicalName(for: garnish) }) {
             rows.append([recipe.name, String(servings), garnish, "", "Yes", "Garnish at service"])
         }
         if let plan = BatchPlanner.plan(for: recipe, servings: servings) {
@@ -390,7 +396,8 @@ enum BatchPrepSheet {
             ))
         }
         var yieldNote = "Measured batch ingredients and any dilution water."
-        if plan.hasServiceIngredients { yieldNote += " Add toppers and optional ingredients separately." }
+        if plan.hasServiceToppers { yieldNote += " Add toppers to each glass at service." }
+        if plan.hasOptionalIngredients { yieldNote += " Optional ingredients are excluded from the volume. Follow the recipe if using them." }
         if plan.excludesNonVolumeLines { yieldNote += " Parts and other unmeasured lines are not included in volume totals." }
         rows.append(volumeRow(
             "Total batch volume", BatchPlanner.batchMeasure(milliliters: plan.totalMilliliters, unit: unit, locale: locale), yieldNote
