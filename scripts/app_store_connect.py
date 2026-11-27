@@ -167,9 +167,13 @@ def list_beta_groups(client: AppStoreConnectClient, app_id: str) -> list:
 
 def find_or_create_beta_group(client: AppStoreConnectClient, app_id: str, name: str, internal: bool, create: bool) -> dict:
     groups = list_beta_groups(client, app_id)
-    for group in groups:
-        if (group.get("attributes") or {}).get("name") == name:
+    named_groups = [group for group in groups if (group.get("attributes") or {}).get("name") == name]
+    for group in named_groups:
+        if (group.get("attributes") or {}).get("isInternalGroup") is internal:
             return group
+    if named_groups:
+        group_type = "internal" if internal else "external"
+        raise RuntimeError(f"No {group_type} TestFlight beta group named {name!r}. A group of another type uses that name.")
     if not create:
         names = ", ".join(sorted((group.get("attributes") or {}).get("name", "") for group in groups)) or "none"
         raise RuntimeError(f"No TestFlight beta group named {name!r}. Existing groups: {names}")

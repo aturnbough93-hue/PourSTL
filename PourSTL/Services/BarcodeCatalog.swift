@@ -443,7 +443,7 @@ extension BarcodeStockSnapshot {
         self.init(
             name: item.name,
             barcode: item.barcode,
-            isInStock: item.isInStock,
+            isInStock: item.isAvailable,
             isLowStock: item.isLowStock,
             rowID: item.barcodeRowID
         )
@@ -472,7 +472,7 @@ struct BarcodeRowMutation: Equatable {
 
     /// Stock and barcode only. Name, category, canonical override, and low stock stay as they are.
     func applyStockAndBarcode(to item: InventoryItem) {
-        item.isInStock = isInStock
+        item.setAvailability(isInStock)
         item.barcode = barcode
     }
 }

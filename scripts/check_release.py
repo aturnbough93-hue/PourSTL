@@ -315,6 +315,16 @@ class AppStoreConnectHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "not higher"):
             app_store_connect.resolve_build_number(FakeClient(), "bundle", "7")
 
+    def test_internal_beta_group_requires_the_correct_group_type(self):
+        external = {"id": "external", "attributes": {"name": "Beta", "isInternalGroup": False}}
+        internal = {"id": "internal", "attributes": {"name": "Beta", "isInternalGroup": True}}
+        with patch.object(app_store_connect, "list_beta_groups", return_value=[external, internal]):
+            group = app_store_connect.find_or_create_beta_group(None, "app", "Beta", internal=True, create=True)
+            self.assertEqual(group, internal)
+        with patch.object(app_store_connect, "list_beta_groups", return_value=[external]):
+            with self.assertRaisesRegex(RuntimeError, "No internal TestFlight beta group"):
+                app_store_connect.find_or_create_beta_group(None, "app", "Beta", internal=True, create=True)
+
 
 class YamlFieldTests(unittest.TestCase):
     def test_inline_comments_after_scalars(self):

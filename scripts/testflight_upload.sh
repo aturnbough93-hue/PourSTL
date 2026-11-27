@@ -24,6 +24,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "$build_number" && ! "$build_number" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Build number must be a positive integer, got: $build_number" >&2
+  exit 2
+fi
 for variable in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_TEAM_ID; do
   if [[ -z "${!variable:-}" ]]; then
     echo "Missing required environment variable: $variable" >&2
@@ -34,6 +38,12 @@ if ! command -v xcodebuild >/dev/null 2>&1; then
   echo "xcodebuild is required; run this on macOS with Xcode installed." >&2
   exit 1
 fi
+if ! sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)" || ! [[ "$sdk_version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || (( ${sdk_version%%.*} < 26 )); then
+  echo "TestFlight requires an iOS 26 or later SDK. Select Xcode 26 or later." >&2
+  exit 1
+fi
+xcodebuild -version
+echo "Using iOS SDK $sdk_version"
 
 workdir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/pourstl-testflight.XXXXXX")"
 chmod 700 "$workdir"
@@ -51,16 +61,9 @@ key_path="$key_dir/AuthKey_${ASC_KEY_ID}.p8"
 export ASC_KEY_DIR="$key_dir"
 export ASC_REWRITE_KEY=1
 
-# The first API helper call materializes AuthKey with mode 0600. xcodebuild uses
-# the same file for signing/provisioning and for the upload export.
-python3 scripts/app_store_connect.py check-app --bundle-id bar.pourstl.app
-if [[ -z "$build_number" ]]; then
-  build_number="$(python3 scripts/app_store_connect.py resolve-build-number --bundle-id bar.pourstl.app)"
-fi
-if ! [[ "$build_number" =~ ^[1-9][0-9]*$ ]]; then
-  echo "Build number must be a positive integer, got: $build_number" >&2
-  exit 1
-fi
+# Resolving the number checks the app record and materializes AuthKey. Xcode
+# uses the same key file for signing, provisioning, and the upload export.
+build_number="$(python3 scripts/app_store_connect.py resolve-build-number --bundle-id bar.pourstl.app --build-number "$build_number")"
 echo "Using TestFlight build number $build_number"
 
 export_options="$workdir/ExportOptions.plist"
@@ -75,6 +78,7 @@ plistlib.dump({
     "teamID": team_id,
     "signingStyle": "automatic",
     "uploadSymbols": True,
+    "testFlightInternalTestingOnly": True,
     "manageAppVersionAndBuildNumber": False,
 }, open(path, "wb"))
 PY

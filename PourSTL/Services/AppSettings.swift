@@ -42,6 +42,11 @@ final class AppSettings {
         }
     }
 
+    /// Pro costing: the pour-cost percentage the bar aims for when pricing drinks.
+    var targetPourCostPercent: Double {
+        didSet { defaults.set(targetPourCostPercent, forKey: Keys.targetPourCost) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.appearance = AppAppearance(rawValue: defaults.string(forKey: Keys.appearance) ?? "") ?? .system
@@ -49,6 +54,9 @@ final class AppSettings {
         self.hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
         self.ingredientPrices = defaults.data(forKey: Keys.ingredientPrices)
             .flatMap { try? JSONDecoder().decode([String: IngredientPackagePrice].self, from: $0) } ?? [:]
+        let storedTarget = defaults.double(forKey: Keys.targetPourCost)
+        self.targetPourCostPercent = MenuPricing.targetPercentRange.contains(storedTarget)
+            ? storedTarget : MenuPricing.defaultTargetPercent
     }
 
     private enum Keys {
@@ -56,5 +64,6 @@ final class AppSettings {
         static let unit = "pour.unit"
         static let onboarding = "pour.onboardingDone"
         static let ingredientPrices = "pour.ingredientPrices"
+        static let targetPourCost = "pour.targetPourCostPercent"
     }
 }

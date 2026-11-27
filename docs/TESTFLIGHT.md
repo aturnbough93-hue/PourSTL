@@ -10,9 +10,9 @@ The first launch target is **internal TestFlight** from `main` after all release
 
 1. verifies the `bar.pourstl.app` app record exists;
 2. materializes the App Store Connect `.p8` key in a private temporary directory;
-3. resolves the next integer build number as latest App Store Connect build + 1 unless one is supplied;
+3. uses the latest App Store Connect build number + 1, or checks that a supplied number is higher;
 4. archives the Release app with `CURRENT_PROJECT_VERSION` overridden for that archive only, using an ad-hoc intermediate signature so no registered device is needed;
-5. re-signs for App Store distribution with cloud-managed automatic signing and exports directly to App Store Connect using the API key;
+5. re-signs for App Store distribution with cloud-managed automatic signing and uploads a TestFlight Internal Only build using the API key;
 6. polls until the uploaded build is `VALID`;
 7. finds the internal beta group (default `App Store Connect Users`), creates a missing custom group when necessary, and assigns the build unless the group already receives all builds.
 
@@ -53,11 +53,15 @@ After the secrets and manual Apple records exist:
 4. Use beta group `App Store Connect Users` unless Andrew chooses another internal group.
 5. Wait for the workflow to finish. The final log line reports the App Store Connect build number and beta-group assignment.
 
-The workflow is manual-only and has `contents: read`; it does not run on every pull request and does not expose secrets to forked code.
+The upload job runs only from `main` on manual dispatch with `contents: read`.
+It selects Xcode 26.3 on the `macos-15` runner to meet Apple's iOS SDK
+requirements. TestFlight Internal Only builds can be distributed to internal
+tester groups. See Apple's [upload requirements](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds)
+and [internal tester setup](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/).
 
 ## Upload from a trusted macOS session
 
-Use this only on a trusted Mac with Xcode configured:
+Use a trusted Mac with Xcode 26 or later selected and the iOS SDK installed:
 
 ```bash
 export ASC_KEY_ID='...'
