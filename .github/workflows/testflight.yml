@@ -1,0 +1,46 @@
+name: TestFlight upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: Integer build number; leave blank to use the latest App Store Connect build + 1
+        required: false
+        type: string
+      beta_group:
+        description: Internal TestFlight beta group
+        required: true
+        default: App Store Connect Users
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: Archive and upload to TestFlight
+    runs-on: macos-15
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Archive, upload, and assign beta group
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          INPUT_BUILD_NUMBER: ${{ inputs.build_number }}
+          INPUT_BETA_GROUP: ${{ inputs.beta_group }}
+        run: |
+          args=(--beta-group "$INPUT_BETA_GROUP")
+          if [[ -n "$INPUT_BUILD_NUMBER" ]]; then
+            args+=(--build-number "$INPUT_BUILD_NUMBER")
+          fi
+          bash scripts/testflight_upload.sh "${args[@]}"

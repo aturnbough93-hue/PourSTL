@@ -2,13 +2,17 @@
 """Dependency-free checks for the release metadata and tracked source."""
 
 import argparse
+import base64
 import json
 from pathlib import Path
 import plistlib
 import re
 import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
+
+import app_store_connect
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -185,6 +189,45 @@ class ReleaseChecks(unittest.TestCase):
                 self.assertIn(f'URL(string: "https://pourstl.com/{page}")', settings)
                 self.assertTrue((ROOT / "website" / f"{page}.html").is_file())
 
+    def test_app_store_metadata_draft(self):
+        metadata = ROOT / "appstore/metadata/en-US"
+        required = {
+            "name.txt": 30,
+            "subtitle.txt": 30,
+            "keywords.txt": 100,
+            "description.txt": 4000,
+            "release_notes.txt": 4000,
+        }
+        for filename, limit in required.items():
+            with self.subTest(metadata=filename):
+                text = (metadata / filename).read_text().strip()
+                self.assertTrue(text, f"{filename} is empty")
+                self.assertLessEqual(len(text), limit, f"{filename} exceeds App Store length limit")
+        self.assertEqual((metadata / "support_url.txt").read_text().strip(), "https://pourstl.com/support")
+        self.assertEqual((metadata / "privacy_url.txt").read_text().strip(), "https://pourstl.com/privacy")
+        self.assertEqual((metadata / "marketing_url.txt").read_text().strip(), "https://pourstl.com/")
+        for filename in ("beta_description.txt", "what_to_test.txt"):
+            with self.subTest(testflight=filename):
+                text = (ROOT / "appstore/testflight" / filename).read_text().strip()
+                self.assertTrue(text, f"{filename} is empty")
+                self.assertLessEqual(len(text), 4000)
+
+    def test_testflight_upload_automation(self):
+        workflow = (ROOT / ".github/workflows/testflight.yml").read_text()
+        script = (ROOT / "scripts/testflight_upload.sh").read_text()
+        self.assertIn("workflow_dispatch", workflow)
+        self.assertIn("contents: read", workflow)
+        self.assertIn("runs-on: macos-15", workflow)
+        for secret in ("ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_PRIVATE_KEY", "APPLE_TEAM_ID"):
+            with self.subTest(secret=secret):
+                self.assertIn(f"secrets.{secret}", workflow)
+        self.assertIn("AD_HOC_CODE_SIGNING_ALLOWED=YES", script)
+        self.assertIn('"method": "app-store-connect"', script)
+        self.assertIn('"destination": "upload"', script)
+        self.assertIn("wait-and-assign", script)
+        gitignore = (ROOT / ".gitignore").read_text()
+        self.assertIn("AuthKey_*.p8", gitignore)
+
     def test_no_obvious_secrets_in_tracked_files(self):
         hits = []
         for name in set(git("ls-files", "-z").decode(errors="surrogateescape").split("\0")) - {""}:
@@ -216,6 +259,61 @@ class ReleaseBuildNumberTests(unittest.TestCase):
                 check.test_release_build_number_increased()
             check.settings = {"CURRENT_PROJECT_VERSION": "6"}
             check.test_release_build_number_increased()
+
+
+class AppStoreConnectHelperTests(unittest.TestCase):
+    def test_der_signature_becomes_raw_jws_signature(self):
+        r = b"\x00" + b"\x01" * 32
+        s = b"\x02" * 32
+        integers = b"\x02" + bytes([len(r)]) + r + b"\x02" + bytes([len(s)]) + s
+        der = b"\x30" + bytes([len(integers)]) + integers
+        self.assertEqual(app_store_connect.der_to_raw_ecdsa(der), b"\x01" * 32 + b"\x02" * 32)
+
+    def test_generated_token_is_a_compact_es256_jws(self):
+        with tempfile.TemporaryDirectory() as directory:
+            key = Path(directory) / "AuthKey_TESTKEY123.p8"
+            try:
+                subprocess.run(
+                    ["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", str(key)],
+                    check=True,
+                    capture_output=True,
+                    timeout=10,
+                )
+            except (FileNotFoundError, subprocess.SubprocessError) as error:
+                self.skipTest(f"openssl is unavailable for a local signing smoke test: {error}")
+            client = app_store_connect.AppStoreConnectClient("TESTKEY123", "issuer-id", str(key))
+            header, payload, signature = client.token().split(".")
+            self.assertEqual(json.loads(base64.urlsafe_b64decode(header + "==")), {
+                "alg": "ES256",
+                "kid": "TESTKEY123",
+                "typ": "JWT",
+            })
+            claims = json.loads(base64.urlsafe_b64decode(payload + "=="))
+            self.assertEqual(claims["iss"], "issuer-id")
+            self.assertEqual(claims["aud"], "appstoreconnect-v1")
+            self.assertLessEqual(claims["exp"] - claims["iat"], 1200)
+            self.assertEqual(len(base64.urlsafe_b64decode(signature + "==")), 64)
+
+    def test_build_number_resolution_uses_numeric_app_store_versions(self):
+        builds = [
+            {"attributes": {"version": "3"}},
+            {"attributes": {"version": "beta"}},
+            {"attributes": {"version": "7"}},
+        ]
+        self.assertEqual(app_store_connect.numeric_build_versions(builds), [3, 7])
+
+        class FakeClient:
+            def request(self, method, path, body=None, expected=(200,)):
+                if path.startswith("/v1/apps"):
+                    return {"data": [{"id": "app-id"}]}
+                if path.startswith("/v1/builds"):
+                    return {"data": builds}
+                raise AssertionError(path)
+
+        self.assertEqual(app_store_connect.resolve_build_number(FakeClient(), "bundle", None), 8)
+        self.assertEqual(app_store_connect.resolve_build_number(FakeClient(), "bundle", "9"), 9)
+        with self.assertRaisesRegex(RuntimeError, "not higher"):
+            app_store_connect.resolve_build_number(FakeClient(), "bundle", "7")
 
 
 class YamlFieldTests(unittest.TestCase):
