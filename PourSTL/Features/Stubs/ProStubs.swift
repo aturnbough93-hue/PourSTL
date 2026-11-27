@@ -93,7 +93,7 @@ struct ProUpsellView: View {
                 .font(.pourTitle)
                 .foregroundStyle(PourColor.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Price your drinks and plan bigger batches for service and events.")
+            Text("Price your drinks, batch with real dilution math, value your inventory, and buy the bottle that unlocks the most drinks.")
                 .font(.body)
                 .foregroundStyle(PourColor.textSecondary)
                 .multilineTextAlignment(.center)

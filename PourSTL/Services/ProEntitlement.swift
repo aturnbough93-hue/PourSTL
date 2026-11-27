@@ -44,6 +44,8 @@ enum PourCapability: String, CaseIterable, Equatable {
     case recipeCosting
     case largeBatches
     case batchExport
+    case inventoryOperations
+    case shoppingInsights
 }
 
 struct ProFeature: Identifiable, Equatable {
@@ -59,13 +61,17 @@ enum ProGate {
     ]
 
     static let paid: Set<PourCapability> = [
-        .recipeCosting, .largeBatches, .batchExport,
+        .recipeCosting, .largeBatches, .batchExport, .inventoryOperations, .shoppingInsights,
     ]
 
     static let features: [ProFeature] = [
         ProFeature(id: "costing", symbol: "chart.bar", text: "Estimate ingredient cost per drink and per batch"),
+        ProFeature(id: "pricing", symbol: "dollarsign.circle", text: "Pour cost, profit per drink, and suggested menu prices"),
         ProFeature(id: "batches", symbol: "square.resize", text: "Plan batches of up to 200 servings"),
-        ProFeature(id: "export", symbol: "square.and.arrow.up", text: "Export ingredient quantities as a CSV prep sheet"),
+        ProFeature(id: "dilution", symbol: "drop", text: "Batch dilution water and ready-to-pour yield, with stated assumptions"),
+        ProFeature(id: "export", symbol: "square.and.arrow.up", text: "Export prep sheets as CSV, garnishes separated"),
+        ProFeature(id: "inventory", symbol: "shippingbox", text: "Bottle costs, stock thresholds, and bar value at cost"),
+        ProFeature(id: "shopping", symbol: "cart", text: "See which single bottle unlocks the most drinks"),
     ]
 
     static func isLocked(_ capability: PourCapability, isPro: Bool) -> Bool {
