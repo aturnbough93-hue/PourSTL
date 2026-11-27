@@ -120,7 +120,7 @@ final class ProEntitlementLogicTests: XCTestCase {
         for capability in ProGate.freeOffline {
             XCTAssertFalse(ProGate.isLocked(capability, isPro: false), capability.rawValue)
         }
-        XCTAssertEqual(ProGate.paid, [.recipeCosting, .largeBatches, .batchExport])
+        XCTAssertEqual(ProGate.paid, [.recipeCosting, .largeBatches, .batchExport, .inventoryOperations, .shoppingInsights])
         for capability in ProGate.paid {
             XCTAssertTrue(ProGate.isLocked(capability, isPro: false), capability.rawValue)
             XCTAssertFalse(ProGate.isLocked(capability, isPro: true), capability.rawValue)
@@ -192,6 +192,53 @@ final class ProEntitlementLogicTests: XCTestCase {
         XCTAssertTrue(csv.contains("\"Event, \"\"special\"\"\",\"100\",\"'=test\",\"150 oz\",\"Yes\",\"stir, chill\""))
         XCTAssertTrue(csv.hasSuffix("\r\n"))
         XCTAssertTrue(BatchPrepSheet.csv(for: recipe, servings: 6, unit: .oz).contains("\"Small pour\",\"0.6 oz\""))
+    }
+
+    func testBatchPrepCSVAddsDilutionAndYieldAndGroupsGarnishLast() {
+        let recipe = Recipe(name: "Negroni", method: "Stirred")
+        recipe.ingredients = [
+            IngredientLine(name: "Orange twist", amount: 1, unit: "twist", isOptional: true, position: 3),
+            IngredientLine(name: "Gin", amount: 1, unit: "oz", position: 0),
+            IngredientLine(name: "Campari", amount: 1, unit: "oz", position: 1),
+            IngredientLine(name: "Sweet Vermouth", amount: 1, unit: "oz", position: 2),
+        ]
+        let csv = BatchPrepSheet.csv(for: recipe, servings: 10, unit: .oz)
+        let lines = csv.split(separator: "\r\n", omittingEmptySubsequences: true)
+        // Header, four ingredient rows, water, total volume, pour per serving.
+        XCTAssertEqual(lines.count, 8)
+        // Required liquids first in build order; the optional garnish is last.
+        XCTAssertTrue(lines[1].contains("\"Gin\",\"10 oz\",\"No\""))
+        XCTAssertTrue(lines[2].contains("\"Campari\",\"10 oz\""))
+        XCTAssertTrue(lines[3].contains("\"Sweet Vermouth\",\"10 oz\""))
+        XCTAssertTrue(lines[4].contains("\"Orange twist\",\"10 twists\",\"Yes\""))
+        // 30 oz measured at the stirred 20% assumption is 6 oz of water.
+        XCTAssertTrue(lines[5].contains("\"Water (dilution)\",\"6 oz\""))
+        XCTAssertTrue(lines[5].contains("20%"))
+        XCTAssertTrue(lines[6].contains("\"Total batch volume\",\"36 oz\""))
+        XCTAssertTrue(lines[7].contains("\"Pour per serving\",\"3.5 oz\""))
+    }
+
+    func testBatchPrepCSVOmitsWaterForBuiltDrinks() {
+        let recipe = Recipe(name: "Mule", method: "Built")
+        recipe.ingredients = [
+            IngredientLine(name: "Vodka", amount: 2, unit: "oz", position: 0),
+            IngredientLine(name: "Ginger Beer", amount: 0, unit: "top up", position: 1),
+        ]
+        let csv = BatchPrepSheet.csv(for: recipe, servings: 1, unit: .oz)
+        XCTAssertFalse(csv.contains("Water (dilution)"))
+        XCTAssertTrue(csv.contains("Total batch volume"))
+        XCTAssertTrue(csv.contains("Pour per serving"))
+    }
+
+    func testBatchPrepCSVNotesExcludedNonVolumeLines() {
+        let recipe = Recipe(name: "Parts punch", method: "Shaken")
+        recipe.ingredients = [
+            IngredientLine(name: "Gin", amount: 2, unit: "oz", position: 0),
+            IngredientLine(name: "Simple Syrup", amount: 1, unit: "part", position: 1),
+        ]
+        let csv = BatchPrepSheet.csv(for: recipe, servings: 5, unit: .oz)
+        XCTAssertTrue(csv.contains("not included in volume totals"))
+        XCTAssertTrue(csv.contains("Water (dilution)"))
     }
 
     func testPurchaseResultsMapToVisibleStates() {
