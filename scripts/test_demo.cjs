@@ -385,6 +385,7 @@ test('bar assistant parses intents accurately including scaling, substitutions, 
   assert.deepEqual(Assistant.parseIntent("What's in my bar?"), { type: 'inventory', mode: 'stocked' });
   assert.deepEqual(Assistant.parseIntent("What's out of stock?"), { type: 'inventory', mode: 'outOfStock' });
   assert.deepEqual(Assistant.parseIntent('Do you upload my bar to the cloud?'), { type: 'privacy' });
+  assert.deepEqual(Assistant.parseIntent('Is my bar stored on the cloud?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Do you use cloud storage?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Are my questions saved?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Scale the Cloud Nine for 4'), { type: 'scale', recipeQuery: 'cloud nine', servings: 4 });
@@ -500,6 +501,9 @@ test('bar assistant answers from My Bar, custom recipes, stand-ins, and scaling 
 
   const privacyReply = Assistant.answer('Do you send my bar to OpenAI?', state);
   assert.match(privacyReply.text, /does not use an AI model/);
+
+  const cloudPrivacyReply = Assistant.answer('Is my bar stored on the cloud?', state);
+  assert.match(cloudPrivacyReply.text, /does not use an AI model or send questions anywhere/);
 
   const helpReply = Assistant.answer('How does this work?', state);
   assert.match(helpReply.text, /cleared when you close the dialog/);
