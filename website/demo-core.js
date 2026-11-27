@@ -8,7 +8,9 @@
 })(globalThis, function (catalog) {
   'use strict';
 
+  const legacyIngredientIDs = new Map([['rye', 'rye-whiskey']]);
   const ingredientAliases = new Map([
+    ...legacyIngredientIDs,
     ['london-dry-gin', 'gin'], ['blanco-tequila', 'tequila'],
     ['sugar-cube', 'sugar-cubes'], ['mint-leaves', 'mint'],
     ['angostura', 'angostura-bitters'], ['peychauds', 'peychauds-bitters'],
@@ -55,9 +57,10 @@
     };
   }
 
-  function cleanIDs(value, allowed) {
+  function cleanIDs(value, allowed, legacyIDs) {
     if (!Array.isArray(value)) return [];
-    return [...new Set(value.filter(id => typeof id === 'string' && allowed.has(id)))];
+    return [...new Set(value.filter(id => typeof id === 'string')
+      .map(id => legacyIDs?.get(id) ?? id).filter(id => allowed.has(id)))];
   }
 
   function boundedServings(value) {
@@ -115,8 +118,8 @@
     }
     const allNames = new Map([...catalogNames, ...addedNames]);
     const allRecipes = new Set([...recipeIDs, ...customRecipes.keys()]);
-    const stocked = cleanIDs(raw.inventory, allNames);
-    const shopping = cleanIDs(raw.shopping, allNames);
+    const stocked = cleanIDs(raw.inventory, allNames, legacyIngredientIDs);
+    const shopping = cleanIDs(raw.shopping, allNames, legacyIngredientIDs);
     return {
       version: 2, inventory: stocked, shopping: raw.version === 1 ? shopping.filter(id => !stocked.includes(id)) : shopping,
       servings: boundedServings(raw.servings), unit: raw.unit === 'ml' ? 'ml' : 'oz',
