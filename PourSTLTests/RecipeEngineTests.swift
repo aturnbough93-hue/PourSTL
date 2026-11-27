@@ -186,6 +186,25 @@ final class RecipeEngineTests: XCTestCase {
         }
     }
 
+    func testEventShoppingUsesCanonicalProductAcrossMissingAliasUnits() throws {
+        let first = recipe(name: "First", lines: [("Ango", 1, "dash", false)])
+        let second = recipe(name: "Second", lines: [("Angostura bitters", 1, "drop", false)])
+        for recipes in [[first, second], [second, first]] {
+            let plan = EventPrepPlan(recipes: recipes, guests: 2, drinksPerGuest: 1, inventory: [])
+            let item = try XCTUnwrap(plan.shopping.first)
+            XCTAssertEqual(plan.shopping.count, 1)
+            XCTAssertEqual(item.name, "Angostura bitters")
+            XCTAssertTrue(plan.csv(unit: .oz).contains(#""Shopping","First","","Angostura bitters","1 dash""#))
+            XCTAssertTrue(plan.csv(unit: .oz).contains(#""Shopping","Second","","Angostura bitters","1 drop""#))
+        }
+    }
+
+    func testEventShoppingFallbackPreservesAliasPunctuation() {
+        let drink = recipe(name: "First", lines: [("Peychaud’s", 1, "dash", false)])
+        let plan = EventPrepPlan(recipes: [drink], guests: 1, drinksPerGuest: 1, inventory: [])
+        XCTAssertEqual(plan.shopping.first?.name, "Peychaud’s")
+    }
+
     func testEventPlanDoesNotMixPartsFromDifferentRecipes() {
         let recipes = ["First", "Second"].map { recipe(name: $0, lines: [("Gin", 1, "part", false)]) }
         let plan = EventPrepPlan(recipes: recipes, guests: 3, drinksPerGuest: 2, inventory: [])
