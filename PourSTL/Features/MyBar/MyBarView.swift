@@ -127,29 +127,39 @@ struct MyBarView: View {
     }
 
     private var filterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(StockFilter.allCases, id: \.self) { option in
-                    let selected = filter == option
-                    Button {
-                        filter = option
-                        Haptics.selection()
-                    } label: {
-                        Text(option.rawValue)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(selected ? .black : PourColor.textSecondary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(selected ? PourColor.accentFill : PourColor.surface, in: Capsule())
-                    }
-                    .accessibilityLabel("\(option.rawValue), \(selected ? "selected" : "not selected")")
-                    .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                StockFilterFlow(spacing: 8) { stockFilterButtons }
+                    .padding(.horizontal)
+                    .padding(.vertical, 6)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) { stockFilterButtons }
+                        .padding(.horizontal)
+                        .padding(.vertical, 6)
                 }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 6)
         }
         .background(PourColor.background)
+    }
+
+    private var stockFilterButtons: some View {
+        ForEach(StockFilter.allCases, id: \.self) { option in
+            let selected = filter == option
+            Button {
+                filter = option
+                Haptics.selection()
+            } label: {
+                Text(option.rawValue)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(selected ? .black : PourColor.textSecondary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(selected ? PourColor.accentFill : PourColor.surface, in: Capsule())
+            }
+            .accessibilityLabel("\(option.rawValue), \(selected ? "selected" : "not selected")")
+            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        }
     }
 
     static func rowSubtitle(for item: InventoryItem) -> String? {
@@ -231,6 +241,44 @@ struct MyBarView: View {
         catch {
             modelContext.rollback()
             showSaveError = true
+        }
+    }
+}
+
+private struct StockFilterFlow: Layout {
+    let spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        let frames = chipFrames(in: width, subviews: subviews)
+        return CGSize(width: width.isFinite ? width : (frames.map(\.maxX).max() ?? 0),
+                      height: frames.map(\.maxY).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for (subview, frame) in zip(subviews, chipFrames(in: bounds.width, subviews: subviews)) {
+            subview.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                          anchor: .topLeading, proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func chipFrames(in width: CGFloat, subviews: Subviews) -> [CGRect] {
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        return subviews.map { subview in
+            let idealSize = subview.sizeThatFits(.unspecified)
+            let size = idealSize.width <= width ? idealSize
+                : subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
+            if x > 0 && x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            let frame = CGRect(origin: CGPoint(x: x, y: y), size: size)
+            x = frame.maxX + spacing
+            rowHeight = max(rowHeight, size.height)
+            return frame
         }
     }
 }
