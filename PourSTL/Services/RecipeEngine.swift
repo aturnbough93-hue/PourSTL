@@ -265,8 +265,15 @@ struct EventPrepPlan {
              BatchPrepSheet.prepMeasure(entry.measure.converted(to: unit)),
              entry.isStocked ? "In My Bar" : "Not in My Bar", entry.isOptional ? "Yes" : "No", ""]
         }
+        let shoppingRows = shopping.flatMap { item in
+            item.requirements.map { requirement in
+                ["Shopping", requirement.recipes.joined(separator: ", "), "", requirement.name,
+                 BatchPrepSheet.prepMeasure(requirement.measure.converted(to: unit)),
+                 "Not in My Bar", requirement.isOptional ? "Yes" : "No", ""]
+            }
+        }
         return BatchPrepSheet.csv(header: ["Row", "Recipes", "Servings", "Ingredient", "Amount", "Stock", "Optional", "Note"],
-                                  rows: batchRows + ingredientRows)
+                                  rows: batchRows + ingredientRows + shoppingRows)
     }
 }
 

@@ -182,6 +182,7 @@ final class RecipeEngineTests: XCTestCase {
             let requirement = try XCTUnwrap(plan.shopping.first?.requirements.first)
             XCTAssertEqual(requirement.measure.amount, 1)
             XCTAssertEqual(requirement.recipes, ["Second"])
+            XCTAssertTrue(plan.csv(unit: .oz).contains(#""Shopping","Second","","Angostura bitters","1 dash""#))
         }
     }
 
