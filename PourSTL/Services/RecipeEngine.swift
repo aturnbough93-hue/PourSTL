@@ -8,7 +8,7 @@ struct RecipeMatch {
     let missing: [IngredientLine]
     /// Optional/garnish ingredients not in stock.
     let missingOptional: [IngredientLine]
-    let stocked: Set<String>
+    let stockedForSwaps: Set<String>
 
     var canMake: Bool { missing.isEmpty }
     /// Missing one or two required items — "almost there".
@@ -22,7 +22,7 @@ struct RecipeMatch {
             "simple syrup": "Demerara syrup", "demerara syrup": "Simple syrup",
         ]
         guard let swap = swaps[line.canonicalName],
-              stocked.contains(IngredientNormalizer.canonicalName(for: swap)) else { return nil }
+              stockedForSwaps.contains(IngredientNormalizer.canonicalName(for: swap)) else { return nil }
         return swap
     }
 }
@@ -270,7 +270,8 @@ struct ReorderPlan {
 enum RecipeEngine {
 
     static func match(_ recipe: Recipe, inventory: [InventoryItem]) -> RecipeMatch {
-        let stocked = Set(inventory.filter { $0.isInStock }.map { $0.canonicalName })
+        let inStock = inventory.filter(\.isInStock)
+        let stocked = Set(inStock.map(\.canonicalName))
         var missing: [IngredientLine] = []
         var missingOptional: [IngredientLine] = []
         for line in recipe.sortedIngredients {
@@ -285,7 +286,14 @@ enum RecipeEngine {
                 missing.append(line)
             }
         }
-        return RecipeMatch(recipe: recipe, missing: missing, missingOptional: missingOptional, stocked: stocked)
+        let citrusJuices: Set<String> = ["lemon juice", "lime juice"]
+        let stockedForSwaps = Set(inStock.compactMap { item -> String? in
+            let canonical = item.canonicalName
+            if citrusJuices.contains(canonical),
+               !IngredientNormalizer.normalize(item.name).hasSuffix(canonical) { return nil }
+            return canonical
+        })
+        return RecipeMatch(recipe: recipe, missing: missing, missingOptional: missingOptional, stockedForSwaps: stockedForSwaps)
     }
 
     /// All recipes matched against inventory, sorted can-make first then fewest missing.

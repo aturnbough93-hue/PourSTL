@@ -113,6 +113,14 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertFalse(RecipeEngine.match(drink, inventory: stock(["Lemon juice"])).canMakeWithSwaps)
     }
 
+    func testCitrusSwapRequiresStockedJuiceRatherThanAPeel() {
+        let drink = recipe(name: "Sour", lines: [("Lime juice", 1, "oz", false)])
+        let garnishMatch = RecipeEngine.match(drink, inventory: stock(["Lemon peel"]))
+        XCTAssertFalse(garnishMatch.canMakeWithSwaps)
+        XCTAssertNil(garnishMatch.missing.first.flatMap { garnishMatch.substitute(for: $0) })
+        XCTAssertTrue(RecipeEngine.match(drink, inventory: stock(["Fresh lemon juice"])).canMakeWithSwaps)
+    }
+
     func testShoppingShareGroupsPendingItemsAndAllRecipeSources() {
         let gin = ShoppingListItem(name: "Gin", sourceRecipeName: "Negroni")
         gin.addSourceRecipe("Martini")
