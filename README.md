@@ -134,4 +134,8 @@ servings, and works offline after it caches the app. Open **Bar Assistant** in
 the header for local recipe and inventory questions, ingredient stand-ins, and
 scaled measures. Questions and replies clear when you close it. Pro tools are
 iPhone-only.
+
+In the web app, stocking `Rye` in My Bar counts as stocking rye whiskey for
+recipe matching.
+
 See the [website guide](website/README.md) for offline and deployment checks.
