@@ -77,9 +77,18 @@ final class PersistentStoreController {
             ShoppingListItem.self,
             Venue.self,
         ])
+        let inMemory = LaunchConfiguration.usesEphemeralStore
+        if !inMemory {
+            // A fresh install has no Application Support folder; SwiftData's default
+            // store lives there and Core Data otherwise logs a failed open first.
+            try FileManager.default.createDirectory(
+                at: .applicationSupportDirectory,
+                withIntermediateDirectories: true
+            )
+        }
         let configuration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: LaunchConfiguration.usesEphemeralStore
+            isStoredInMemoryOnly: inMemory
         )
         return try ModelContainer(for: schema, configurations: [configuration])
     }

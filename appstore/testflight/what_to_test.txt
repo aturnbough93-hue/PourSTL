@@ -1,0 +1,10 @@
+Please focus on:
+• first-launch onboarding and the seeded recipe library;
+• browsing, searching, scaling, sharing, and timing recipes;
+• manual inventory entry and camera barcode scanning;
+• shopping-list creation and clearing;
+• Settings appearance/unit persistence and support/privacy links;
+• PourSTL Pro upgrade, purchase/restore behavior, costing, batch scaling, event planning, menu pricing, par levels, and CSV export;
+• offline behavior and recovery after force-quitting/relaunching.
+
+Report crashes or incorrect quantities with the recipe, ingredients, device, iOS version, and steps to reproduce.

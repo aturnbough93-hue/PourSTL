@@ -59,12 +59,15 @@ source review or a historical simulator run.
 - [ ] Decorative images accessibilityHidden
 
 ## TestFlight Specific
-- [ ] Archive + upload via Xcode or Devin macOS
-- [ ] Beta App Description + What to Test filled
+- [ ] Apple agreements, App ID `bar.pourstl.app`, and the manual App Store Connect app record exist (see docs/TESTFLIGHT.md)
+- [ ] `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, and `APPLE_TEAM_ID` are stored as Actions/Devin secrets, never in the repository
+- [ ] Archive + upload performed with the manual **TestFlight upload** workflow or `scripts/testflight_upload.sh`; record build number and commit
+- [ ] Build reaches App Store Connect `VALID` and is assigned to the intended internal group
+- [ ] Beta App Description + What to Test filled from `appstore/testflight/`
 - [ ] TestFlight beta feedback email set in App Store Connect (separate from the app’s **Get support** link)
-- [ ] Internal group auto-distribute enabled
+- [ ] Internal testers are App Store Connect users and members of the selected internal group
 - [ ] External requires first build review
-- [ ] Screenshots match actual UI (no mockups)
+- [ ] Screenshots match actual UI (no mockups) and are freshly captured from the candidate build
 
 ## Security / Privacy
 - [ ] No API keys or secrets in source

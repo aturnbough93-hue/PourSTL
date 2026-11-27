@@ -1,0 +1,1 @@
+PourSTL is a cocktail recipe and bar-preparation app for iPhone. This internal TestFlight build is intended to validate the first end-to-end App Store Connect distribution path, including onboarding, offline recipe browsing, inventory and barcode entry, timers, scaling, deep links, and the Pro subscription flow.

@@ -31,6 +31,8 @@ Carthage/Build/
 *.env
 .env*
 secrets.json
+AuthKey_*.p8
+*.p8
 
 # Generated Cloudflare Pages website
 dist/

@@ -182,6 +182,7 @@ final class RecipeEngineTests: XCTestCase {
             let requirement = try XCTUnwrap(plan.shopping.first?.requirements.first)
             XCTAssertEqual(requirement.measure.amount, 1)
             XCTAssertEqual(requirement.recipes, ["Second"])
+            XCTAssertTrue(plan.csv(unit: .oz).contains(#""Shopping","Second","","Angostura bitters","1 dash""#))
         }
     }
 
@@ -267,13 +268,16 @@ final class RecipeEngineTests: XCTestCase {
     }
 
     func testParLevelSaveTreatsClearedPackageCountAsExplicitZero() {
-        let cleared = ParLevelSavePolicy.values(enteredOnHand: nil, initialOnHand: 2, didEditOnHand: true)
+        XCTAssertEqual(ParLevelSavePolicy.parsedOnHand(""), 0)
+        XCTAssertEqual(ParLevelSavePolicy.parsedOnHand("  "), 0)
+        XCTAssertEqual(ParLevelSavePolicy.parsedOnHand("2"), 2)
+        XCTAssertNil(ParLevelSavePolicy.parsedOnHand("abc"))
+        XCTAssertNil(ParLevelSavePolicy.parsedOnHand("2.5"))
+        XCTAssertNil(ParLevelSavePolicy.parsedOnHand("1000"))
+        let cleared = ParLevelSavePolicy.values(enteredOnHand: 0, initialOnHand: 2, didEditOnHand: true)
         XCTAssertEqual(cleared.onHand, 0)
         XCTAssertTrue(cleared.updateStockStatus)
-        let enteredZero = ParLevelSavePolicy.values(enteredOnHand: 0, initialOnHand: 2, didEditOnHand: true)
-        XCTAssertEqual(enteredZero.onHand, 0)
-        XCTAssertTrue(enteredZero.updateStockStatus)
-        let untouched = ParLevelSavePolicy.values(enteredOnHand: nil, initialOnHand: 2, didEditOnHand: false)
+        let untouched = ParLevelSavePolicy.values(enteredOnHand: 0, initialOnHand: 2, didEditOnHand: false)
         XCTAssertEqual(untouched.onHand, 2)
         XCTAssertFalse(untouched.updateStockStatus)
     }

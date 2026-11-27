@@ -343,13 +343,13 @@ final class ProEntitlementStoreTests: XCTestCase {
                 "StoreKit's first entitlement sync did not finish in an earlier test, so this test did not start a store"
             )
         case .notAttempted:
-            let started = Date()
+            let started = ContinuousClock.now
             let first = await StoreKitEntitlementReader().read(
                 timeoutNanoseconds: UInt64(Self.firstEntitlementSyncLimit * 1_000_000_000)
             ) {
                 await Self.storeKitProductIDs()
             }
-            print("StoreKit first entitlement sync took \(Int(Date().timeIntervalSince(started))) seconds")
+            print("StoreKit first entitlement sync took \((ContinuousClock.now - started).components.seconds) seconds")
             guard first != nil else {
                 Self.firstEntitlementSync = .didNotFinish
                 entitlementReadIsStuck = true
@@ -402,11 +402,11 @@ final class ProEntitlementStoreTests: XCTestCase {
         // remaining keeps the last set a read did return.
         var latest = await currentStoreKitProductIDs()
         var remaining = latest
-        let deadline = Date().addingTimeInterval(TimeInterval(StoreKitEntitlementReader.defaultTimeoutSeconds))
+        let deadline = ContinuousClock.now + .seconds(StoreKitEntitlementReader.defaultTimeoutSeconds)
         // A subscription status sync that storekitd started before the clear
         // can finish after it and restore the cleared subscription. Clear
         // again before confirming that the verified entitlement is gone.
-        while let products = latest, !products.isEmpty, Date() < deadline {
+        while let products = latest, !products.isEmpty, ContinuousClock.now < deadline {
             print("StoreKit still reported \(products.sorted()) after clearTransactions(); clearing again")
             session.clearTransactions()
             try? await Task.sleep(nanoseconds: 200_000_000)
@@ -446,8 +446,8 @@ final class ProEntitlementStoreTests: XCTestCase {
         let unlocked = try await waitUntil { [store = self.store!] in
             store.isPro && store.activeProductIDs.contains(ProProductID.yearly)
         }
-        let frameworkIDs = await currentStoreKitProductIDs() ?? []
-        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
+        let frameworkIDs = await currentStoreKitProductIDs()
+        XCTAssertTrue(unlocked, "The ready StoreKit listener did not unlock. Current verified products: \(Self.describe(frameworkIDs)); store products: \(store.activeProductIDs.sorted()); listener active: \(store.isObservingTransactions)")
         XCTAssertTrue(store.activeProductIDs.contains(ProProductID.yearly))
     }
 
@@ -504,8 +504,8 @@ final class ProEntitlementStoreTests: XCTestCase {
             return !store.isPro
         }
         if !removed {
-            let frameworkIDs = await currentStoreKitProductIDs() ?? []
-            XCTFail("Expired subscription stayed active. Current verified products: \(frameworkIDs.sorted()); store products: \(store.activeProductIDs.sorted())")
+            let frameworkIDs = await currentStoreKitProductIDs()
+            XCTFail("Expired subscription stayed active. Current verified products: \(Self.describe(frameworkIDs)); store products: \(store.activeProductIDs.sorted())")
         }
         XCTAssertFalse(
             store.activeProductIDs.contains(ProProductID.monthly),
@@ -546,8 +546,8 @@ final class ProEntitlementStoreTests: XCTestCase {
         _ condition: @escaping @MainActor () async -> Bool
     ) async throws -> Bool {
         let limit = StoreKitEntitlementReader.defaultTimeoutSeconds
-        let deadline = Date().addingTimeInterval(TimeInterval(limit))
-        while Date() < deadline {
+        let deadline = ContinuousClock.now + .seconds(limit)
+        while ContinuousClock.now < deadline {
             guard let matched = await raceAgainstDeadline(
                 nanoseconds: UInt64(limit) * 1_000_000_000,
                 operation: condition
@@ -557,7 +557,7 @@ final class ProEntitlementStoreTests: XCTestCase {
                 throw StoreKitFixtureFailure("StoreKit condition did not finish within \(limit) seconds")
             }
             if matched { return true }
-            if Date() < deadline {
+            if ContinuousClock.now < deadline {
                 try await Task.sleep(nanoseconds: 200_000_000)
             }
         }
@@ -576,6 +576,10 @@ final class ProEntitlementStoreTests: XCTestCase {
             XCTFail("Transaction.currentEntitlements did not finish within \(StoreKitEntitlementReader.defaultTimeoutSeconds) seconds in this test's StoreKit fixture")
         }
         return ids
+    }
+
+    private static func describe(_ productIDs: Set<String>?) -> String {
+        productIDs.map { "\($0.sorted())" } ?? "unknown (the read timed out)"
     }
 
     private static func storeKitProductIDs() async -> Set<String> {
