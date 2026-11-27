@@ -5,20 +5,31 @@ import UIKit
 struct ShoppingListView: View {
     @Query(sort: \ShoppingListItem.createdAt) private var items: [ShoppingListItem]
     @Query private var inventory: [InventoryItem]
+    @Query private var recipes: [Recipe]
     @Environment(\.modelContext) private var modelContext
     @Environment(DeepLinkRouter.self) private var router
+    @Environment(ProEntitlementStore.self) private var pro
     @State private var showAdd = false
     @State private var showSaveError = false
+    @State private var showPro = false
     @State private var newItemName = ""
     @State private var recentlyStocked = Set<PersistentIdentifier>()
 
     private var pending: [ShoppingListItem] { items.filter { !$0.isPurchased } }
     private var purchased: [ShoppingListItem] { items.filter { $0.isPurchased } }
 
+    /// Bottles that would each complete otherwise-blocked recipes, excluding
+    /// anything already waiting on the list.
+    private var shoppingCandidates: [UnlockCandidate] {
+        let pendingCanonicals = Set(pending.map(\.canonicalName))
+        return ShoppingInsights.bestNextPurchases(recipes: recipes, inventory: inventory)
+            .filter { !pendingCanonicals.contains($0.canonicalName) }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
-                if items.isEmpty {
+                if items.isEmpty && shoppingCandidates.isEmpty {
                     EmptyStateView(
                         symbol: "cart",
                         title: "Shopping list is empty",
@@ -29,6 +40,7 @@ struct ShoppingListView: View {
                     }
                 } else {
                     List {
+                        shoppingInsightSection
                         if !pending.isEmpty {
                             Section("To buy (\(pending.count))") {
                                 ForEach(pending) { item in
@@ -91,7 +103,66 @@ struct ShoppingListView: View {
             } message: {
                 Text("Check available device storage and try again.")
             }
+            .sheet(isPresented: $showPro) { ProUpsellView() }
         }
+    }
+
+    /// Pro: the single bottles that complete the most otherwise-blocked drinks.
+    /// Free users see a lock row only when such a bottle exists.
+    @ViewBuilder
+    private var shoppingInsightSection: some View {
+        if !shoppingCandidates.isEmpty {
+            Section {
+                if ProGate.isLocked(.shoppingInsights, isPro: pro.isPro) {
+                    Button {
+                        showPro = true
+                    } label: {
+                        Label("Pro ranks the single bottle that unlocks the most drinks", systemImage: "lock")
+                            .font(.subheadline)
+                            .foregroundStyle(PourColor.textSecondary)
+                    }
+                    .accessibilityLabel("Smart shopping insights require PourSTL Pro")
+                    .accessibilityAddTraits(.isButton)
+                    .listRowBackground(PourColor.card)
+                } else {
+                    ForEach(shoppingCandidates) { candidate in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(candidate.displayName)
+                                    .font(.body)
+                                    .foregroundStyle(PourColor.textPrimary)
+                                Text(candidate.unlockCount == 1 ? "Unlocks 1 drink" : "Unlocks \(candidate.unlockCount) drinks")
+                                    .font(.caption)
+                                    .foregroundStyle(PourColor.textSecondary)
+                            }
+                            Spacer()
+                            Button("Add") { addCandidate(candidate) }
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(PourColor.accent)
+                                .frame(minHeight: 44)
+                                .accessibilityLabel("Add \(candidate.displayName) to shopping list")
+                                .accessibilityAddTraits(.isButton)
+                        }
+                        .frame(minHeight: 52)
+                        .buttonStyle(.borderless)
+                        .listRowBackground(PourColor.card)
+                    }
+                }
+            } header: {
+                Text("Best next bottle")
+            } footer: {
+                if !ProGate.isLocked(.shoppingInsights, isPro: pro.isPro) {
+                    Text("Ranked by how many recipes need only that one ingredient. Optional garnishes never count.")
+                }
+            }
+        }
+    }
+
+    private func addCandidate(_ candidate: UnlockCandidate) {
+        guard !pending.contains(where: { $0.canonicalName == candidate.canonicalName }) else { return }
+        modelContext.insert(ShoppingListItem(name: candidate.displayName))
+        saveChanges()
+        Haptics.success()
     }
 
     private func shoppingRow(_ item: ShoppingListItem) -> some View {

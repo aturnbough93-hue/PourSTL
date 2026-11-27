@@ -6,6 +6,8 @@ struct MyBarView: View {
     @Query(sort: \InventoryItem.name) private var items: [InventoryItem]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.locale) private var locale
+    @Environment(ProEntitlementStore.self) private var pro
 
     @State private var showSaveError = false
     @State private var searchText = ""
@@ -63,6 +65,7 @@ struct MyBarView: View {
                     }
                 } else {
                     List {
+                        inventoryOperationsSection
                         ForEach(grouped, id: \.0) { category, categoryItems in
                             Section {
                                 ForEach(categoryItems) { item in
@@ -160,6 +163,39 @@ struct MyBarView: View {
             .accessibilityLabel("\(option.rawValue), \(selected ? "selected" : "not selected")")
             .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         }
+    }
+
+    /// Pro: replacement cost of the bar plus stock alerts. Hidden when nothing
+    /// is priced so the free layout stays unchanged.
+    private var inventoryOperationsSection: some View {
+        let lowCount = items.filter { $0.isInStock && InventoryOperations.isEffectivelyLow($0) }.count
+        let outCount = items.filter { !$0.isInStock }.count
+        let valuation = InventoryOperations.valuation(items: items)
+        return Group {
+            if pro.isPro, let valuation {
+                Section {
+                    LabeledContent("Bar value at cost", value: moneyText(valuation))
+                        .accessibilityIdentifier("inventory-valuation")
+                        .listRowBackground(PourColor.card)
+                    if lowCount > 0 {
+                        LabeledContent("Low stock", value: String(lowCount))
+                            .listRowBackground(PourColor.card)
+                    }
+                    if outCount > 0 {
+                        LabeledContent("Out of stock", value: String(outCount))
+                            .listRowBackground(PourColor.card)
+                    }
+                } header: {
+                    Text("Inventory operations")
+                } footer: {
+                    Text("Value counts in-stock items with a saved bottle cost. Bottles on hand count as one when no quantity is recorded.")
+                }
+            }
+        }
+    }
+
+    private func moneyText(_ amount: Decimal) -> String {
+        amount.formatted(.currency(code: locale.currency?.identifier ?? "USD").locale(locale))
     }
 
     static func rowSubtitle(for item: InventoryItem) -> String? {
@@ -304,6 +340,8 @@ struct InventoryEditSheet: View {
     var onFinished: ((InventoryEditResult) -> Void)?
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(ProEntitlementStore.self) private var pro
     @Query private var recipes: [Recipe]
     @Query private var inventory: [InventoryItem]
 
@@ -315,6 +353,10 @@ struct InventoryEditSheet: View {
     @State private var isLowStock = false
     @State private var canonicalOverride = ""
     @State private var barcode = ""
+    @State private var bottleCost = ""
+    @State private var bottlesOnHand = ""
+    @State private var lowStockThreshold = ""
+    @State private var showPro = false
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
@@ -347,6 +389,9 @@ struct InventoryEditSheet: View {
         _isLowStock = State(initialValue: item?.isLowStock ?? false)
         _canonicalOverride = State(initialValue: item?.canonicalOverride ?? "")
         _barcode = State(initialValue: item?.barcode ?? seed?.barcode ?? "")
+        _bottleCost = State(initialValue: item?.bottleCost.map(Measure.formatNumber) ?? "")
+        _bottlesOnHand = State(initialValue: item?.quantity.map(Measure.formatNumber) ?? "")
+        _lowStockThreshold = State(initialValue: item?.lowStockThreshold.map(Measure.formatNumber) ?? "")
     }
 
     var body: some View {
@@ -394,6 +439,35 @@ struct InventoryEditSheet: View {
                 } footer: {
                     Text("Maps to “\(canonicalOverride.isEmpty ? IngredientNormalizer.canonicalName(for: name) : IngredientNormalizer.normalize(canonicalOverride))” for matching. Leave blank to use the auto-detected canonical name.")
                 }
+                Section {
+                    if ProGate.isLocked(.inventoryOperations, isPro: pro.isPro) {
+                        Button {
+                            showPro = true
+                        } label: {
+                            Label("Track bottle cost, quantity, and low-stock alerts with Pro", systemImage: "lock")
+                                .font(.subheadline)
+                                .foregroundStyle(PourColor.textSecondary)
+                        }
+                        .accessibilityLabel("Cost and stock tracking requires PourSTL Pro")
+                        .accessibilityAddTraits(.isButton)
+                    } else {
+                        TextField("Bottle cost (\(currencyIdentifier))", text: $bottleCost)
+                            .keyboardType(.decimalPad)
+                            .accessibilityIdentifier("inventory.bottleCost")
+                        TextField("Bottles on hand", text: $bottlesOnHand)
+                            .keyboardType(.decimalPad)
+                            .accessibilityIdentifier("inventory.quantity")
+                        TextField("Low-stock alert at (bottles)", text: $lowStockThreshold)
+                            .keyboardType(.decimalPad)
+                            .accessibilityIdentifier("inventory.lowStockThreshold")
+                    }
+                } header: {
+                    Text("Cost & quantity")
+                } footer: {
+                    if !ProGate.isLocked(.inventoryOperations, isPro: pro.isPro) {
+                        Text("Quantity means bottles or packages on hand — partial bottles are fine. An item is flagged low at or below the alert level.")
+                    }
+                }
                 if !barcode.isEmpty {
                     Section("Barcode") {
                         Text(BarcodeFormatting.grouped(barcode))
@@ -440,6 +514,7 @@ struct InventoryEditSheet: View {
                     applyDuplicateOffer(match)
                 }
             }
+            .sheet(isPresented: $showPro) { ProUpsellView() }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -468,6 +543,40 @@ struct InventoryEditSheet: View {
     private func dismissKeyboardFocus() {
         focusedField = nil
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    private var currencyIdentifier: String { locale.currency?.identifier ?? "USD" }
+
+    /// Blank is "not recorded". Locale-aware parsing covers decimal-comma input.
+    private func parseNonNegativeAmount(_ text: String) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let strategy = FloatingPointFormatStyle<Double>(locale: locale).parseStrategy
+        guard let value = try? strategy.parse(trimmed), value.isFinite, value >= 0 else { return nil }
+        return value
+    }
+
+    /// Direct edits treat a blank field as deliberately cleared. Scan-driven
+    /// updates to an existing row only apply values the user actually entered,
+    /// so scanning a barcode never wipes a saved cost.
+    private func applyProFields(to target: InventoryItem) {
+        guard !ProGate.isLocked(.inventoryOperations, isPro: pro.isPro) else { return }
+        let clearing = item != nil
+        if let cost = parseNonNegativeAmount(bottleCost) {
+            target.bottleCost = cost
+        } else if clearing {
+            target.bottleCost = nil
+        }
+        if let quantity = parseNonNegativeAmount(bottlesOnHand) {
+            target.quantity = quantity
+        } else if clearing {
+            target.quantity = nil
+        }
+        if let threshold = parseNonNegativeAmount(lowStockThreshold) {
+            target.lowStockThreshold = threshold
+        } else if clearing {
+            target.lowStockThreshold = nil
+        }
     }
 
     private var navigationTitle: String {
@@ -500,6 +609,7 @@ struct InventoryEditSheet: View {
             if !cleanedBarcode.isEmpty {
                 item.barcode = cleanedBarcode
             }
+            applyProFields(to: item)
         } else if !cleanedBarcode.isEmpty {
             switch BarcodeResolver.saveUnknownCode(
                 name: trimmed,
@@ -512,6 +622,7 @@ struct InventoryEditSheet: View {
                 new.isLowStock = isLowStock
                 new.canonicalOverride = override.isEmpty ? nil : override
                 new.barcode = confirmed.barcode
+                applyProFields(to: new)
                 modelContext.insert(new)
             case .update(let match, let mutation):
                 guard let index = BarcodeResolver.locate(match, stock: stock) else {
@@ -519,6 +630,7 @@ struct InventoryEditSheet: View {
                     return
                 }
                 mutation.applyStockAndBarcode(to: rows[index].0)
+                applyProFields(to: rows[index].0)
             case .offerExisting(let match):
                 offerExisting(match)
                 return
@@ -529,6 +641,7 @@ struct InventoryEditSheet: View {
             let new = InventoryItem(name: trimmed, category: category, isInStock: isInStock)
             new.isLowStock = isLowStock
             new.canonicalOverride = override.isEmpty ? nil : override
+            applyProFields(to: new)
             modelContext.insert(new)
         }
         do {
