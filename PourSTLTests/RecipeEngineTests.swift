@@ -165,6 +165,16 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertEqual(short.batches.map(\.recipe.name), ["First"])
     }
 
+    func testEventShoppingRecognizesStockOverrideMatchingTheRecipeLabel() {
+        let drink = recipe(name: "Martini", lines: [("Beefeater", 1, "oz", false)])
+        let bottle = InventoryItem(name: "House bottle")
+        bottle.canonicalOverride = "beefeater"
+        XCTAssertTrue(RecipeEngine.match(drink, inventory: [bottle]).canMake)
+        let plan = EventPrepPlan(recipes: [drink], guests: 1, drinksPerGuest: 1, inventory: [bottle])
+        XCTAssertEqual(plan.ingredients.map(\.isStocked), [true])
+        XCTAssertTrue(plan.shopping.isEmpty)
+    }
+
     func testMenuPricingRoundsUpAndReportsMarginAtTheSuggestedPrice() throws {
         let estimate = try XCTUnwrap(MenuPriceEstimate(cost: Decimal(string: "2.04")!, targetPercent: 25))
         XCTAssertEqual(estimate.price, 9)

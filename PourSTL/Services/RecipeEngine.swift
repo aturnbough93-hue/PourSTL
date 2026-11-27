@@ -191,7 +191,6 @@ struct EventPrepPlan {
             return count > 0 ? Batch(recipe: recipe, servings: count) : nil
         }
         let stocked = Set(inventory.filter(\.isInStock).map(\.canonicalName))
-            .union(IngredientNormalizer.assumedAvailable)
         var entries: [Ingredient.Key: Ingredient] = [:]
         for (index, batch) in batches.enumerated() {
             for line in batch.recipe.sortedIngredients {
@@ -199,7 +198,7 @@ struct EventPrepPlan {
                 let key = Ingredient.Key(product: RecipeCostLine.productName(line.name), unit: measure.unit,
                                          optional: line.isOptional, relativeRecipe: measure.unit == .part ? index : nil)
                 var entry = entries[key] ?? Ingredient(id: key, name: line.name, measure: Measure(amount: 0, unit: measure.unit),
-                                                       recipes: [], isStocked: stocked.contains(line.canonicalName))
+                                                       recipes: [], isStocked: RecipeEngine.isStocked(line, in: stocked))
                 entry.measure.amount += measure.amount
                 if !entry.recipes.contains(batch.recipe.name) { entry.recipes.append(batch.recipe.name) }
                 entries[key] = entry
@@ -269,17 +268,20 @@ struct ReorderPlan {
 
 enum RecipeEngine {
 
+    static func isStocked(_ line: IngredientLine, in stocked: Set<String>) -> Bool {
+        let canonical = line.canonicalName
+        return IngredientNormalizer.assumedAvailable.contains(canonical)
+            || stocked.contains(canonical)
+            || stocked.contains(IngredientNormalizer.normalize(line.name))
+    }
+
     static func match(_ recipe: Recipe, inventory: [InventoryItem]) -> RecipeMatch {
         let inStock = inventory.filter(\.isInStock)
         let stocked = Set(inStock.map(\.canonicalName))
         var missing: [IngredientLine] = []
         var missingOptional: [IngredientLine] = []
         for line in recipe.sortedIngredients {
-            let canonical = line.canonicalName
-            if IngredientNormalizer.assumedAvailable.contains(canonical) { continue }
-            if stocked.contains(canonical) { continue }
-            // Fallback: normalized raw name match (e.g. user typed something unusual).
-            if stocked.contains(IngredientNormalizer.normalize(line.name)) { continue }
+            if isStocked(line, in: stocked) { continue }
             if line.isOptional {
                 missingOptional.append(line)
             } else {
