@@ -91,7 +91,7 @@ physical iPhone installation and TestFlight need Apple provisioning/signing.
 
 ### iPhone: Pro
 
-- PourSTL Pro adds recipe ingredient costing with reusable package prices, scaling up to 200 servings, and CSV batch prep sheets. Price data stays on the device. The StoreKit 2 product IDs are `bar.pourstl.app.pro.monthly` and `bar.pourstl.app.pro.yearly`. The shared scheme uses `PourSTL.storekit` for local testing. Configure the matching products in App Store Connect before selling Pro.
+- PourSTL Pro adds recipe ingredient costing with reusable package prices, menu pricing (pour cost, profit per drink and per batch, suggested prices at a target pour cost), scaling up to 200 servings, dilution-aware batch prep with stated assumptions and ready-to-pour yield, CSV batch prep sheets with garnishes grouped separately, bottle-level cost/quantity/low-stock tracking with a bar valuation, and smart shopping that ranks the single bottle unlocking the most drinks. Price data stays on the device. The StoreKit 2 product IDs are `bar.pourstl.app.pro.monthly` and `bar.pourstl.app.pro.yearly`. The shared scheme uses `PourSTL.storekit` for local testing. Configure the matching products in App Store Connect before selling Pro.
 
 ### Planned (out of scope for this build)
 

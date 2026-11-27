@@ -1,5 +1,11 @@
 # Pour App Coordination Log
 
+## Pro service operations expansion, 2026-11-26
+
+- **New Pro capabilities in progress** on branch `devin/pro-service-operations` (not yet CI-validated): dilution-aware batch prep (shaken ≈25% / stirred ≈20% water, built drinks dilute in the glass; ready-to-pour yield and pour per serving; assumptions stated in-app and in the CSV), menu pricing in the costing sheet (menu price per recipe, pour cost %, profit per drink/batch, suggested price at a target pour cost rounded up to half-steps), inventory operations (bottle cost, bottles on hand, low-stock alert level per item; bar value at cost plus low/out counts in My Bar — uses the existing `bottleCost`/`lowStockThreshold`/`quantity` schema seams), and smart shopping ("Best next bottle" ranks the one purchase that completes the most blocked recipes). CSV prep sheets now group required liquids first and garnish/optional lines last, then append water/yield/pour rows.
+- **Gating.** New `PourCapability.inventoryOperations` and `.shoppingInsights` join the paid set; dilution and menu pricing ride the existing costing/batch gates inside the Pro-only service sheet. Paywall feature list updated. Unit tests added for the dilution/yield math, pricing rounding, valuation, low-stock rules, shopping ranking, CSV layout, settings persistence, and variation menu-price copying; the `ProGate.paid` assertion was updated to match.
+- **Validation.** Engine math was cross-checked against professional batching guidance (20–25% dilution for stirred/shaken; no water for built drinks — ice and topper dilute in the glass). Native compile/tests require macOS CI on the PR; website copy updated locally with the standard checks. Purchase/restore/expiration testing in Apple's sandbox remains a pre-release requirement.
+
 ## Release handoff, 2026-11-25
 
 - **iPhone release candidate.** [#32](https://github.com/aturnbough93-hue/PourSTL/pull/32) merged the Pro tools and the accessibility and scanner work from [#23](https://github.com/aturnbough93-hue/PourSTL/pull/23) and [#27](https://github.com/aturnbough93-hue/PourSTL/pull/27). The iOS 26.5 simulator passed the five previously failing or targeted UI cases on that baseline, and the unsigned device archive compiled.
