@@ -14,11 +14,11 @@
   },
   "dependencies": {
     "@ai-sdk/provider": "4.0.39",
-    "agents": "0.34.0",
-    "ai": "7.0.181"
+    "agents": "0.34.1",
+    "ai": "7.0.183"
   },
   "devDependencies": {
-    "@types/node": "22.19.15",
+    "@types/node": "22.20.7",
     "miniflare": "5.20261123.1-beta",
     "prettier": "3.10.1",
     "typescript": "5.9.3",
