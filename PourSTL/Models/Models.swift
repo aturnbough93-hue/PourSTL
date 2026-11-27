@@ -15,6 +15,7 @@ final class Recipe {
     var isCustom: Bool = false
     var isFavorite: Bool = false
     var notes: String? = nil
+    var menuPrice: Double? = nil       // Pro: menu price per serving for pour-cost math
     var remoteID: String? = nil
     var createdAt: Date = Date()
 
@@ -58,6 +59,7 @@ final class Recipe {
             isCustom: true
         )
         variation.notes = notes
+        variation.menuPrice = menuPrice
         variation.ingredients = sortedIngredients.map { line in
             IngredientLine(name: line.name, amount: line.amount, unit: line.unit,
                            note: line.note, isOptional: line.isOptional, position: line.position)
