@@ -185,12 +185,12 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
 });
 
-function bootTryPage({ compact = false, singleColumn = false } = {}) {
+function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState } = {}) {
   const siteDir = path.join(__dirname, '..', 'website');
   const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
   const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
 
-  const doc = { activeElement: null };
+  const doc = { activeElement: null, execCommand: () => execCommandResult };
   class FakeElement {
     constructor(tag, id = '', className = '') {
       this.tagName = tag.toUpperCase();
@@ -220,8 +220,17 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
     }
     get firstElementChild() { return this.children[0] || null; }
     get lastElementChild() { return this.children[this.children.length - 1] || null; }
+    get disabled() { return this._disabled; }
+    set disabled(disabled) {
+      this._disabled = Boolean(disabled);
+      if (this._disabled && doc.activeElement === this) doc.activeElement = doc.body;
+    }
     setAttribute(name, value) { this.attributes.set(name, String(value)); }
     getAttribute(name) { return this.attributes.get(name) ?? null; }
+    toggleAttribute(name, force) {
+      if (force) this.attributes.set(name, '');
+      else this.attributes.delete(name);
+    }
     addEventListener(type, listener) {
       if (!this.listeners.has(type)) this.listeners.set(type, []);
       this.listeners.get(type).push(listener);
@@ -230,6 +239,7 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
       if (!this.parentNode) return;
       this.parentNode.children = this.parentNode.children.filter(child => child !== this);
       this.parentNode = null;
+      if (doc.activeElement === this) doc.activeElement = doc.body;
     }
     append(...nodes) {
       for (const node of nodes) {
@@ -265,6 +275,8 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
       doc.activeElement = this;
       this.focusCount += 1;
     }
+    select() { this.selected = true; this.focus(); }
+    scrollIntoView() {}
     querySelector(selector) {
       const classMatch = /^\.([a-z0-9-]+)$/i.exec(selector);
       for (const child of this.children) {
@@ -316,9 +328,14 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
   };
 
   const storage = new Map();
+  if (initialState) storage.set('pour.browser-demo.v1', JSON.stringify(initialState));
+  const windowListeners = new Map();
+  const timeouts = new Map();
+  let nextTimeout = 0;
   const win = {
     document: doc,
-    navigator: {},
+    navigator: clipboardWrite ? { clipboard: { writeText: clipboardWrite } } : {},
+    isSecureContext: Boolean(clipboardWrite),
     localStorage: {
       getItem: key => (storage.has(key) ? storage.get(key) : null),
       setItem: (key, value) => storage.set(key, String(value)),
@@ -330,7 +347,12 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
       if (query.includes('700px')) return makeMediaQuery(query, singleColumn);
       return makeMediaQuery(query, false);
     },
-    addEventListener() {},
+    addEventListener: (type, listener) => windowListeners.set(type, listener),
+    setTimeout(callback) {
+      timeouts.set(++nextTimeout, callback);
+      return nextTimeout;
+    },
+    clearTimeout: id => timeouts.delete(id),
     setInterval: () => 0,
     clearInterval() {},
     confirm: () => true,
@@ -342,7 +364,7 @@ function bootTryPage({ compact = false, singleColumn = false } = {}) {
   for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'try.js']) {
     vm.runInContext(fs.readFileSync(path.join(siteDir, file), 'utf8'), context, { filename: file });
   }
-  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries };
+  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts, windowListeners };
 }
 
 test('/try starts cleanly and orders panels for desktop and single-column viewports', () => {
@@ -368,6 +390,181 @@ test('/try starts cleanly and orders panels for desktop and single-column viewpo
   singleColumn.setMatches(false);
   assert.equal(desktop.byId.get('workspace').firstElementChild, desktop.barPanel);
   assert.equal(desktop.doc.activeElement, stockInput);
+});
+
+test('successful recipe copy announces beside its action and restores focus to Copy', async () => {
+  let copiedText = '';
+  const page = bootTryPage({ clipboardWrite: async text => { copiedText = text; } });
+  const copy = page.byId.get('copy');
+  copy.focus();
+  page.byId.get('feedback').textContent = 'Previous status.';
+  page.byId.get('copy-feedback').textContent = 'Old copy status.';
+
+  const pendingCopy = copy.listeners.get('click')[0]();
+  assert.equal(page.doc.activeElement, page.doc.body);
+  await pendingCopy;
+
+  assert.match(copiedText, /Negroni/);
+  assert.equal(page.byId.get('copy-label').textContent, 'Copied');
+  assert.equal(page.byId.get('copy-icon').getAttribute('hidden'), '');
+  assert.equal(page.byId.get('copied-icon').getAttribute('hidden'), null);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+  assert.equal(page.byId.get('feedback').textContent, '');
+  assert.equal(page.doc.activeElement, copy);
+  assert.equal(page.byId.get('manual-copy').hidden, true);
+
+  assert.equal(page.timeouts.size, 1);
+  page.timeouts.values().next().value();
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
+  assert.equal(page.byId.get('copy-icon').getAttribute('hidden'), null);
+  assert.equal(page.byId.get('copied-icon').getAttribute('hidden'), '');
+  assert.equal(page.byId.get('copy-feedback').textContent, '');
+  assert.equal(page.doc.activeElement, copy);
+});
+
+test('pending recipe copy preserves focus moved to another control', async () => {
+  let completeClipboardWrite;
+  const clipboardWrite = new Promise(resolve => { completeClipboardWrite = resolve; });
+  const page = bootTryPage({ clipboardWrite: () => clipboardWrite });
+  const copy = page.byId.get('copy');
+  const search = page.byId.get('search');
+  copy.focus();
+
+  const pendingCopy = copy.listeners.get('click')[0]();
+  search.focus();
+  completeClipboardWrite();
+  await pendingCopy;
+
+  assert.equal(page.doc.activeElement, search);
+  assert.equal(copy.focusCount, 1);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+});
+
+test('successful legacy copy fallback restores focus to Copy when it did not move', async () => {
+  const page = bootTryPage({ execCommandResult: true });
+  const copy = page.byId.get('copy');
+  copy.focus();
+
+  await copy.listeners.get('click')[0]();
+
+  assert.equal(page.doc.activeElement, copy);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+});
+
+test('legacy copy fallback preserves a control focused while clipboard was pending', async () => {
+  let denyClipboardWrite;
+  const clipboardWrite = new Promise((_resolve, reject) => { denyClipboardWrite = reject; });
+  const page = bootTryPage({ clipboardWrite: () => clipboardWrite, execCommandResult: true });
+  const copy = page.byId.get('copy');
+  const search = page.byId.get('search');
+  copy.focus();
+
+  const pendingCopy = copy.listeners.get('click')[0]();
+  search.focus();
+  denyClipboardWrite(new Error('denied'));
+  await pendingCopy;
+
+  assert.equal(page.doc.activeElement, search);
+  assert.equal(page.byId.get('copy-feedback').textContent, 'Negroni recipe copied to clipboard.');
+});
+
+test('pending copy does not restore stale confirmation after servings change', async () => {
+  let completeClipboardWrite;
+  const clipboardWrite = new Promise(resolve => { completeClipboardWrite = resolve; });
+  const page = bootTryPage({ clipboardWrite: () => clipboardWrite });
+  const copy = page.byId.get('copy');
+  const more = page.byId.get('more');
+  const copyFeedback = page.byId.get('copy-feedback');
+  copy.focus();
+
+  const pendingCopy = copy.listeners.get('click')[0]();
+  more.focus();
+  more.listeners.get('click')[0]();
+  completeClipboardWrite();
+  await pendingCopy;
+
+  assert.equal(copyFeedback.textContent, '');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
+  assert.equal(page.doc.activeElement, more);
+  assert.equal(copy.focusCount, 1);
+});
+
+test('pending copy does not announce success after a same-ID recipe edit syncs from another tab', async () => {
+  const recipe = {
+    id: 'custom-7d8cc6b0-4650-4b35-a9b7-a465a1e3352d',
+    name: 'Yuzu Fizz',
+    instructions: 'Stir over ice.',
+    ingredients: [{ name: 'Yuzu syrup', amount: 20, unit: 'ml' }],
+  };
+  const initialState = { ...Demo.defaults(), customRecipes: [recipe], selected: recipe.id };
+  let completeClipboardWrite;
+  let copiedText;
+  const page = bootTryPage({
+    initialState,
+    clipboardWrite: text => {
+      copiedText = text;
+      return new Promise(resolve => { completeClipboardWrite = resolve; });
+    },
+  });
+  const pendingCopy = page.byId.get('copy').listeners.get('click')[0]();
+  assert.match(copiedText, /Stir over ice\./);
+
+  const editedRecipe = { ...recipe, instructions: 'Shake with ice.' };
+  page.windowListeners.get('storage')({
+    key: 'pour.browser-demo.v1',
+    newValue: JSON.stringify({ ...initialState, customRecipes: [editedRecipe] }),
+  });
+  assert.equal(page.byId.get('recipe-title').textContent, 'Yuzu Fizz');
+  assert.equal(page.byId.get('instructions').textContent, editedRecipe.instructions);
+
+  completeClipboardWrite();
+  await pendingCopy;
+  assert.equal(page.byId.get('copy-feedback').textContent, '');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
+});
+
+test('recipe selection, servings, and units clear the previous copy confirmation', async () => {
+  const page = bootTryPage({ singleColumn: true, clipboardWrite: async () => {} });
+  const copy = page.byId.get('copy').listeners.get('click')[0];
+  const status = page.byId.get('copy-feedback');
+  const copyLabel = page.byId.get('copy-label');
+
+  await copy();
+  page.byId.get('more').listeners.get('click')[0]();
+  assert.equal(status.textContent, '');
+  assert.equal(copyLabel.textContent, 'Copy recipe');
+  assert.equal(page.timeouts.size, 0);
+
+  await copy();
+  page.byId.get('unit-ml').listeners.get('click')[0]();
+  assert.equal(status.textContent, '');
+  assert.equal(copyLabel.textContent, 'Copy recipe');
+
+  await copy();
+  const otherRecipe = page.byId.get('recipes').children.find(button => button.dataset.recipe !== 'negroni');
+  otherRecipe.listeners.get('click')[0]();
+  assert.notEqual(page.byId.get('recipe-title').textContent, 'Negroni');
+  assert.equal(status.textContent, '');
+  assert.equal(copyLabel.textContent, 'Copy recipe');
+});
+
+test('blocked recipe copy keeps the selected manual-copy flow and close focus return', async () => {
+  const page = bootTryPage({ clipboardWrite: async () => { throw new Error('denied'); }, execCommandResult: false });
+  const copy = page.byId.get('copy');
+
+  await copy.listeners.get('click')[0]();
+
+  assert.equal(page.byId.get('copy-feedback').textContent, '');
+  assert.equal(page.byId.get('copy-label').textContent, 'Copy recipe');
+  assert.match(page.byId.get('feedback').textContent, /blocked clipboard access/);
+  assert.equal(page.byId.get('manual-copy').hidden, false);
+  assert.match(page.byId.get('recipe-copy').value, /Negroni/);
+  assert.equal(page.byId.get('recipe-copy').selected, true);
+  assert.equal(page.doc.activeElement, page.byId.get('recipe-copy'));
+
+  page.byId.get('close-copy').listeners.get('click')[0]();
+  assert.equal(page.byId.get('manual-copy').hidden, true);
+  assert.equal(page.doc.activeElement, copy);
 });
 
 test('service worker redirects /try/ to the cached offline app route', async () => {

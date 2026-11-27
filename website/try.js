@@ -13,6 +13,7 @@
   let editorID = null;
   let timerEndsAt = 0;
   let timerTick;
+  let copyFeedbackTimeout;
   const compact = window.matchMedia('(max-width: 1000px)');
   const singleColumn = window.matchMedia('(max-width: 700px)');
   let inventoryExpanded = !compact.matches;
@@ -198,6 +199,7 @@
   }
 
   function renderDetail() {
+    setCopyConfirmation();
     const recipe = currentRecipe();
     if (!recipe) return;
     if (!$('manual-copy').hidden) {
@@ -347,10 +349,23 @@
     return copied;
   }
 
+  function setCopyConfirmation(message = '') {
+    window.clearTimeout(copyFeedbackTimeout);
+    const copied = Boolean(message);
+    $('copy-label').textContent = copied ? 'Copied' : 'Copy recipe';
+    $('copy-icon').toggleAttribute('hidden', copied);
+    $('copied-icon').toggleAttribute('hidden', !copied);
+    $('copy-feedback').textContent = message;
+    copyFeedbackTimeout = message ? window.setTimeout(setCopyConfirmation, 3000) : undefined;
+  }
+
   $('copy').addEventListener('click', async () => {
-    const recipe = currentRecipe();
-    const text = App.recipeText(recipe, state.servings, state.unit);
-    $('copy').disabled = true;
+    const copy = $('copy');
+    const restoreCopyFocus = document.activeElement === copy;
+    const text = App.recipeText(currentRecipe(), state.servings, state.unit);
+    setCopyConfirmation();
+    $('feedback').textContent = '';
+    copy.disabled = true;
     let copied = false;
     try {
       if (window.navigator.clipboard && window.isSecureContext) {
@@ -358,12 +373,25 @@
         copied = true;
       }
     } catch (_) { /* Some browsers require the legacy copy fallback. */ }
-    if (!copied) copied = fallbackCopy(text);
-    $('copy').disabled = false;
+    let focusedBeforeFallback = null;
+    if (!copied) {
+      focusedBeforeFallback = document.activeElement;
+      copied = fallbackCopy(text);
+    }
+    copy.disabled = false;
+    if (copied && document.activeElement === document.body) {
+      if (focusedBeforeFallback && focusedBeforeFallback !== document.body) {
+        focusedBeforeFallback.focus({ preventScroll: true });
+      } else if (restoreCopyFocus) {
+        copy.focus({ preventScroll: true });
+      }
+    }
     if (copied) {
       $('manual-copy').hidden = true;
-      $('copy').focus({ preventScroll: true });
-      feedback(`${recipe.name} recipe copied to clipboard.`);
+      const recipe = currentRecipe();
+      if (recipe && App.recipeText(recipe, state.servings, state.unit) === text) {
+        setCopyConfirmation(`${recipe.name} recipe copied to clipboard.`);
+      }
     } else {
       $('manual-copy').hidden = false;
       $('recipe-copy').value = text;
