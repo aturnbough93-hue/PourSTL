@@ -121,12 +121,16 @@ enum BatchPrepSheet {
     }
 
     static func prepMeasure(_ measure: Measure) -> String {
-        if measure.unit == .topUp { return measure.unit.displayName }
+        if isUnmeasured(measure) { return measure.unit.displayName }
         let format = FloatingPointFormatStyle<Double>(locale: Locale(identifier: "en_US_POSIX"))
             .grouping(.never).precision(.fractionLength(0...12))
         let amount = measure.amount.formatted(format)
         let label = Measure.pluralized(measure.unit, amount: measure.amount)
         return label.isEmpty ? amount : "\(amount) \(label)"
+    }
+
+    static func isUnmeasured(_ measure: Measure) -> Bool {
+        measure.unit == .topUp || (measure.unit == .rinse && measure.amount == 0)
     }
 
     private static func cell(_ value: String) -> String {
@@ -163,6 +167,7 @@ struct EventPrepPlan {
             let product: String
             let unit: BarUnit
             let optional: Bool
+            let unmeasured: Bool
             let relativeRecipe: Int?
         }
 
@@ -196,7 +201,8 @@ struct EventPrepPlan {
             for line in batch.recipe.sortedIngredients {
                 let measure = line.measure.scaled(by: Double(batch.servings)).converted(to: .ml)
                 let key = Ingredient.Key(product: RecipeCostLine.productName(line.name), unit: measure.unit,
-                                         optional: line.isOptional, relativeRecipe: measure.unit == .part ? index : nil)
+                                         optional: line.isOptional, unmeasured: BatchPrepSheet.isUnmeasured(measure),
+                                         relativeRecipe: measure.unit == .part ? index : nil)
                 var entry = entries[key] ?? Ingredient(id: key, name: line.name, measure: Measure(amount: 0, unit: measure.unit),
                                                        recipes: [], isStocked: RecipeEngine.isStocked(line, in: stocked))
                 entry.measure.amount += measure.amount
@@ -205,8 +211,8 @@ struct EventPrepPlan {
             }
         }
         ingredients = entries.values.sorted {
-            ($0.name, $0.measure.unit.rawValue, $0.isOptional ? 1 : 0, $0.id.relativeRecipe ?? -1) <
-            ($1.name, $1.measure.unit.rawValue, $1.isOptional ? 1 : 0, $1.id.relativeRecipe ?? -1)
+            ($0.name, $0.measure.unit.rawValue, $0.isOptional ? 1 : 0, $0.id.unmeasured ? 1 : 0, $0.id.relativeRecipe ?? -1) <
+            ($1.name, $1.measure.unit.rawValue, $1.isOptional ? 1 : 0, $1.id.unmeasured ? 1 : 0, $1.id.relativeRecipe ?? -1)
         }
     }
 

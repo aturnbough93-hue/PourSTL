@@ -175,6 +175,16 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertTrue(plan.shopping.isEmpty)
     }
 
+    func testPrepSheetsKeepUnmeasuredAndCountedRinsesSeparate() {
+        let first = recipe(name: "First", lines: [("Absinthe", 0, "rinse", false)])
+        let second = recipe(name: "Second", lines: [("Absinthe", 1, "rinse", false)])
+        XCTAssertTrue(BatchPrepSheet.csv(for: first, servings: 2, unit: .oz).contains("\"Absinthe\",\"rinse\""))
+        let plan = EventPrepPlan(recipes: [first, second], guests: 4, drinksPerGuest: 1, inventory: [])
+        XCTAssertEqual(plan.ingredients.map { BatchPrepSheet.prepMeasure($0.measure) }, ["2 rinses", "rinse"])
+        XCTAssertEqual(plan.ingredients.map(\.recipes), [["Second"], ["First"]])
+        XCTAssertFalse(plan.csv(unit: .oz).contains("0 rinses"))
+    }
+
     func testMenuPricingRoundsUpAndReportsMarginAtTheSuggestedPrice() throws {
         let estimate = try XCTUnwrap(MenuPriceEstimate(cost: Decimal(string: "2.04")!, targetPercent: 25))
         XCTAssertEqual(estimate.price, 9)
