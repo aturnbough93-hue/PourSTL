@@ -98,6 +98,32 @@ test('shopping shared ingredient is listed once across recipes', () => {
   assert.equal(state.shopping.length, 4);
 });
 
+test('Rye in My Bar satisfies rye whiskey without matching unrelated ingredients', () => {
+  const bar = {
+    ...Demo.defaults(),
+    inventory: ['sweet-vermouth', 'angostura-bitters', 'absinthe', 'sugar-cubes', 'peychauds-bitters'],
+  };
+  const stocked = Demo.addIngredient(bar, 'Rye', 'inventory');
+  const flour = Demo.addIngredient(bar, 'Rye Flour', 'inventory');
+  for (const recipe of ['manhattan', 'sazerac']) {
+    assert.equal(Demo.matchRecipe(recipe, stocked.inventory).canMake, true, recipe);
+    assert.deepEqual(Demo.addMissing(stocked, recipe).shopping, [], recipe);
+    assert.deepEqual(Demo.addMissing(flour, recipe).shopping, ['rye-whiskey'], recipe);
+  }
+  assert.deepEqual(Demo.addMissing(stocked, 'old-fashioned').shopping, ['bourbon']);
+});
+
+test('saved Rye in My Bar survives reloading as rye whiskey', () => {
+  const saved = {
+    ...Demo.defaults(),
+    ingredientNames: ['Rye'],
+    inventory: ['rye', 'sweet-vermouth', 'angostura-bitters'],
+  };
+  const reloaded = Demo.validateState(saved);
+  assert.deepEqual(reloaded.inventory, ['rye-whiskey', 'sweet-vermouth', 'angostura-bitters']);
+  assert.deepEqual(Demo.addMissing(reloaded, 'manhattan').shopping, []);
+});
+
 test('scaling and conversion retain small/countable native units', () => {
   assert.equal(Demo.formatMeasure(2, 'oz', 1, 'ml'), '59.147 ml');
   assert.equal(Demo.formatMeasure(0.75, 'oz', 3, 'ml'), '66.54 ml');
@@ -541,6 +567,34 @@ test('blocked recipe copy keeps the selected manual-copy flow and close focus re
   assert.equal(page.doc.activeElement, copy);
 });
 
+test('service worker redirects /try/ to the cached offline app route', async () => {
+  const origin = 'https://pourstl.com';
+  const handlers = new Map();
+  const appPage = new Response('PourSTL Web');
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'website', 'web-app-worker.js'), 'utf8');
+  vm.runInNewContext(worker, {
+    self: { location: { origin }, addEventListener: (type, handler) => handlers.set(type, handler) },
+    caches: { open: async () => ({ match: async entry => entry === '/try' ? appPage : undefined }) },
+    fetch: () => { throw new Error('Network unavailable'); },
+    URL,
+    Response,
+  });
+  function dispatch(request) {
+    let response;
+    handlers.get('fetch')({ request, respondWith: value => { response = value; } });
+    return response;
+  }
+  const request = { url: origin + '/try/?saved=1', method: 'GET', mode: 'navigate' };
+  const redirect = await dispatch(request);
+  assert.ok(redirect, 'worker handles the trailing-slash navigation');
+  assert.equal(redirect.status, 308);
+  const url = redirect.headers.get('Location');
+  assert.equal(url, origin + '/try?saved=1');
+  assert.equal(await dispatch({ ...request, url }), appPage);
+  assert.equal(dispatch({ ...request, mode: 'cors' }), undefined);
+  assert.equal(dispatch({ ...request, url: origin + '/support/' }), undefined);
+});
+
 test('bar assistant parses intents accurately including scaling, substitutions, dietary, and privacy', () => {
   assert.deepEqual(Assistant.parseIntent('What can I make?'), { type: 'whatCanIMake', focus: null });
   assert.deepEqual(Assistant.parseIntent('What can I make with Beefeater?'), { type: 'whatCanIMake', focus: 'beefeater' });
@@ -554,6 +608,7 @@ test('bar assistant parses intents accurately including scaling, substitutions, 
   assert.deepEqual(Assistant.parseIntent("What's in my bar?"), { type: 'inventory', mode: 'stocked' });
   assert.deepEqual(Assistant.parseIntent("What's out of stock?"), { type: 'inventory', mode: 'outOfStock' });
   assert.deepEqual(Assistant.parseIntent('Do you upload my bar to the cloud?'), { type: 'privacy' });
+  assert.deepEqual(Assistant.parseIntent('Is my bar stored on the cloud?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Do you use cloud storage?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Are my questions saved?'), { type: 'privacy' });
   assert.deepEqual(Assistant.parseIntent('Scale the Cloud Nine for 4'), { type: 'scale', recipeQuery: 'cloud nine', servings: 4 });
@@ -670,6 +725,9 @@ test('bar assistant answers from My Bar, custom recipes, stand-ins, and scaling 
   const privacyReply = Assistant.answer('Do you send my bar to OpenAI?', state);
   assert.match(privacyReply.text, /does not use an AI model/);
 
+  const cloudPrivacyReply = Assistant.answer('Is my bar stored on the cloud?', state);
+  assert.match(cloudPrivacyReply.text, /does not use an AI model or send questions anywhere/);
+
   const helpReply = Assistant.answer('How does this work?', state);
   assert.match(helpReply.text, /cleared when you close the dialog/);
 
@@ -693,6 +751,20 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   const form = page.byId.get('assistant-form');
   const input = page.byId.get('assistant-input');
 
+  const appendToLog = log.append.bind(log);
+  const assistantReplyTops = [300, 400];
+  log.scrollTop = 0;
+  log.scrollHeight = 900;
+  log.getBoundingClientRect = () => ({ top: 100 });
+  log.append = (...nodes) => {
+    for (const child of nodes) {
+      if (child.className === 'assistant-turn assistant-turn-assistant') {
+        child.getBoundingClientRect = () => ({ top: assistantReplyTops.shift() });
+      }
+    }
+    appendToLog(...nodes);
+  };
+
   openBtn.listeners.get('click')[0]();
   assert.ok(log.children.length > 0);
   assert.equal(log.children[0].className, 'assistant-empty');
@@ -705,12 +777,15 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   assert.equal(firstUserNode.className, 'assistant-turn assistant-turn-user');
   assert.equal(firstAssistantNode.className, 'assistant-turn assistant-turn-assistant');
   assert.equal(input.value, '');
+  assert.equal(log.scrollTop, 200);
+  assert.equal(page.doc.activeElement, input);
 
   input.value = 'What can I make?';
   form.listeners.get('submit')[0]({ preventDefault() {} });
   assert.equal(log.children.length, 4);
   assert.equal(log.children[0], firstUserNode);
   assert.equal(log.children[1], firstAssistantNode);
+  assert.equal(log.scrollTop, 500);
 
   closeBtn.listeners.get('click')[0]();
   dialog.listeners.get('close')[0]();

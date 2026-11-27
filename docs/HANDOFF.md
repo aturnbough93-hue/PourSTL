@@ -12,9 +12,11 @@ continued from GitHub. Do not rely on old coordination entries as current state.
 - In [#48](https://github.com/aturnbough93-hue/PourSTL/pull/48), Settings → Support replaced GitHub Issues feedback with [Get support](https://pourstl.com/support), [Privacy policy](https://pourstl.com/privacy), and [PourSTL website](https://pourstl.com). The store-recovery screen’s **Get help** opens the same support page. Terms of Use stay on Apple’s standard EULA.
 - Deep links: `pourstl://`; legacy `pour://` remains supported. Existing internal preferences and browser storage keys remain stable. Approved app icon artwork is unchanged.
 
-Product positioning: PourSTL is a bartending app with offline tools. The
-iPhone Bar Assistant still uses on-device rules, and PourSTL Web does not
-include an assistant. Neither app calls the standalone Worker.
+Product positioning: PourSTL is a bartending app with offline tools.
+[#59](https://github.com/aturnbough93-hue/PourSTL/pull/59) added Bar Assistant
+to PourSTL Web at `/try`. Both assistants use local rules and the recipes and
+inventory in their own app. Questions and replies stay in memory until the
+assistant closes. Neither app calls the standalone Worker.
 
 ## Hosting
 
@@ -44,6 +46,13 @@ subscription after cleanup. A timeout fails the test; it is not treated as an
 empty entitlement result. These checks do not replace purchase, restore, and
 expiration testing with the configured products in Apple's sandbox.
 
+[#56](https://github.com/aturnbough93-hue/PourSTL/pull/56) added
+[Release checks](../.github/workflows/release-checks.yml), which reruns Quality
+checks and Simulator QA pass and checks the candidate's build number against
+prior release refs. Follow the
+[beta checklist](../BETA_CHECKLIST.md#automated-release-checks) before publishing;
+CI does not replace signing or device verification.
+
 PourSTL Web opens from the homepage and works without an account. It uses the
 native seed catalog and saves custom recipes, favorites, inventory, shopping,
 and preferences in the browser. The service worker provides offline access
@@ -62,4 +71,4 @@ has been delivered.
 2. Canonical metadata uses https://pourstl.com. Cloudflare deploys the `main` branch to Pages project `pourstl`. The assigned Pages hostname is pourstl.pages.dev.
 3. Inspect the latest renamed app unit/Release/UI workflows. Fix genuine failures; record tested commit, SDK/runtime, counts and current screenshots.
 4. Confirm the simulator package for the tested commit is downloadable with its manifest, checksum, and guide.
-5. Verify the Pages deployment from `main`: homepage CTA, browser app, assets, security headers, and a real 404. Record the results and remaining owner steps.
+5. Verify the Pages deployment from `main`: homepage CTA, browser app (including Bar Assistant after the app is cached), assets, security headers, and a real 404. Record the results and remaining owner steps.

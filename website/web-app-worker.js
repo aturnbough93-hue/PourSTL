@@ -26,6 +26,11 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (event.request.mode === 'navigate' && url.pathname === appPage + '/') {
+    url.pathname = appPage;
+    event.respondWith(Response.redirect(url, 308));
+    return;
+  }
   const navigation = event.request.mode === 'navigate' && ['/try', '/try.html'].includes(url.pathname);
   const asset = event.request.mode !== 'navigate' && appAssets.includes(url.pathname);
   if (!navigation && !asset) return;

@@ -53,13 +53,18 @@ node --check website/site.js
 bash scripts/test_ios.sh
 ```
 
-GitHub Actions runs the website checks and native unit tests on pushes to `main`
-and `codex/**`, and on pull requests. A successful run includes a downloadable
+[Quality checks](.github/workflows/ci.yml) runs the website, Worker, and release
+metadata checks alongside native unit tests on pushes to `main` and `codex/**`,
+and on pull requests. A successful run includes a downloadable
 **PourSTL-Simulator** artifact: a universal Release simulator app, commit/build
-manifest, checksum, and installation guide. A separate **Simulator QA pass**
-workflow records current UI tests and screenshots. See
-[docs/PERSONAL_TESTING.md](docs/PERSONAL_TESTING.md) for installation and the
-personal testing checklist. These unsigned builds require a Mac with Xcode;
+manifest, checksum, and installation guide. The separate
+[Simulator QA pass](.github/workflows/qa-simulator-pass.yml) workflow records
+current UI tests and screenshots. Before publishing, run
+[Release checks](.github/workflows/release-checks.yml) on the exact candidate ref.
+It reruns both workflows and checks the release build number; see the
+[beta checklist](BETA_CHECKLIST.md#automated-release-checks) for triggers and
+baseline rules. See [the personal testing guide](docs/PERSONAL_TESTING.md) for
+installation and manual checks. These unsigned builds require a Mac with Xcode;
 physical iPhone installation and TestFlight need Apple provisioning/signing.
 
 ## Feature status
@@ -125,5 +130,8 @@ Use a Cloudflare Pages preview, not the local server, to test offline caching
 and Home Screen installation.
 Use the seeded catalog, save custom recipes and favorites, stock My Bar, and
 manage a shopping list. The web app saves data in the browser, scales to 24
-servings, and works offline after it caches the app. Pro tools are iPhone-only.
+servings, and works offline after it caches the app. Open **Bar Assistant** in
+the header for local recipe and inventory questions, ingredient stand-ins, and
+scaled measures. Questions and replies clear when you close it. Pro tools are
+iPhone-only.
 See the [website guide](website/README.md) for offline and deployment checks.
