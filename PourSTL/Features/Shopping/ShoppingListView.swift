@@ -12,6 +12,7 @@ struct ShoppingListView: View {
     @State private var showAdd = false
     @State private var showSaveError = false
     @State private var showPro = false
+    @State private var inventoryToEdit: InventoryItem?
     @State private var newItemName = ""
     @State private var recentlyStocked = Set<PersistentIdentifier>()
 
@@ -31,16 +32,15 @@ struct ShoppingListView: View {
         NavigationStack {
             Group {
                 if items.isEmpty && candidates.isEmpty {
-                    EmptyStateView(
-                        symbol: "cart",
-                        title: "Shopping list is empty",
-                        message: "Missing ingredients land here when you tap “Add missing” on a recipe.",
-                        actionTitle: "Browse drinks"
-                    ) {
-                        router.pendingTab = .home
-                    }
+                    emptyListMessage
                 } else {
                     List {
+                        if items.isEmpty {
+                            emptyListMessage
+                                .buttonStyle(.borderless)
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        }
                         shoppingInsightSection(candidates)
                         if !pending.isEmpty {
                             Section("To buy (\(pending.count))") {
@@ -113,6 +113,20 @@ struct ShoppingListView: View {
                 Text("Check available device storage and try again.")
             }
             .sheet(isPresented: $showPro) { ProUpsellView() }
+            .sheet(item: $inventoryToEdit) { item in
+                InventoryEditSheet(item: item)
+            }
+        }
+    }
+
+    private var emptyListMessage: some View {
+        EmptyStateView(
+            symbol: "cart",
+            title: "Shopping list is empty",
+            message: "Missing ingredients land here when you tap “Add missing” on a recipe.",
+            actionTitle: "Browse drinks"
+        ) {
+            router.pendingTab = .home
         }
     }
 
@@ -145,12 +159,16 @@ struct ShoppingListView: View {
                                     .foregroundStyle(PourColor.textSecondary)
                             }
                             Spacer()
-                            Button("Add") { addCandidate(candidate) }
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(PourColor.accent)
-                                .frame(minHeight: 44)
-                                .accessibilityLabel("Add \(candidate.displayName) to shopping list")
-                                .accessibilityAddTraits(.isButton)
+                            Button {
+                                addCandidate(candidate)
+                            } label: {
+                                Text("Add")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(PourColor.accent)
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .accessibilityLabel("Add \(candidate.displayName) to shopping list")
                         }
                         .frame(minHeight: 52)
                         .buttonStyle(.borderless)
@@ -202,17 +220,7 @@ struct ShoppingListView: View {
             }
             Spacer()
             if item.isPurchased {
-                let stocked = inventory.contains { $0.canonicalName == item.canonicalName && $0.isAvailable && !$0.isLowStock }
-                let justStocked = recentlyStocked.contains(item.persistentModelID)
-                Button {
-                    stockBar(with: item)
-                } label: {
-                    Label(justStocked ? "Stocked" : (stocked ? "In My Bar" : "Stock bar"), systemImage: stocked || justStocked ? "checkmark" : "shippingbox")
-                        .font(.caption.weight(.semibold))
-                        .frame(minHeight: 44)
-                }
-                .disabled(stocked || justStocked)
-                .accessibilityLabel(justStocked ? "\(item.name), added to My Bar" : (stocked ? "\(item.name), in My Bar" : "Add \(item.name) to My Bar"))
+                purchaseStockAction(item)
             }
         }
         .frame(minHeight: 52)
@@ -225,6 +233,35 @@ struct ShoppingListView: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func purchaseStockAction(_ item: ShoppingListItem) -> some View {
+        let stockedItems = inventory.filter { $0.canonicalName == item.canonicalName && $0.isAvailable && !$0.isLowStock }
+        let justStocked = recentlyStocked.contains(item.persistentModelID)
+        let stocked = !stockedItems.isEmpty
+        if pro.isPro, !justStocked, let lowItem = stockedItems.first,
+           stockedItems.allSatisfy(InventoryOperations.isEffectivelyLow) {
+            Button {
+                inventoryToEdit = lowItem
+            } label: {
+                Label("Update quantity", systemImage: "pencil")
+                    .font(.caption.weight(.semibold))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("\(item.name), low in My Bar. Update quantity")
+        } else {
+            Button {
+                stockBar(with: item)
+            } label: {
+                Label(justStocked ? "Stocked" : (stocked ? "In My Bar" : "Stock bar"), systemImage: stocked || justStocked ? "checkmark" : "shippingbox")
+                    .font(.caption.weight(.semibold))
+                    .frame(minHeight: 44)
+            }
+            .disabled(stocked || justStocked)
+            .accessibilityLabel(justStocked ? "\(item.name), added to My Bar" : (stocked ? "\(item.name), in My Bar" : "Add \(item.name) to My Bar"))
         }
     }
 

@@ -681,7 +681,11 @@ struct InventoryEditSheet: View {
         if let item {
             item.name = trimmed
             item.category = category.rawValue
-            if isInStock != item.isAvailable {
+            if amountEdits.bottlesOnHand.hasChange {
+                // Apply the toggle alongside the replacement count so a previous zero
+                // can't mask the old flag or clear an explicitly entered zero.
+                item.isInStock = isInStock
+            } else if isInStock != item.isAvailable {
                 item.setAvailability(isInStock)
             }
             item.isLowStock = isLowStock
