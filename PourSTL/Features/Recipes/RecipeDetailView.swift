@@ -129,8 +129,8 @@ private struct RecipeServiceTools: View {
     private var menuPricingSection: some View {
         let required = recipe.sortedIngredients.filter { !$0.isOptional }
         let costs = required.compactMap { RecipeCostLine(ingredient: $0).cost(in: settings.ingredientPrices, currency: currency) }
-        let estimate = required.count == costs.count
-            ? MenuPriceEstimate(cost: costs.reduce(0, +), targetPercent: targetPourCost) : nil
+        let completeCost = !required.isEmpty && required.count == costs.count ? costs.reduce(0, +) : nil
+        let estimate = completeCost.flatMap { MenuPriceEstimate(cost: $0, targetPercent: targetPourCost) }
         return Section {
             Button {
                 if ProGate.isLocked(.menuPricing, isPro: entitlement.isPro) { showMenuPricing = false }
@@ -143,6 +143,9 @@ private struct RecipeServiceTools: View {
                 if let estimate {
                     LabeledContent("Suggested price", value: money(estimate.price))
                     LabeledContent("Ingredient margin", value: estimate.ingredientMargin.formatted(.percent.precision(.fractionLength(1))))
+                } else if completeCost == 0 {
+                    Text("Required ingredients cost nothing. A target pour cost doesn’t determine a menu price for this recipe.")
+                        .foregroundStyle(.secondary)
                 } else {
                     Text("Enter prices and measures for all required ingredients to estimate a menu price.")
                         .foregroundStyle(.secondary)
