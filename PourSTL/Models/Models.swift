@@ -124,15 +124,27 @@ final class InventoryItem {
         InventoryCategory(rawValue: category) ?? .other
     }
 
+    var isAvailable: Bool {
+        isInStock && quantity != 0
+    }
+
     var stockedPackageQuantity: Double? {
-        isInStock ? quantity : 0
+        isAvailable ? quantity : 0
+    }
+
+    /// A manual restock supplies availability even when the new quantity is unknown.
+    func setAvailability(_ available: Bool) {
+        isInStock = available
+        if available, quantity == 0 { quantity = nil }
     }
 
     func setParLevel(onHand: Int, minimum: Int, packageUnit: String?, updateStockStatus: Bool = true) {
-        quantity = Double(onHand)
+        if updateStockStatus {
+            quantity = Double(onHand)
+            isInStock = onHand > 0
+        }
         lowStockThreshold = minimum > 0 ? Double(minimum) : nil
         reorderPackageUnit = packageUnit
-        if updateStockStatus { isInStock = onHand > 0 }
     }
 
     /// Stable identity for barcode matching. Two rows can share a display name;

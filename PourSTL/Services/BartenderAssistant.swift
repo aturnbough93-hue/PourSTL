@@ -413,7 +413,7 @@ struct LocalBartenderAssistant: BartenderAssistant {
         if library.inventory.isEmpty {
             return reply("My Bar is empty, so nothing can be matched yet. Add bottles there and ask again.", followUps: ["What can I make?"])
         }
-        if !library.inventory.contains(where: \.isInStock) {
+        if !library.inventory.contains(where: \.isAvailable) {
             return reply("Nothing in My Bar is marked in stock, so no drinks match. Turn a bottle back on and ask again.", followUps: ["What can I make?"])
         }
 
@@ -610,8 +610,8 @@ struct LocalBartenderAssistant: BartenderAssistant {
         if library.inventory.isEmpty {
             return reply("My Bar is empty. Add a bottle and I can match drinks against it.", followUps: ["What can I make?"])
         }
-        let onHand = library.inventory.filter(\.isInStock)
-        let out = library.inventory.filter { !$0.isInStock }
+        let onHand = library.inventory.filter(\.isAvailable)
+        let out = library.inventory.filter { !$0.isAvailable }
         var lines: [String] = []
         if onHand.isEmpty {
             lines.append("Nothing in My Bar is marked in stock.")

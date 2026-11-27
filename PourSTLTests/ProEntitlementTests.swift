@@ -218,7 +218,19 @@ final class ProEntitlementLogicTests: XCTestCase {
         XCTAssertTrue(lines[5].contains("\"Water (dilution)\",\"6 oz\""))
         XCTAssertTrue(lines[5].contains("20%"))
         XCTAssertTrue(lines[6].contains("\"Total batch volume\",\"36 oz\""))
-        XCTAssertTrue(lines[7].contains("\"Pour per serving\",\"3.5 oz\""))
+        XCTAssertTrue(lines[7].contains("\"Pour per serving\",\"3.6 oz\""))
+    }
+
+    func testBatchPrepCSVIncludesRecipeGarnishUnlessAlreadyListed() {
+        let recipe = Recipe(name: "Espresso Martini", method: "Shaken", garnish: "3 coffee beans")
+        recipe.ingredients = [IngredientLine(name: "Vodka", amount: 1, unit: "oz")]
+        var csv = BatchPrepSheet.csv(for: recipe, servings: 5, unit: .oz)
+        XCTAssertTrue(csv.contains(#""3 coffee beans","","Yes","Garnish at service""#))
+        recipe.garnish = "Orange twist"
+        recipe.ingredients.append(IngredientLine(name: "Orange Twist", amount: 1, unit: "twist", isOptional: true))
+        csv = BatchPrepSheet.csv(for: recipe, servings: 5, unit: .oz)
+        XCTAssertFalse(csv.contains(#""Orange twist","","Yes","Garnish at service""#))
+        XCTAssertTrue(csv.contains(#""Orange Twist","5 twists","Yes""#))
     }
 
     func testBatchPrepCSVOmitsWaterForBuiltDrinks() {

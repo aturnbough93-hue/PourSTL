@@ -164,9 +164,10 @@ struct BatchPlan: Equatable {
     let measuredMilliliters: Double
     let profile: DilutionProfile?
     /// True when some lines (parts, countables, rinses) are not
-    /// volume-measurable and are excluded from the totals. Top-ups are excluded
-    /// by design — mixers and soda stay out of the batch — and do not flag this.
+    /// volume-measurable and are excluded from the totals.
     let excludesNonVolumeLines: Bool
+    /// Toppers and optional ingredients are prepared separately from the batch.
+    let hasServiceIngredients: Bool
 
     /// Water to add for dilution. Zero for built/blended/hot methods; nil when
     /// the method is unrecognized and no dilution assumption applies.
@@ -181,41 +182,73 @@ struct BatchPlan: Equatable {
 
 enum BatchPlanner {
     static func plan(for recipe: Recipe, servings: Int) -> BatchPlan? {
-        let factor = Double(max(servings, 1))
+        guard servings > 0 else { return nil }
+        let factor = Double(servings)
         var milliliters = 0.0
         var excludesNonVolume = false
+        var hasServiceIngredients = false
         for line in recipe.sortedIngredients {
+            if line.isOptional || isServiceTopper(line) {
+                hasServiceIngredients = true
+                continue
+            }
             let measure = line.measure
-            guard measure.amount.isFinite, measure.amount > 0 else { continue }
+            guard measure.amount.isFinite, measure.amount >= 0 else { continue }
             if let volume = measure.scaled(by: factor).milliliters {
                 milliliters += volume
-            } else if !BatchPrepSheet.isUnmeasured(measure) {
+            } else {
                 excludesNonVolume = true
             }
         }
-        guard milliliters > 0 else { return nil }
+        let profile = DilutionProfile.forMethod(recipe.method)
+        guard milliliters > 0, (milliliters * (1 + (profile?.waterFraction ?? 0))).isFinite else { return nil }
         return BatchPlan(
             servings: servings,
             measuredMilliliters: milliliters,
-            profile: DilutionProfile.forMethod(recipe.method),
-            excludesNonVolumeLines: excludesNonVolume
+            profile: profile,
+            excludesNonVolumeLines: excludesNonVolume,
+            hasServiceIngredients: hasServiceIngredients
         )
     }
 
-    /// Round a volume the way bartenders portion it: quarter-ounce steps or
-    /// whole milliliters, matching measure display rounding elsewhere.
-    static func displayMeasure(milliliters: Double, unit preference: UnitPreference) -> Measure {
-        let converted = Measure(amount: milliliters, unit: .milliliter).converted(to: preference)
-        return Measure(amount: Measure.displayAmount(converted.amount, for: converted.unit), unit: converted.unit)
+    static func isServiceTopper(_ line: IngredientLine) -> Bool {
+        line.measure.unit == .topUp || line.note.map { BarUnit.parse($0) == .topUp } == true
+    }
+
+    static func batchMeasure(milliliters: Double, unit: UnitPreference, locale: Locale = .current) -> String {
+        volumeText(milliliters: milliliters, unit: unit, locale: locale, rule: .toNearestOrEven)
+    }
+
+    /// Round down so the batch can supply every serving at the displayed measure.
+    static func pourMeasure(milliliters: Double, unit: UnitPreference, locale: Locale = .current) -> String {
+        volumeText(milliliters: milliliters, unit: unit, locale: locale, rule: .down)
+    }
+
+    private static func volumeText(
+        milliliters: Double, unit: UnitPreference, locale: Locale, rule: FloatingPointRoundingRule
+    ) -> String {
+        let amount = unit == .oz ? milliliters / Measure.millilitersPerOunce : milliliters
+        let digits = unit == .oz ? 2 : 1
+        let minimum = unit == .oz ? 0.01 : 0.1
+        let format = FloatingPointFormatStyle<Double>(locale: locale)
+            .grouping(.never)
+            .precision(.fractionLength(0...digits))
+            .rounded(rule: rule)
+        if amount > 0, amount < minimum {
+            return "< \(minimum.formatted(format)) \(unit.rawValue)"
+        }
+        // Compensate for the final floating-point unit conversion at exact thresholds.
+        let displayAmount = rule == .down ? amount.nextUp : amount
+        return "\(displayAmount.formatted(format)) \(unit.rawValue)"
     }
 }
 
 /// Pour-cost and menu-price math for the Pro costing sheet.
 enum MenuPricing {
     /// Bartenders set menu prices in half-steps; rounding up never under-prices.
-    static let priceStep = 0.5
-    static let targetPercentRange = 5.0...50.0
-    static let defaultTargetPercent = 20.0
+    private static let stepsPerCurrencyUnit = Decimal(2)
+    static let targetPercentRange = 1.0...100.0
+    static let defaultTargetPercent = 25.0
 
     /// Ingredient cost as a percentage of the menu price.
     static func pourCostPercent(cost: Decimal, menuPrice: Decimal) -> Double? {
@@ -229,18 +262,19 @@ enum MenuPricing {
     }
 
     /// Price that hits the target pour cost, rounded up to the nearest
-    /// half unit of currency. The tiny epsilon keeps exact half-step results
-    /// from floating-point overshoot without suppressing a real round-up.
+    /// half unit of currency.
     static func suggestedMenuPrice(cost: Decimal, targetPercent: Double) -> Decimal? {
-        guard !cost.isNaN, cost > 0,
-              targetPercent.isFinite, targetPercent > 0 else { return nil }
-        let raw = NSDecimalNumber(decimal: cost).doubleValue / (targetPercent / 100)
-        guard raw.isFinite, raw > 0, raw < 1_000_000 else { return nil }
-        let rounded = (raw / priceStep - 1e-9).rounded(.up) * priceStep
-        return Decimal(rounded)
+        guard !cost.isNaN, cost > 0, targetPercentRange.contains(targetPercent) else { return nil }
+        guard let target = Decimal(string: String(targetPercent), locale: Locale(identifier: "en_US_POSIX")) else { return nil }
+        let raw = cost * 100 / target
+        guard !raw.isNaN, raw > 0, raw < 1_000_000 else { return nil }
+        var steps = raw * stepsPerCurrencyUnit
+        var rounded = Decimal.zero
+        NSDecimalRound(&rounded, &steps, 0, .up)
+        return rounded / stepsPerCurrencyUnit
     }
 
-    /// Ingredient cost as a fraction of the menu price (1 − pour cost %).
+    /// The share of the menu price left after ingredient costs.
     static func ingredientMargin(cost: Decimal, price: Decimal) -> Decimal? {
         guard !cost.isNaN, !price.isNaN, cost >= 0, price > 0 else { return nil }
         return (price - cost) / price
@@ -262,11 +296,16 @@ enum InventoryOperations {
     static func valuation(items: [InventoryItem]) -> Decimal? {
         var total = Decimal.zero
         var anyPriced = false
-        for item in items where item.isInStock {
-            guard let cost = item.bottleCost, cost.isFinite, cost > 0 else { continue }
-            let bottles = max(item.quantity ?? 1, 0)
-            guard bottles.isFinite else { continue }
-            total += Decimal(cost) * Decimal(bottles)
+        let locale = Locale(identifier: "en_US_POSIX")
+        for item in items where item.isAvailable {
+            guard let cost = item.bottleCost, cost.isFinite, cost > 0,
+                  let decimalCost = Decimal(string: String(cost), locale: locale), !decimalCost.isNaN else { continue }
+            let bottles = item.quantity ?? 1
+            guard bottles.isFinite, bottles >= 0,
+                  let decimalBottles = Decimal(string: String(bottles), locale: locale), !decimalBottles.isNaN else { continue }
+            let updatedTotal = total + decimalCost * decimalBottles
+            guard !updatedTotal.isNaN else { continue }
+            total = updatedTotal
             anyPriced = true
         }
         return anyPriced ? total : nil
@@ -286,20 +325,24 @@ enum ShoppingInsights {
     /// missing required ingredient is stocked. Optional ingredients never count,
     /// and recipes missing two or more required ingredients need more than one
     /// bottle, so they contribute no vote.
-    static func bestNextPurchases(recipes: [Recipe], inventory: [InventoryItem], limit: Int = 3) -> [UnlockCandidate] {
+    static func bestNextPurchases(
+        recipes: [Recipe], inventory: [InventoryItem], excluding excludedProductNames: Set<String> = [], limit: Int = 3
+    ) -> [UnlockCandidate] {
         var votes: [String: (displayName: String, count: Int)] = [:]
         for recipe in recipes.sorted(by: { $0.name < $1.name }) {
             let match = RecipeEngine.match(recipe, inventory: inventory)
-            guard match.missing.count == 1, let line = match.missing.first else { continue }
+            guard let line = match.missing.first else { continue }
             let key = line.canonicalName
-            guard !key.isEmpty else { continue }
+            guard !key.isEmpty, !excludedProductNames.contains(key),
+                  match.missing.dropFirst().allSatisfy({ $0.canonicalName == key }) else { continue }
             let entry = votes[key] ?? (line.name, 0)
             votes[key] = (entry.displayName, entry.count + 1)
         }
         return votes
             .map { UnlockCandidate(canonicalName: $0.key, displayName: $0.value.displayName, unlockCount: $0.value.count) }
             .sorted { lhs, rhs in
-                lhs.unlockCount != rhs.unlockCount ? lhs.unlockCount > rhs.unlockCount : lhs.displayName < rhs.displayName
+                if lhs.unlockCount != rhs.unlockCount { return lhs.unlockCount > rhs.unlockCount }
+                return (lhs.displayName, lhs.canonicalName) < (rhs.displayName, rhs.canonicalName)
             }
             .prefix(max(limit, 0))
             .map { $0 }
@@ -309,16 +352,25 @@ enum ShoppingInsights {
 enum BatchPrepSheet {
     static func csv(for recipe: Recipe, servings: Int, unit: UnitPreference) -> String {
         let header = ["Recipe", "Servings", "Ingredient", "Batch measure", "Optional", "Ingredient note"]
-        // Batchable liquids first in build order; garnishes and other optional
-        // lines are grouped last so they are prepped separately.
         let sorted = recipe.sortedIngredients
-        let ordered = sorted.filter { !$0.isOptional } + sorted.filter { $0.isOptional }
+        let required = sorted.filter { !$0.isOptional && !BatchPlanner.isServiceTopper($0) }
+        let ordered = required.filter { $0.measure.unit.ouncesPerUnit != nil }
+            + required.filter { $0.measure.unit.ouncesPerUnit == nil }
+            + sorted.filter { !$0.isOptional && BatchPlanner.isServiceTopper($0) }
+            + sorted.filter(\.isOptional)
         var rows = ordered.map { line in
-            [
+            let note = BatchPlanner.isServiceTopper(line)
+                ? ["Add at service", line.note].compactMap { $0 }.joined(separator: " · ")
+                : line.note ?? ""
+            return [
                 recipe.name, String(servings), line.name,
                 prepMeasure(line.measure.scaled(by: Double(servings)).converted(to: unit)),
-                line.isOptional ? "Yes" : "No", line.note ?? "",
+                line.isOptional ? "Yes" : "No", note,
             ]
+        }
+        if let garnish = recipe.garnish?.trimmingCharacters(in: .whitespacesAndNewlines), !garnish.isEmpty,
+           !sorted.contains(where: { $0.isOptional && IngredientNormalizer.normalize($0.name) == IngredientNormalizer.normalize(garnish) }) {
+            rows.append([recipe.name, String(servings), garnish, "", "Yes", "Garnish at service"])
         }
         if let plan = BatchPlanner.plan(for: recipe, servings: servings) {
             rows += summaryRows(for: recipe, servings: servings, plan: plan, unit: unit)
@@ -327,25 +379,26 @@ enum BatchPrepSheet {
     }
 
     private static func summaryRows(for recipe: Recipe, servings: Int, plan: BatchPlan, unit: UnitPreference) -> [[String]] {
-        func volumeRow(_ label: String, _ milliliters: Double, _ note: String) -> [String] {
-            [
-                recipe.name, String(servings), label,
-                prepMeasure(BatchPlanner.displayMeasure(milliliters: milliliters, unit: unit)),
-                "", note,
-            ]
+        let locale = Locale(identifier: "en_US_POSIX")
+        func volumeRow(_ label: String, _ measure: String, _ note: String) -> [String] {
+            [recipe.name, String(servings), label, measure, "", note]
         }
         var rows: [[String]] = []
         if let water = plan.waterMilliliters, water > 0, let profile = plan.profile {
-            rows.append(volumeRow("Water (dilution)", water, profile.assumption))
+            rows.append(volumeRow(
+                "Water (dilution)", BatchPlanner.batchMeasure(milliliters: water, unit: unit, locale: locale), profile.assumption
+            ))
         }
-        let exclusionNote = plan.excludesNonVolumeLines
-            ? " Lines measured in parts or countables are not included in volume totals."
-            : ""
+        var yieldNote = "Measured batch ingredients and any dilution water."
+        if plan.hasServiceIngredients { yieldNote += " Add toppers and optional ingredients separately." }
+        if plan.excludesNonVolumeLines { yieldNote += " Parts and other unmeasured lines are not included in volume totals." }
         rows.append(volumeRow(
-            "Total batch volume", plan.totalMilliliters,
-            "Measured ingredients plus dilution water. Chill the batch; shake the sealed bottle before pouring.\(exclusionNote)"
+            "Total batch volume", BatchPlanner.batchMeasure(milliliters: plan.totalMilliliters, unit: unit, locale: locale), yieldNote
         ))
-        rows.append(volumeRow("Pour per serving", plan.perServingMilliliters, "Ready-to-pour measure per drink."))
+        rows.append(volumeRow(
+            "Pour per serving", BatchPlanner.pourMeasure(milliliters: plan.perServingMilliliters, unit: unit, locale: locale),
+            "Ready-to-pour measure rounded down for every serving."
+        ))
         return rows
     }
 
@@ -452,7 +505,7 @@ struct EventPrepPlan {
             let count = total / recipes.count + (index < total % recipes.count ? 1 : 0)
             return count > 0 ? Batch(recipe: recipe, servings: count) : nil
         }
-        let stocked = Set(inventory.filter(\.isInStock).map(\.canonicalName))
+        let stocked = Set(inventory.filter(\.isAvailable).map(\.canonicalName))
         var entries: [Ingredient.Key: Ingredient] = [:]
         for (index, batch) in batches.enumerated() {
             for line in batch.recipe.sortedIngredients {
@@ -518,37 +571,48 @@ struct ReorderPlan {
     struct Line: Identifiable {
         let id: PersistentIdentifier
         let name: String
-        let onHand: Int
-        let par: Int
+        let onHand: Double
+        let par: Double
+        let packages: Int
         let cost: Decimal?
-        var packages: Int { par - onHand }
     }
 
     let lines: [Line]
     var pricedSubtotal: Decimal { lines.compactMap(\.cost).reduce(0, +) }
 
     init(items: [InventoryItem], prices: [String: IngredientPackagePrice], currency: String) {
+        let locale = Locale(identifier: "en_US_POSIX")
         lines = items.compactMap { item in
-            guard let par = item.lowStockThreshold, (1...999).contains(par), par.rounded() == par,
-                  let quantity = item.quantity, (0...999).contains(quantity), quantity.rounded() == quantity else { return nil }
-            let onHand = item.isInStock ? Int(quantity) : 0
-            guard Int(par) > onHand else { return nil }
+            let onHand = item.stockedPackageQuantity ?? 0
+            guard let par = item.lowStockThreshold, par > 0, par <= 999,
+                  (0...999).contains(onHand), par > onHand,
+                  let threshold = Decimal(string: String(par), locale: locale),
+                  let available = Decimal(string: String(onHand), locale: locale) else { return nil }
+            var deficit = threshold - available
+            var rounded = Decimal.zero
+            NSDecimalRound(&rounded, &deficit, 0, .up)
+            let packages = NSDecimalNumber(decimal: rounded).intValue
             let chosen = item.reorderPackageUnit
             let available = RecipeCostLine.packageUnits(for: item.name, currency: currency, prices: prices)
             let unit = chosen ?? (available.count == 1 ? available.first : nil)
             let price = unit.flatMap { prices["\(currency)|\($0)|\(RecipeCostLine.productName(item.name))"] }
             let cost = price.flatMap { package -> Decimal? in
                 guard !package.price.isNaN, package.price >= 0, !package.yield.isNaN, package.yield > 0 else { return nil }
-                return package.price * Decimal(Int(par) - onHand)
+                let total = package.price * Decimal(packages)
+                return total.isNaN ? nil : total
             }
-            return Line(id: item.persistentModelID, name: item.name, onHand: onHand, par: Int(par), cost: cost)
+            return Line(id: item.persistentModelID, name: item.name, onHand: onHand, par: par, packages: packages, cost: cost)
         }
     }
 
     func csv(currency: String) -> String {
         BatchPrepSheet.csv(header: ["Ingredient", "On hand", "Par", "Packages to order", "Estimated cost", "Currency"],
-                           rows: lines.map { [$0.name, String($0.onHand), String($0.par), String($0.packages),
+                           rows: lines.map { [$0.name, Self.countText($0.onHand), Self.countText($0.par), String($0.packages),
                                                $0.cost.map { NSDecimalNumber(decimal: $0).stringValue } ?? "", currency] })
+    }
+
+    private static func countText(_ count: Double) -> String {
+        count == count.rounded() ? String(Int(count)) : String(count)
     }
 }
 
@@ -562,7 +626,7 @@ enum RecipeEngine {
     }
 
     static func match(_ recipe: Recipe, inventory: [InventoryItem]) -> RecipeMatch {
-        let inStock = inventory.filter(\.isInStock)
+        let inStock = inventory.filter(\.isAvailable)
         let stocked = Set(inStock.map(\.canonicalName))
         var missing: [IngredientLine] = []
         var missingOptional: [IngredientLine] = []
