@@ -167,7 +167,7 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertTrue(plan.csv(unit: .ml).contains(#""Batch","First","2","Sugar","4 tsp""#))
     }
 
-    func testEventShoppingIncludesMergedProductIfAnyLabelIsMissing() {
+    func testEventShoppingIncludesMergedProductIfAnyLabelIsMissing() throws {
         let first = recipe(name: "First", lines: [("Ango", 1, "dash", false)])
         let second = recipe(name: "Second", lines: [("Angostura bitters", 1, "dash", false)])
         let bottle = InventoryItem(name: "House bottle")
@@ -178,6 +178,10 @@ final class RecipeEngineTests: XCTestCase {
             let plan = EventPrepPlan(recipes: recipes, guests: 2, drinksPerGuest: 1, inventory: [bottle])
             XCTAssertEqual(plan.ingredients.map(\.isStocked), [false])
             XCTAssertEqual(plan.shopping.map(\.id), ["angostura bitters"])
+            XCTAssertEqual(plan.shopping.first?.requirements.count, 1)
+            let requirement = try XCTUnwrap(plan.shopping.first?.requirements.first)
+            XCTAssertEqual(requirement.measure.amount, 1)
+            XCTAssertEqual(requirement.recipes, ["Second"])
         }
     }
 
@@ -258,6 +262,18 @@ final class RecipeEngineTests: XCTestCase {
         XCTAssertFalse(item.isInStock)
         let drink = recipe(name: "Martini", lines: [("Gin", 1, "oz", false)])
         XCTAssertFalse(RecipeEngine.match(drink, inventory: [item]).canMake)
+    }
+
+    func testParLevelSaveTreatsClearedPackageCountAsExplicitZero() {
+        let cleared = ParLevelSavePolicy.values(enteredOnHand: nil, initialOnHand: 2, didEditOnHand: true)
+        XCTAssertEqual(cleared.onHand, 0)
+        XCTAssertTrue(cleared.updateStockStatus)
+        let enteredZero = ParLevelSavePolicy.values(enteredOnHand: 0, initialOnHand: 2, didEditOnHand: true)
+        XCTAssertEqual(enteredZero.onHand, 0)
+        XCTAssertTrue(enteredZero.updateStockStatus)
+        let untouched = ParLevelSavePolicy.values(enteredOnHand: nil, initialOnHand: 2, didEditOnHand: false)
+        XCTAssertEqual(untouched.onHand, 2)
+        XCTAssertFalse(untouched.updateStockStatus)
     }
 
     func testEditingParDoesNotRestockAnItemWithAStalePackageCount() throws {

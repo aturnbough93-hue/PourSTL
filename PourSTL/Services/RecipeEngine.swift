@@ -176,6 +176,9 @@ struct EventPrepPlan {
         var measure: Measure
         var recipes: [String]
         var isStocked: Bool
+        var missingMeasure: Measure
+        var missingRecipes: [String]
+        var hasMissingRequirements: Bool
 
         var isOptional: Bool { id.optional }
     }
@@ -189,9 +192,16 @@ struct EventPrepPlan {
     let batches: [Batch]
     let ingredients: [Ingredient]
     var shopping: [ShoppingItem] {
-        let missing = ingredients.filter { !$0.isOptional && !$0.isStocked }
-        return Dictionary(grouping: missing, by: \.id.product).compactMap { product, requirements in
-            requirements.first.map { ShoppingItem(id: product, name: $0.name, requirements: requirements) }
+        let missing = ingredients.filter { !$0.isOptional && $0.hasMissingRequirements }
+        return Dictionary(grouping: missing, by: \.id.product).compactMap { product, entries in
+            let requirements = entries.map { entry -> Ingredient in
+                var requirement = entry
+                requirement.measure = entry.missingMeasure
+                requirement.recipes = entry.missingRecipes
+                requirement.isStocked = false
+                return requirement
+            }
+            return requirements.first.map { ShoppingItem(id: product, name: $0.name, requirements: requirements) }
         }.sorted { ($0.name, $0.id) < ($1.name, $1.id) }
     }
 
@@ -222,9 +232,16 @@ struct EventPrepPlan {
                                          relativeRecipe: measure.unit == .part ? index : nil)
                 let isStocked = RecipeEngine.isStocked(line, in: stocked)
                 var entry = entries[key] ?? Ingredient(id: key, name: line.name, measure: Measure(amount: 0, unit: measure.unit),
-                                                       recipes: [], isStocked: isStocked)
+                                                       recipes: [], isStocked: isStocked,
+                                                       missingMeasure: Measure(amount: 0, unit: measure.unit),
+                                                       missingRecipes: [], hasMissingRequirements: false)
                 entry.isStocked = entry.isStocked && isStocked
                 entry.measure.amount += measure.amount
+                if !isStocked {
+                    entry.hasMissingRequirements = true
+                    entry.missingMeasure.amount += measure.amount
+                    if !entry.missingRecipes.contains(batch.recipe.name) { entry.missingRecipes.append(batch.recipe.name) }
+                }
                 if !entry.recipes.contains(batch.recipe.name) { entry.recipes.append(batch.recipe.name) }
                 entries[key] = entry
             }
