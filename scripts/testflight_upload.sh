@@ -29,16 +29,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-missing_variables=false
-for variable in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_TEAM_ID; do
-  if [[ -z "${!variable:-}" ]]; then
-    echo "Missing required environment variable: $variable" >&2
-    missing_variables=true
-  fi
-done
-if [[ "$missing_variables" == "true" ]]; then
-  exit 1
-fi
 if ! command -v xcodebuild >/dev/null 2>&1; then
   echo "xcodebuild is required; run this on macOS with Xcode installed." >&2
   exit 1
@@ -51,6 +41,17 @@ if [[ ! "$sdk_major" =~ ^[0-9]+$ ]] || (( sdk_major < 26 )); then
   exit 1
 fi
 echo "Using iOS SDK $sdk_version"
+
+missing_variables=false
+for variable in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_TEAM_ID; do
+  if [[ -z "${!variable:-}" ]]; then
+    echo "Missing required environment variable: $variable" >&2
+    missing_variables=true
+  fi
+done
+if [[ "$missing_variables" == "true" ]]; then
+  exit 1
+fi
 
 workdir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/pourstl-testflight.XXXXXX")"
 chmod 700 "$workdir"

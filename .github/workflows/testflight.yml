@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   upload:
-    name: Archive and upload to TestFlight
+    name: TestFlight setup and upload
     runs-on: macos-15
     timeout-minutes: 75
     env:
