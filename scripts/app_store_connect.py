@@ -101,17 +101,23 @@ def client_from_environment() -> AppStoreConnectClient:
     missing = [name for name in ("ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_PRIVATE_KEY") if not os.environ.get(name)]
     if missing:
         raise RuntimeError("Missing required environment variables: " + ", ".join(missing))
+    key_id = os.environ["ASC_KEY_ID"]
+    if not (key_id.isascii() and key_id.isalnum()):
+        raise RuntimeError(
+            "Invalid ASC_KEY_ID. In App Store Connect, use Copy Key ID for the team API key "
+            "under Users and Access > Integrations."
+        )
     default_dir = Path.home() / ".appstoreconnect" / "private_keys"
     key_directory = Path(os.environ.get("ASC_KEY_DIR", str(default_dir)))
     key_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    key_path = key_directory / f"AuthKey_{os.environ['ASC_KEY_ID']}.p8"
+    key_path = key_directory / f"AuthKey_{key_id}.p8"
     if not key_path.exists() or os.environ.get("ASC_REWRITE_KEY") == "1":
         private_key = os.environ["ASC_PRIVATE_KEY"]
         if not private_key.endswith("\n"):
             private_key += "\n"
         key_path.write_text(private_key, encoding="utf-8")
         key_path.chmod(0o600)
-    return AppStoreConnectClient(os.environ["ASC_KEY_ID"], os.environ["ASC_ISSUER_ID"], str(key_path))
+    return AppStoreConnectClient(key_id, os.environ["ASC_ISSUER_ID"], str(key_path))
 
 
 def query(params: dict) -> str:

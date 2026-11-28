@@ -38,7 +38,7 @@ Do these in the Apple account before running the workflow:
 5. **Set TestFlight beta information.** In App Store Connect, set the beta feedback email and review/copy the files in `appstore/testflight/`. Internal builds do not require external beta review, but the feedback contact still needs a real mailbox.
 6. **Create an App Store Connect API key.** Create a team key, normally with the App Manager role. Download the `.p8` immediately; Apple offers the download only once. Record the Key ID and Issuer ID. If signing asset creation later fails specifically because of key permissions, regenerate/use a key with Admin access rather than weakening repository security.
 7. **Store secrets securely.** Add these GitHub Actions repository secrets (or the equivalent Devin secrets for a trusted macOS session). Never commit or paste them in chat:
-   - `ASC_KEY_ID`
+   - `ASC_KEY_ID` — the value from **Copy Key ID** next to the team API key in App Store Connect
    - `ASC_ISSUER_ID`
    - `ASC_PRIVATE_KEY` — the complete `.p8` PEM contents, including its BEGIN/END private-key boundary lines
    - `APPLE_TEAM_ID`
