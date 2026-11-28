@@ -224,7 +224,21 @@ class ReleaseChecks(unittest.TestCase):
         for secret in ("ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_PRIVATE_KEY", "APPLE_TEAM_ID"):
             with self.subTest(secret=secret):
                 self.assertIn(f"secrets.{secret}", workflow)
-        self.assertIn("AD_HOC_CODE_SIGNING_ALLOWED=YES", script)
+        self.assertLess(script.index("xcodebuild archive"), script.index("xcodebuild -exportArchive"))
+        archive_block = script.split("xcodebuild archive", 1)[1].split("xcodebuild -exportArchive", 1)[0]
+        export_block = script.split("xcodebuild -exportArchive", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("CODE_SIGNING_ALLOWED=NO", archive_block)
+        self.assertNotIn("AD_HOC_CODE_SIGNING_ALLOWED", archive_block)
+        self.assertNotIn("CODE_SIGN_IDENTITY=-", archive_block)
+        self.assertNotIn("-authenticationKey", archive_block)
+        for argument in (
+            "-allowProvisioningUpdates",
+            '-authenticationKeyID "$ASC_KEY_ID"',
+            '-authenticationKeyIssuerID "$ASC_ISSUER_ID"',
+            '-authenticationKeyPath "$key_path"',
+        ):
+            with self.subTest(export_argument=argument):
+                self.assertIn(argument, export_block)
         self.assertIn('"method": "app-store-connect"', script)
         self.assertIn('"destination": "upload"', script)
         self.assertIn("wait-and-assign", script)
