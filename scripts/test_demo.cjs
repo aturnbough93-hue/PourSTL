@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -872,11 +873,11 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   assert.equal(page.doc.activeElement, openBtn);
 });
 
-test('feature analytics beacons only coarse allowlisted action counts', async () => {
+test('feature analytics sends only coarse allowlisted action counts', async () => {
   const sent = [];
   const page = bootTryPage({
     fetchMock(url, options) {
-      sent.push({ url, body: options.body, credentials: options.credentials });
+      sent.push({ url, ...options });
       return Promise.resolve({ ok: true });
     },
   });
@@ -890,13 +891,14 @@ test('feature analytics beacons only coarse allowlisted action counts', async ()
   for (const { body } of sent) payloads.push(JSON.parse(body));
   assert.deepEqual(payloads.map(payload => payload.events[0].name), ['app_open', 'unit_toggle', 'serving_scale']);
   assert.ok(sent.every(entry => entry.url === '/api/analytics' && entry.credentials === 'omit'));
+  assert.ok(sent.every(entry => entry.referrerPolicy === 'no-referrer'));
   const serialized = payloads.map(payload => JSON.stringify(payload)).join('\n');
   assert.deepEqual(Object.keys(payloads[0].events[0]).sort(), ['name', 'path']);
   assert.doesNotMatch(serialized, /negroni|lime|gin|question|inventory/i);
 });
 
 test('analytics Pages Function accepts only valid coarse event batches', async () => {
-  const moduleUrl = 'file://' + path.join(__dirname, '..', 'functions', 'api', 'analytics.js');
+  const moduleUrl = pathToFileURL(path.join(__dirname, '..', 'functions', 'api', 'analytics.js'));
   const { onRequestPost, onRequest } = await import(moduleUrl);
   const writes = [];
   const env = {

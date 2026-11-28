@@ -2,6 +2,8 @@
 
 This document is the repeatable reporting reference for PourSTL Web. It separates production usage from QA, bots, probes, and preview traffic without deleting the underlying data.
 
+Run the queries with the PourSTL account or zone selected. For statements without an `accountTag` filter, supply the appropriate scope with the Analytics SQL request. The Analytics SQL API applies sampling weights automatically to these aggregates. [Cloudflare query scope](https://developers.cloudflare.com/analytics/sql-api/sql-reference/) [Cloudflare sampling](https://developers.cloudflare.com/analytics/sql-api/sql-reference/functions/#adaptive-sampling)
+
 ## First-party feature events
 
 `/try` sends coarse feature-action counts to the same-origin Pages Function at `/api/analytics`. The function writes to the Cloudflare Analytics Engine dataset `pourstl_feature_events` through the `FEATURE_ANALYTICS` binding configured in the root `wrangler.toml`.
@@ -76,7 +78,7 @@ FORMAT JSON
 
 ### Assistant success ratio
 
-`assistant_turn_success` and `assistant_turn_failure` measure the local rule-based assistant in PourSTL Web, not the separate `assistant.pourstl.com` Worker API.
+`assistant_turn_success` means the local web assistant recognized the intent and produced a response. `assistant_turn_failure` means the intent was unrecognized or answering raised an error. This ratio measures intent recognition and execution. Use the separate Worker query below for `assistant.pourstl.com` API traffic.
 
 ```sql
 SELECT
@@ -176,7 +178,7 @@ FORMAT JSON
 
 - Dates are UTC; the current day is partial until the UTC day closes.
 - RUM pageloads and feature events are counts, not unique people or sessions.
-- ChromeHeadless and `/qa60-missing-page` are useful for QA verification but must not be presented as customer adoption.
+- ChromeHeadless and `/qa60-missing-page` identify some QA traffic. QA in ordinary browsers on production hosts can still contribute to the `standard` feature counts and non-headless pageloads.
 - Preview hosts (`*.pages.dev`) are useful for validating a branch but must be separated from production.
 - A day with few or no events after deployment may mean low usage, blocked beacons, or insufficient time since deployment; do not infer exact user counts.
 - Revenue remains unavailable until Stripe, App Store Connect, RevenueCat, or another payment/subscription source is connected.

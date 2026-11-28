@@ -39,6 +39,7 @@
           body,
           headers: { 'content-type': 'application/json' },
           credentials: 'omit',
+          referrerPolicy: 'no-referrer',
           keepalive: true,
         }).catch(() => {});
         return true;
