@@ -2,3 +2,7 @@ name = "pourstl"
 pages_build_output_dir = "./dist"
 compatibility_date = "2026-11-05"
 send_metrics = false
+
+[[analytics_engine_datasets]]
+binding = "FEATURE_ANALYTICS"
+dataset = "pourstl_feature_events"

@@ -133,6 +133,10 @@ response headers after publishing.
 `/try` opens the web app. It includes the native recipe catalog, custom recipes,
 favorites, recipe matching, inventory, shopping, scaling, and a prep timer.
 Scaling goes up to 24 servings. Stocked swap suggestions and plain-text shopping list copy work on the web. Pro costing, menu pricing, event planning, par-level reorders, and CSV exports are iPhone-only.
+
+### Feature analytics
+
+`feature-analytics.js` sends only allowlisted coarse action names to the same-origin `/api/analytics` Pages Function. The function writes aggregate counts to Cloudflare Analytics Engine. Never add recipe names or IDs, ingredient names or IDs, inventory/shopping contents, assistant text, persistent identifiers, precise location, or free-form values to those events. `docs/ANALYTICS.md` has the reporting queries.
 The web app saves state in the browser, shares saved changes across tabs on the
 same origin, and migrates existing demo inventory and shopping data.
 

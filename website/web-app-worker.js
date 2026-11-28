@@ -4,7 +4,7 @@ const cachePrefix = 'pourstl-web-';
 const cacheName = cachePrefix + '__POURSTL_BUILD__';
 const appPage = '/try';
 const appAssets = [
-  appPage, '/try.css', '/recipe-catalog.js', '/demo-core.js', '/bar-assistant.js', '/try.js', '/app.webmanifest',
+  appPage, '/try.css', '/recipe-catalog.js', '/demo-core.js', '/bar-assistant.js', '/feature-analytics.js', '/try.js', '/app.webmanifest',
   '/assets/brand-icon.png', '/assets/apple-touch-icon.png', '/assets/app-icon-192.png', '/assets/app-icon-512.png',
   '/assets/boulevardier.webp', '/assets/daiquiri.webp', '/assets/negroni.webp', '/assets/old-fashioned.webp',
 ];

@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const vm = require('node:vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -210,12 +211,21 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
 });
 
-function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState } = {}) {
+function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState, beacon, fetchMock, visibilityState = 'visible' } = {}) {
   const siteDir = path.join(__dirname, '..', 'website');
   const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
   const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
 
-  const doc = { activeElement: null, execCommand: () => execCommandResult };
+  const documentListeners = new Map();
+  const doc = {
+    activeElement: null,
+    visibilityState,
+    execCommand: () => execCommandResult,
+    addEventListener: (type, listener) => documentListeners.set(type, listener),
+    removeEventListener: (type, listener) => {
+      if (documentListeners.get(type) === listener) documentListeners.delete(type);
+    },
+  };
   class FakeElement {
     constructor(tag, id = '', className = '') {
       this.tagName = tag.toUpperCase();
@@ -304,9 +314,11 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
     scrollIntoView() {}
     querySelector(selector) {
       const classMatch = /^\.([a-z0-9-]+)$/i.exec(selector);
+      const recipeMatch = /^\[data-recipe="([^"]+)"\]$/.exec(selector);
       for (const child of this.children) {
-        if (classMatch && child.className.split(/\s+/).includes(classMatch[1])) return child;
-        const found = child.querySelector(selector);
+        if (classMatch && child.className?.split(/\s+/).includes(classMatch[1])) return child;
+        if (recipeMatch && child.dataset?.recipe === recipeMatch[1]) return child;
+        const found = child.querySelector?.(selector);
         if (found) return found;
       }
       return null;
@@ -324,6 +336,7 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   const detailPanel = new FakeElement('section', '', 'panel detail-panel');
   byId.get('inventory-controls').append(byId.get('stock-name'));
   barPanel.append(byId.get('bar-title'), byId.get('inventory-toggle'), byId.get('inventory-controls'));
+  recipesPanel.append(byId.get('recipes'));
   byId.get('workspace').append(barPanel, recipesPanel, detailPanel);
 
   const root = new FakeElement('body');
@@ -357,9 +370,12 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   const windowListeners = new Map();
   const timeouts = new Map();
   let nextTimeout = 0;
+  const navigator = clipboardWrite ? { clipboard: { writeText: clipboardWrite } } : {};
+  if (beacon) navigator.sendBeacon = beacon;
   const win = {
     document: doc,
-    navigator: clipboardWrite ? { clipboard: { writeText: clipboardWrite } } : {},
+    navigator,
+    Blob: globalThis.Blob,
     isSecureContext: Boolean(clipboardWrite),
     localStorage: {
       getItem: key => (storage.has(key) ? storage.get(key) : null),
@@ -382,14 +398,15 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
     clearInterval() {},
     confirm: () => true,
     crypto: globalThis.crypto,
+    fetch: fetchMock,
   };
   win.window = win;
 
   const context = vm.createContext(win);
-  for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'try.js']) {
+  for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'feature-analytics.js', 'try.js']) {
     vm.runInContext(fs.readFileSync(path.join(siteDir, file), 'utf8'), context, { filename: file });
   }
-  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts, windowListeners };
+  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts, windowListeners, documentListeners };
 }
 
 test('/try starts cleanly and orders panels for desktop and single-column viewports', () => {
@@ -866,4 +883,167 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   assert.equal(log.children.length, 1);
   assert.equal(log.children[0].className, 'assistant-empty');
   assert.equal(page.doc.activeElement, openBtn);
+});
+
+test('feature analytics sends only coarse allowlisted action counts', async () => {
+  const sent = [];
+  const page = bootTryPage({
+    fetchMock(url, options) {
+      sent.push({ url, ...options });
+      return Promise.resolve({ ok: true });
+    },
+  });
+
+  assert.equal(sent.length, 1, 'app_open should be recorded once during startup');
+  page.byId.get('unit-ml').listeners.get('click')[0]();
+  page.byId.get('more').listeners.get('click')[0]();
+  assert.equal(sent.length, 3);
+
+  const payloads = [];
+  for (const { body } of sent) payloads.push(JSON.parse(body));
+  assert.deepEqual(payloads.map(payload => payload.events[0].name), ['app_open', 'unit_toggle', 'serving_scale']);
+  assert.ok(sent.every(entry => entry.url === '/api/analytics' && entry.credentials === 'omit'));
+  assert.ok(sent.every(entry => entry.referrerPolicy === 'no-referrer'));
+  const serialized = payloads.map(payload => JSON.stringify(payload)).join('\n');
+  assert.deepEqual(Object.keys(payloads[0].events[0]).sort(), ['name', 'path']);
+  assert.doesNotMatch(serialized, /negroni|lime|gin|question|inventory/i);
+});
+
+test('analytics Pages Function accepts only valid coarse event batches', async () => {
+  const moduleUrl = pathToFileURL(path.join(__dirname, '..', 'functions', 'api', 'analytics.js'));
+  const { onRequestPost, onRequest } = await import(moduleUrl);
+  const writes = [];
+  const env = {
+    FEATURE_ANALYTICS: {
+      writeDataPoint(point) { writes.push(point); },
+    },
+  };
+  const request = new Request('https://pourstl.com/api/analytics', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ events: [{ name: 'recipe_view', path: '/try' }] }),
+  });
+  const response = await onRequestPost({ request, env });
+  assert.equal(response.status, 202);
+  assert.equal(writes.length, 1);
+  assert.deepEqual(writes[0], {
+    indexes: ['recipe_view'],
+    blobs: ['web_try', '/try', 'production', 'standard'],
+    doubles: [1],
+  });
+
+  const bad = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ events: [{ name: 'ingredient_name:gin' }] }),
+    }),
+    env,
+  });
+  assert.equal(bad.status, 400);
+  assert.equal(writes.length, 1);
+
+  const wrongMediaType = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain; application/json' },
+      body: JSON.stringify({ events: [{ name: 'app_open' }] }),
+    }),
+    env,
+  });
+  assert.equal(wrongMediaType.status, 415);
+
+  const preview = await onRequestPost({
+    request: new Request('https://devin-feature-analytics-web.pourstl.pages.dev/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ events: [{ name: 'app_open' }] }),
+    }),
+    env,
+  });
+  assert.equal(preview.status, 202);
+  assert.equal(writes[1].blobs[2], 'preview');
+
+  const headless = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': 'Mozilla/5.0 HeadlessChrome/142.0.0.0 Safari/537.36',
+      },
+      body: JSON.stringify({ events: [{ name: 'app_open' }] }),
+    }),
+    env,
+  });
+  assert.equal(headless.status, 202);
+  assert.equal(writes[2].blobs[3], 'headless_automation');
+
+  const oversizedStream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(' '.repeat(2048)));
+      controller.enqueue(new TextEncoder().encode(' '.repeat(2049)));
+      controller.close();
+    },
+  });
+  const oversized = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: oversizedStream,
+      duplex: 'half',
+    }),
+    env,
+  });
+  assert.equal(oversized.status, 413);
+  assert.equal(writes.length, 3);
+  assert.equal(onRequest().status, 405);
+});
+
+test('feature analytics counts the first visible open and skips reset and no-op changes', () => {
+  const names = [];
+  const page = bootTryPage({
+    visibilityState: 'hidden',
+    fetchMock(_url, { body }) {
+      names.push(JSON.parse(body).events[0].name);
+      return Promise.resolve({ ok: true });
+    },
+  });
+  const click = id => page.byId.get(id).listeners.get('click')[0]();
+
+  assert.deepEqual(names, []);
+  page.documentListeners.get('visibilitychange')();
+  assert.deepEqual(names, []);
+  page.doc.visibilityState = 'visible';
+  page.documentListeners.get('visibilitychange')();
+  assert.equal(page.documentListeners.has('visibilitychange'), false);
+
+  click('less');
+  click('unit-oz');
+  click('starter-bar');
+  click('starter-bar');
+  click('reset');
+  click('less');
+  click('more');
+  assert.deepEqual(names, ['app_open', 'my_bar_add', 'serving_scale']);
+});
+
+test('recipe views count selections and single-column jumps to the detail', () => {
+  const names = [];
+  const fetchMock = (_url, { body }) => {
+    names.push(JSON.parse(body).events[0].name);
+    return Promise.resolve({ ok: true });
+  };
+  const clickRecipe = (page, selected) => page.byId.get('recipes').children
+    .find(button => button.getAttribute('aria-current') === String(selected)).listeners.get('click')[0]();
+
+  const desktop = bootTryPage({ fetchMock });
+  clickRecipe(desktop, true);
+  assert.deepEqual(names, ['app_open']);
+  clickRecipe(desktop, false);
+  clickRecipe(desktop, true);
+  assert.deepEqual(names, ['app_open', 'recipe_view']);
+
+  const phone = bootTryPage({ compact: true, singleColumn: true, fetchMock });
+  clickRecipe(phone, true);
+  assert.deepEqual(names, ['app_open', 'recipe_view', 'app_open', 'recipe_view']);
 });
