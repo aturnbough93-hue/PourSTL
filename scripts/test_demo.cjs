@@ -210,7 +210,7 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
 });
 
-function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState } = {}) {
+function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState, beacon } = {}) {
   const siteDir = path.join(__dirname, '..', 'website');
   const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
   const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
@@ -357,9 +357,12 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   const windowListeners = new Map();
   const timeouts = new Map();
   let nextTimeout = 0;
+  const navigator = clipboardWrite ? { clipboard: { writeText: clipboardWrite } } : {};
+  if (beacon) navigator.sendBeacon = beacon;
   const win = {
     document: doc,
-    navigator: clipboardWrite ? { clipboard: { writeText: clipboardWrite } } : {},
+    navigator,
+    Blob: globalThis.Blob,
     isSecureContext: Boolean(clipboardWrite),
     localStorage: {
       getItem: key => (storage.has(key) ? storage.get(key) : null),
@@ -386,7 +389,7 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   win.window = win;
 
   const context = vm.createContext(win);
-  for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'try.js']) {
+  for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'feature-analytics.js', 'try.js']) {
     vm.runInContext(fs.readFileSync(path.join(siteDir, file), 'utf8'), context, { filename: file });
   }
   return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts, windowListeners };
@@ -866,4 +869,63 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
   assert.equal(log.children.length, 1);
   assert.equal(log.children[0].className, 'assistant-empty');
   assert.equal(page.doc.activeElement, openBtn);
+});
+
+test('feature analytics beacons only coarse allowlisted action counts', async () => {
+  const sent = [];
+  const page = bootTryPage({
+    beacon(url, body) {
+      sent.push({ url, body });
+      return true;
+    },
+  });
+
+  assert.equal(sent.length, 1, 'app_open should be recorded once during startup');
+  page.byId.get('unit-ml').listeners.get('click')[0]();
+  page.byId.get('more').listeners.get('click')[0]();
+  assert.equal(sent.length, 3);
+
+  const payloads = [];
+  for (const { body } of sent) payloads.push(JSON.parse(await body.text()));
+  assert.deepEqual(payloads.map(payload => payload.events[0].name), ['app_open', 'unit_toggle', 'serving_scale']);
+  assert.ok(sent.every(entry => entry.url === '/api/analytics'));
+  const serialized = payloads.map(payload => JSON.stringify(payload)).join('\n');
+  assert.deepEqual(Object.keys(payloads[0].events[0]).sort(), ['name', 'path']);
+  assert.doesNotMatch(serialized, /negroni|lime|gin|question|inventory/i);
+});
+
+test('analytics Pages Function accepts only valid coarse event batches', async () => {
+  const moduleUrl = 'file://' + path.join(__dirname, '..', 'functions', 'api', 'analytics.js');
+  const { onRequestPost, onRequest } = await import(moduleUrl);
+  const writes = [];
+  const env = {
+    FEATURE_ANALYTICS: {
+      writeDataPoint(point) { writes.push(point); },
+    },
+  };
+  const request = new Request('https://pourstl.com/api/analytics', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ events: [{ name: 'recipe_view', path: '/try' }] }),
+  });
+  const response = await onRequestPost({ request, env });
+  assert.equal(response.status, 202);
+  assert.equal(writes.length, 1);
+  assert.deepEqual(writes[0], {
+    indexes: ['recipe_view'],
+    blobs: ['web_try', '/try'],
+    doubles: [1],
+  });
+
+  const bad = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ events: [{ name: 'ingredient_name:gin' }] }),
+    }),
+    env,
+  });
+  assert.equal(bad.status, 400);
+  assert.equal(writes.length, 1);
+  assert.equal(onRequest().status, 405);
 });

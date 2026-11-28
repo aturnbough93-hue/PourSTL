@@ -66,6 +66,10 @@
     return App.resolveRecipe(state.selected, state.customRecipes);
   }
 
+  function trackFeature(name) {
+    window.PourFeatureAnalytics?.track(name);
+  }
+
   function renderInventory() {
     const results = App.listIngredients(state).filter(item => App.normalize(item.name).includes(inventoryQuery));
     results.sort((a, b) => Number(state.inventory.includes(b.id)) - Number(state.inventory.includes(a.id)));
@@ -84,6 +88,7 @@
           ? [...state.inventory, item.id]
           : state.inventory.filter(id => id !== item.id);
         const wasChecked = input.checked;
+        trackFeature(wasChecked ? 'my_bar_add' : 'my_bar_remove');
         render();
         save();
         container.querySelector('input[value="' + item.id + '"]')?.focus({ preventScroll: true });
@@ -109,6 +114,7 @@
       purchase.setAttribute('aria-label', 'Mark ' + name + ' purchased and add to My Bar');
       purchase.addEventListener('click', () => {
         state = App.purchase(state, id);
+        trackFeature('my_bar_add');
         render();
         save();
         $('shopping-name').focus({ preventScroll: true });
@@ -163,6 +169,7 @@
       button.append(label, status);
       button.addEventListener('click', () => {
         state.selected = recipe.id;
+        trackFeature('recipe_view');
         renderRecipes();
         renderDetail();
         save();
@@ -326,6 +333,7 @@
   for (const [id, delta] of [['less', -1], ['more', 1]]) {
     $(id).addEventListener('click', () => {
       state.servings = Math.max(1, Math.min(24, state.servings + delta));
+      trackFeature('serving_scale');
       renderDetail();
       save();
       feedback(`Recipe scaled to ${state.servings} ${state.servings === 1 ? 'serving' : 'servings'}.`);
@@ -334,6 +342,7 @@
   for (const unit of ['oz', 'ml']) {
     $(`unit-${unit}`).addEventListener('click', () => {
       state.unit = unit;
+      trackFeature('unit_toggle');
       renderDetail();
       save();
       feedback(`Liquid measurements shown in ${unit === 'ml' ? 'milliliters' : 'ounces'}. Dashes and garnish units stay as written.`);
@@ -345,6 +354,7 @@
     render();
     save();
     const added = state.shopping.length - previousCount;
+    if (added > 0) trackFeature('shopping_list_add');
     feedback(added
       ? `${added} missing ${added === 1 ? 'ingredient added' : 'ingredients added'} to your shopping list.`
       : 'Recipe noted on your shopping list.');
@@ -457,6 +467,7 @@
 
   $('starter-bar').addEventListener('click', () => {
     state.inventory = App.starterInventory.slice();
+    trackFeature('my_bar_add');
     render();
     save();
     $('inventory-search').focus();
@@ -476,6 +487,7 @@
       }
       const name = input.value.trim();
       state = next;
+      trackFeature(destination === 'inventory' ? 'my_bar_add' : 'shopping_list_add');
       input.value = '';
       render();
       save();
@@ -615,6 +627,7 @@
     }
     if (existing === -1) state.customRecipes.push(recipe);
     else state.customRecipes[existing] = recipe;
+    trackFeature('custom_recipe_save');
     state = App.validateState({ ...state, selected: recipe.id });
     query = '';
     filter = 'all';
@@ -662,6 +675,7 @@
       return;
     }
     const stopHadFocus = document.activeElement === $('timer-stop');
+    trackFeature('timer_complete');
     stopTimer();
     $('timer-complete').hidden = false;
     if (stopHadFocus) $('timer-start').focus({ preventScroll: true });
@@ -673,6 +687,7 @@
     const duration = $('timer-seconds');
     if (!duration.reportValidity() || !Number.isInteger(duration.valueAsNumber)) return;
     const startHadFocus = document.activeElement === $('timer-start');
+    trackFeature('timer_start');
     timerEndsAt = Date.now() + duration.valueAsNumber * 1000;
     $('timer-complete').hidden = true;
     showTimerControls(true);
@@ -748,7 +763,14 @@
     if (assistantInput) assistantInput.value = '';
     const wasEmpty = assistantTurns.length === 0;
     const userTurn = { kind: 'user', text: question };
-    const reply = Assistant.answer(question, state);
+    let reply;
+    try {
+      reply = Assistant.answer(question, state);
+      trackFeature('assistant_turn_success');
+    } catch (error) {
+      trackFeature('assistant_turn_failure');
+      throw error;
+    }
     const assistantTurn = {
       kind: 'assistant',
       text: reply.text,
@@ -773,6 +795,7 @@
 
   if (assistantDialog && Assistant) {
     $('open-assistant')?.addEventListener('click', () => {
+      trackFeature('assistant_open');
       renderAssistant();
       if (typeof assistantDialog.showModal === 'function') assistantDialog.showModal();
       else assistantDialog.setAttribute('open', '');
@@ -828,6 +851,7 @@
   resetDialog.addEventListener('close', () => $('reset').focus());
 
   render();
+  trackFeature('app_open');
   storageNote();
   updateInventoryVisibility();
   updatePanelOrder();
