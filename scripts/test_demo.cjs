@@ -952,7 +952,8 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
 
   const oversizedStream = new ReadableStream({
     start(controller) {
-      controller.enqueue(new TextEncoder().encode(' '.repeat(4097)));
+      controller.enqueue(new TextEncoder().encode(' '.repeat(2048)));
+      controller.enqueue(new TextEncoder().encode(' '.repeat(2049)));
       controller.close();
     },
   });
