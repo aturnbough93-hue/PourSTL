@@ -70,6 +70,12 @@
     window.PourFeatureAnalytics?.track(name);
   }
 
+  function trackAppOpen() {
+    if (document.visibilityState === 'hidden') return;
+    document.removeEventListener('visibilitychange', trackAppOpen);
+    trackFeature('app_open');
+  }
+
   function renderInventory() {
     const results = App.listIngredients(state).filter(item => App.normalize(item.name).includes(inventoryQuery));
     results.sort((a, b) => Number(state.inventory.includes(b.id)) - Number(state.inventory.includes(a.id)));
@@ -115,7 +121,7 @@
       purchase.addEventListener('click', () => {
         const alreadyStocked = state.inventory.includes(id);
         state = App.purchase(state, id);
-        if (!alreadyStocked) trackFeature('my_bar_add');
+        if (!alreadyStocked && state.inventory.includes(id)) trackFeature('my_bar_add');
         render();
         save();
         $('shopping-name').focus({ preventScroll: true });
@@ -169,8 +175,8 @@
         App.canMakeWithSwaps(match, state.inventory) ? 'Can make with swaps' : `Missing ${match.missing.length}`));
       button.append(label, status);
       button.addEventListener('click', () => {
+        if (state.selected !== recipe.id || singleColumn.matches) trackFeature('recipe_view');
         state.selected = recipe.id;
-        trackFeature('recipe_view');
         renderRecipes();
         renderDetail();
         save();
@@ -468,6 +474,7 @@
   });
 
   $('starter-bar').addEventListener('click', () => {
+    if (state.inventory.length) return;
     state.inventory = App.starterInventory.slice();
     trackFeature('my_bar_add');
     render();
@@ -857,11 +864,12 @@
   resetDialog.addEventListener('close', () => $('reset').focus());
 
   render();
-  trackFeature('app_open');
   storageNote();
   updateInventoryVisibility();
   updatePanelOrder();
   $('workspace').hidden = false;
+  document.addEventListener('visibilitychange', trackAppOpen);
+  trackAppOpen();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('web-app-worker.js', { scope: '/try' }).catch(() => {});
   }

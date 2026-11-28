@@ -211,12 +211,21 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
 });
 
-function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState, beacon, fetchMock } = {}) {
+function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState, beacon, fetchMock, visibilityState = 'visible' } = {}) {
   const siteDir = path.join(__dirname, '..', 'website');
   const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
   const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
 
-  const doc = { activeElement: null, execCommand: () => execCommandResult };
+  const documentListeners = new Map();
+  const doc = {
+    activeElement: null,
+    visibilityState,
+    execCommand: () => execCommandResult,
+    addEventListener: (type, listener) => documentListeners.set(type, listener),
+    removeEventListener: (type, listener) => {
+      if (documentListeners.get(type) === listener) documentListeners.delete(type);
+    },
+  };
   class FakeElement {
     constructor(tag, id = '', className = '') {
       this.tagName = tag.toUpperCase();
@@ -305,9 +314,11 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
     scrollIntoView() {}
     querySelector(selector) {
       const classMatch = /^\.([a-z0-9-]+)$/i.exec(selector);
+      const recipeMatch = /^\[data-recipe="([^"]+)"\]$/.exec(selector);
       for (const child of this.children) {
-        if (classMatch && child.className.split(/\s+/).includes(classMatch[1])) return child;
-        const found = child.querySelector(selector);
+        if (classMatch && child.className?.split(/\s+/).includes(classMatch[1])) return child;
+        if (recipeMatch && child.dataset?.recipe === recipeMatch[1]) return child;
+        const found = child.querySelector?.(selector);
         if (found) return found;
       }
       return null;
@@ -325,6 +336,7 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   const detailPanel = new FakeElement('section', '', 'panel detail-panel');
   byId.get('inventory-controls').append(byId.get('stock-name'));
   barPanel.append(byId.get('bar-title'), byId.get('inventory-toggle'), byId.get('inventory-controls'));
+  recipesPanel.append(byId.get('recipes'));
   byId.get('workspace').append(barPanel, recipesPanel, detailPanel);
 
   const root = new FakeElement('body');
@@ -394,7 +406,7 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
   for (const file of ['recipe-catalog.js', 'demo-core.js', 'bar-assistant.js', 'feature-analytics.js', 'try.js']) {
     vm.runInContext(fs.readFileSync(path.join(siteDir, file), 'utf8'), context, { filename: file });
   }
-  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts, windowListeners };
+  return { byId, doc, barPanel, recipesPanel, detailPanel, mediaQueries, timeouts, windowListeners, documentListeners };
 }
 
 test('/try starts cleanly and orders panels for desktop and single-column viewports', () => {
@@ -985,4 +997,53 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
   assert.equal(oversized.status, 413);
   assert.equal(writes.length, 3);
   assert.equal(onRequest().status, 405);
+});
+
+test('feature analytics counts the first visible open and skips reset and no-op changes', () => {
+  const names = [];
+  const page = bootTryPage({
+    visibilityState: 'hidden',
+    fetchMock(_url, { body }) {
+      names.push(JSON.parse(body).events[0].name);
+      return Promise.resolve({ ok: true });
+    },
+  });
+  const click = id => page.byId.get(id).listeners.get('click')[0]();
+
+  assert.deepEqual(names, []);
+  page.documentListeners.get('visibilitychange')();
+  assert.deepEqual(names, []);
+  page.doc.visibilityState = 'visible';
+  page.documentListeners.get('visibilitychange')();
+  assert.equal(page.documentListeners.has('visibilitychange'), false);
+
+  click('less');
+  click('unit-oz');
+  click('starter-bar');
+  click('starter-bar');
+  click('reset');
+  click('less');
+  click('more');
+  assert.deepEqual(names, ['app_open', 'my_bar_add', 'serving_scale']);
+});
+
+test('recipe views count selections and single-column jumps to the detail', () => {
+  const names = [];
+  const fetchMock = (_url, { body }) => {
+    names.push(JSON.parse(body).events[0].name);
+    return Promise.resolve({ ok: true });
+  };
+  const clickRecipe = (page, selected) => page.byId.get('recipes').children
+    .find(button => button.getAttribute('aria-current') === String(selected)).listeners.get('click')[0]();
+
+  const desktop = bootTryPage({ fetchMock });
+  clickRecipe(desktop, true);
+  assert.deepEqual(names, ['app_open']);
+  clickRecipe(desktop, false);
+  clickRecipe(desktop, true);
+  assert.deepEqual(names, ['app_open', 'recipe_view']);
+
+  const phone = bootTryPage({ compact: true, singleColumn: true, fetchMock });
+  clickRecipe(phone, true);
+  assert.deepEqual(names, ['app_open', 'recipe_view', 'app_open', 'recipe_view']);
 });
