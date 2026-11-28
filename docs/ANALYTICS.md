@@ -31,6 +31,7 @@ Analytics Engine field mapping:
 | `index1` | event name |
 | `blob1` | surface, currently `web_try` |
 | `blob2` | coarse path, `/try` or `/try.html` |
+| `blob3` | environment, `production` for `pourstl.com`/`www.pourstl.com` and `preview` otherwise |
 | `double1` | count contribution, currently `1` |
 
 ### Feature usage by day
@@ -41,10 +42,11 @@ Cloudflare Analytics SQL dataset interface:
 SELECT
   toDate(timestamp) AS date,
   index1 AS event,
-  sum(sampleInterval) AS est_events
+  sum(double1) AS est_events
 FROM events.analyticsEngine.pourstl_feature_events
 WHERE accountTag = '451ace7be1a6f2b9a8a6f0e4d5529c06'
   AND timestamp > now() - INTERVAL 30 DAY
+  AND blob3 = 'production'
 GROUP BY date, event
 ORDER BY date DESC, est_events DESC
 LIMIT 500
@@ -58,10 +60,11 @@ This compares opens with meaningful actions. It is count-based, not user-based, 
 ```sql
 SELECT
   index1 AS event,
-  sum(sampleInterval) AS est_events
+  sum(double1) AS est_events
 FROM events.analyticsEngine.pourstl_feature_events
 WHERE accountTag = '451ace7be1a6f2b9a8a6f0e4d5529c06'
   AND timestamp > now() - INTERVAL 30 DAY
+  AND blob3 = 'production'
 GROUP BY event
 ORDER BY est_events DESC
 LIMIT 100
@@ -75,12 +78,12 @@ FORMAT JSON
 ```sql
 SELECT
   toDate(timestamp) AS date,
-  sumIf(sampleInterval, index1 = 'assistant_turn_success') AS est_successes,
-  sumIf(sampleInterval, index1 = 'assistant_turn_failure') AS est_failures,
-  est_failures / greatest(est_successes + est_failures, 1) AS failure_ratio
+  sumIf(double1, index1 = 'assistant_turn_success') AS est_successes,
+  sumIf(double1, index1 = 'assistant_turn_failure') AS est_failures
 FROM events.analyticsEngine.pourstl_feature_events
 WHERE accountTag = '451ace7be1a6f2b9a8a6f0e4d5529c06'
   AND timestamp > now() - INTERVAL 30 DAY
+  AND blob3 = 'production'
   AND index1 IN ('assistant_turn_success', 'assistant_turn_failure')
 GROUP BY date
 ORDER BY date DESC

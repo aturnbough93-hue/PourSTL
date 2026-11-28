@@ -26,6 +26,30 @@ function json(data, status) {
   });
 }
 
+async function readBodyWithLimit(request) {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let body = '';
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    body += decoder.decode(value, { stream: true });
+  }
+  return body + decoder.decode();
+}
+
+function requestEnvironment(request) {
+  const host = new URL(request.url).hostname;
+  return host === 'pourstl.com' || host === 'www.pourstl.com' ? 'production' : 'preview';
+}
+
 function validEvent(entry) {
   if (!entry || typeof entry !== 'object') return null;
   const name = entry.name;
@@ -38,8 +62,8 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   if (!env.FEATURE_ANALYTICS) return json({ error: 'Analytics unavailable' }, 503);
 
-  const contentType = request.headers.get('content-type') || '';
-  if (!contentType.toLowerCase().includes('application/json')) {
+  const contentType = (request.headers.get('content-type') || '').split(';', 1)[0].trim().toLowerCase();
+  if (contentType !== 'application/json') {
     return json({ error: 'Expected application/json' }, 415);
   }
 
@@ -48,8 +72,8 @@ export async function onRequestPost(context) {
 
   let payload;
   try {
-    const body = await request.text();
-    if (body.length > MAX_BODY_BYTES) return json({ error: 'Request too large' }, 413);
+    const body = await readBodyWithLimit(request);
+    if (body === null) return json({ error: 'Request too large' }, 413);
     payload = JSON.parse(body);
   } catch {
     return json({ error: 'Invalid JSON' }, 400);
@@ -70,7 +94,7 @@ export async function onRequestPost(context) {
   for (const event of events) {
     env.FEATURE_ANALYTICS.writeDataPoint({
       indexes: [event.name],
-      blobs: ['web_try', event.path],
+      blobs: ['web_try', event.path, requestEnvironment(request)],
       doubles: [1],
     });
   }

@@ -913,7 +913,7 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
   assert.equal(writes.length, 1);
   assert.deepEqual(writes[0], {
     indexes: ['recipe_view'],
-    blobs: ['web_try', '/try'],
+    blobs: ['web_try', '/try', 'production'],
     doubles: [1],
   });
 
@@ -927,5 +927,26 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
   });
   assert.equal(bad.status, 400);
   assert.equal(writes.length, 1);
+
+  const wrongMediaType = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain; application/json' },
+      body: JSON.stringify({ events: [{ name: 'app_open' }] }),
+    }),
+    env,
+  });
+  assert.equal(wrongMediaType.status, 415);
+
+  const preview = await onRequestPost({
+    request: new Request('https://devin-feature-analytics-web.pourstl.pages.dev/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ events: [{ name: 'app_open' }] }),
+    }),
+    env,
+  });
+  assert.equal(preview.status, 202);
+  assert.equal(writes[1].blobs[2], 'preview');
   assert.equal(onRequest().status, 405);
 });

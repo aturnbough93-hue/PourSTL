@@ -113,8 +113,9 @@
       purchase.type = 'button';
       purchase.setAttribute('aria-label', 'Mark ' + name + ' purchased and add to My Bar');
       purchase.addEventListener('click', () => {
+        const alreadyStocked = state.inventory.includes(id);
         state = App.purchase(state, id);
-        trackFeature('my_bar_add');
+        if (!alreadyStocked) trackFeature('my_bar_add');
         render();
         save();
         $('shopping-name').focus({ preventScroll: true });
@@ -332,8 +333,9 @@
   });
   for (const [id, delta] of [['less', -1], ['more', 1]]) {
     $(id).addEventListener('click', () => {
-      state.servings = Math.max(1, Math.min(24, state.servings + delta));
-      trackFeature('serving_scale');
+      const nextServings = Math.max(1, Math.min(24, state.servings + delta));
+      if (nextServings !== state.servings) trackFeature('serving_scale');
+      state.servings = nextServings;
       renderDetail();
       save();
       feedback(`Recipe scaled to ${state.servings} ${state.servings === 1 ? 'serving' : 'servings'}.`);
@@ -341,8 +343,8 @@
   }
   for (const unit of ['oz', 'ml']) {
     $(`unit-${unit}`).addEventListener('click', () => {
+      if (state.unit !== unit) trackFeature('unit_toggle');
       state.unit = unit;
-      trackFeature('unit_toggle');
       renderDetail();
       save();
       feedback(`Liquid measurements shown in ${unit === 'ml' ? 'milliliters' : 'ounces'}. Dashes and garnish units stay as written.`);
@@ -486,8 +488,11 @@
         return;
       }
       const name = input.value.trim();
+      const previousCount = state[destination].length;
       state = next;
-      trackFeature(destination === 'inventory' ? 'my_bar_add' : 'shopping_list_add');
+      if (state[destination].length > previousCount) {
+        trackFeature(destination === 'inventory' ? 'my_bar_add' : 'shopping_list_add');
+      }
       input.value = '';
       render();
       save();
@@ -765,8 +770,9 @@
     const userTurn = { kind: 'user', text: question };
     let reply;
     try {
+      const intentType = Assistant.parseIntent(question).type;
       reply = Assistant.answer(question, state);
-      trackFeature('assistant_turn_success');
+      trackFeature(intentType === 'unrecognized' ? 'assistant_turn_failure' : 'assistant_turn_success');
     } catch (error) {
       trackFeature('assistant_turn_failure');
       throw error;
