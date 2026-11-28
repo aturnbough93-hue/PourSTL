@@ -4,6 +4,7 @@
 import argparse
 import base64
 import json
+import os
 from pathlib import Path
 import plistlib
 import re
@@ -264,6 +265,20 @@ class ReleaseBuildNumberTests(unittest.TestCase):
 
 
 class AppStoreConnectHelperTests(unittest.TestCase):
+    def test_key_id_rejects_a_private_key_path_before_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            key_directory = Path(directory) / "private_keys"
+            environment = {
+                "ASC_KEY_ID": "keys/AuthKey_TESTKEY123.p8",
+                "ASC_ISSUER_ID": "issuer-id",
+                "ASC_PRIVATE_KEY": "test private key",
+                "ASC_KEY_DIR": str(key_directory),
+            }
+            with patch.dict(os.environ, environment, clear=True):
+                with self.assertRaisesRegex(RuntimeError, "^Invalid ASC_KEY_ID"):
+                    app_store_connect.client_from_environment()
+            self.assertFalse(key_directory.exists())
+
     def test_internal_beta_group_lookup_rejects_an_external_group(self):
         external_group = {"id": "external-id", "attributes": {"name": "PourSTL Beta", "isInternalGroup": False}}
         internal_group = {"id": "internal-id", "attributes": {"name": "Team", "isInternalGroup": True}}
