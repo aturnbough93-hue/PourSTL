@@ -949,5 +949,23 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
   });
   assert.equal(preview.status, 202);
   assert.equal(writes[1].blobs[2], 'preview');
+
+  const oversizedStream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(' '.repeat(4097)));
+      controller.close();
+    },
+  });
+  const oversized = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: oversizedStream,
+      duplex: 'half',
+    }),
+    env,
+  });
+  assert.equal(oversized.status, 413);
+  assert.equal(writes.length, 2);
   assert.equal(onRequest().status, 405);
 });
