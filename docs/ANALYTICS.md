@@ -32,6 +32,7 @@ Analytics Engine field mapping:
 | `blob1` | surface, currently `web_try` |
 | `blob2` | coarse path, `/try` or `/try.html` |
 | `blob3` | environment, `production` for `pourstl.com`/`www.pourstl.com` and `preview` otherwise |
+| `blob4` | coarse traffic class, `standard` or `headless_automation` |
 | `double1` | count contribution, currently `1` |
 
 ### Feature usage by day
@@ -47,6 +48,7 @@ FROM events.analyticsEngine.pourstl_feature_events
 WHERE accountTag = '451ace7be1a6f2b9a8a6f0e4d5529c06'
   AND timestamp > now() - INTERVAL 30 DAY
   AND blob3 = 'production'
+  AND blob4 = 'standard'
 GROUP BY date, event
 ORDER BY date DESC, est_events DESC
 LIMIT 500
@@ -65,6 +67,7 @@ FROM events.analyticsEngine.pourstl_feature_events
 WHERE accountTag = '451ace7be1a6f2b9a8a6f0e4d5529c06'
   AND timestamp > now() - INTERVAL 30 DAY
   AND blob3 = 'production'
+  AND blob4 = 'standard'
 GROUP BY event
 ORDER BY est_events DESC
 LIMIT 100
@@ -84,6 +87,7 @@ FROM events.analyticsEngine.pourstl_feature_events
 WHERE accountTag = '451ace7be1a6f2b9a8a6f0e4d5529c06'
   AND timestamp > now() - INTERVAL 30 DAY
   AND blob3 = 'production'
+  AND blob4 = 'standard'
   AND index1 IN ('assistant_turn_success', 'assistant_turn_failure')
 GROUP BY date
 ORDER BY date DESC
@@ -102,7 +106,7 @@ SELECT
   if(requestHost LIKE '%.pages.dev', 'preview',
     if(userAgentBrowser = 'ChromeHeadless', 'headless_qa',
       if(requestPath LIKE '/qa%', 'explicit_qa', 'production_non_headless'))) AS traffic_class,
-  sum(sampleInterval) AS est_pageloads
+  count(*) AS est_pageloads
 FROM events.rumPageloadEvents
 WHERE timestamp > now() - INTERVAL 30 DAY
   AND (requestHost IN ('pourstl.com', 'www.pourstl.com') OR requestHost LIKE '%.pages.dev')
@@ -117,7 +121,7 @@ Production-only `/try` trend:
 ```sql
 SELECT
   toDate(timestamp) AS date,
-  sum(sampleInterval) AS est_try_pageloads
+  count(*) AS est_try_pageloads
 FROM events.rumPageloadEvents
 WHERE timestamp > now() - INTERVAL 30 DAY
   AND requestHost IN ('pourstl.com', 'www.pourstl.com')
@@ -140,7 +144,7 @@ SELECT
     if(clientRequestPath LIKE '%/.env%', 'probe_env',
       if(requestSource = 'edgeWorkerCacheAPI', 'edge_cache_internal',
         if(clientRequestHttpHost LIKE '%.pages.dev', 'preview', 'other')))) AS traffic_class,
-  sum(sampleInterval) AS est_requests
+  count(*) AS est_requests
 FROM events.httpRequests
 WHERE timestamp > now() - INTERVAL 7 DAY
   AND (clientRequestHttpHost IN ('pourstl.com', 'www.pourstl.com') OR clientRequestHttpHost LIKE '%.pages.dev')
@@ -158,7 +162,7 @@ Worker invocations are not product feature usage. The dedicated Worker returns 4
 SELECT
   toDate(timestamp) AS date,
   httpResponseStatus,
-  sum(sampleInterval) AS est_invocations
+  count(*) AS est_invocations
 FROM events.workersInvocations
 WHERE timestamp > now() - INTERVAL 30 DAY
   AND scriptName = 'pourstl-bar-assistant'

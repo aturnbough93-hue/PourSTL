@@ -914,7 +914,7 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
   assert.equal(writes.length, 1);
   assert.deepEqual(writes[0], {
     indexes: ['recipe_view'],
-    blobs: ['web_try', '/try', 'production'],
+    blobs: ['web_try', '/try', 'production', 'standard'],
     doubles: [1],
   });
 
@@ -950,6 +950,20 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
   assert.equal(preview.status, 202);
   assert.equal(writes[1].blobs[2], 'preview');
 
+  const headless = await onRequestPost({
+    request: new Request('https://pourstl.com/api/analytics', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': 'Mozilla/5.0 HeadlessChrome/142.0.0.0 Safari/537.36',
+      },
+      body: JSON.stringify({ events: [{ name: 'app_open' }] }),
+    }),
+    env,
+  });
+  assert.equal(headless.status, 202);
+  assert.equal(writes[2].blobs[3], 'headless_automation');
+
   const oversizedStream = new ReadableStream({
     start(controller) {
       controller.enqueue(new TextEncoder().encode(' '.repeat(2048)));
@@ -967,6 +981,6 @@ test('analytics Pages Function accepts only valid coarse event batches', async (
     env,
   });
   assert.equal(oversized.status, 413);
-  assert.equal(writes.length, 2);
+  assert.equal(writes.length, 3);
   assert.equal(onRequest().status, 405);
 });

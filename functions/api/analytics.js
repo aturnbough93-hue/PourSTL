@@ -50,6 +50,11 @@ function requestEnvironment(request) {
   return host === 'pourstl.com' || host === 'www.pourstl.com' ? 'production' : 'preview';
 }
 
+function trafficClass(request) {
+  const userAgent = (request.headers.get('user-agent') || '').toLowerCase();
+  return /headlesschrome|chromeheadless|playwright|puppeteer/.test(userAgent) ? 'headless_automation' : 'standard';
+}
+
 function validEvent(entry) {
   if (!entry || typeof entry !== 'object') return null;
   const name = entry.name;
@@ -94,7 +99,7 @@ export async function onRequestPost(context) {
   for (const event of events) {
     env.FEATURE_ANALYTICS.writeDataPoint({
       indexes: [event.name],
-      blobs: ['web_try', event.path, requestEnvironment(request)],
+      blobs: ['web_try', event.path, requestEnvironment(request), trafficClass(request)],
       doubles: [1],
     });
   }
