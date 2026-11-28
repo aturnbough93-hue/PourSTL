@@ -210,7 +210,7 @@ test('manual shopping supports restocking and preserves previous browser data', 
   assert.equal(Demo.addIngredient(state, '  ', 'inventory'), state);
 });
 
-function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState, beacon } = {}) {
+function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, execCommandResult = false, initialState, beacon, fetchMock } = {}) {
   const siteDir = path.join(__dirname, '..', 'website');
   const html = fs.readFileSync(path.join(siteDir, 'try.html'), 'utf8');
   const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
@@ -385,6 +385,7 @@ function bootTryPage({ compact = false, singleColumn = false, clipboardWrite, ex
     clearInterval() {},
     confirm: () => true,
     crypto: globalThis.crypto,
+    fetch: fetchMock,
   };
   win.window = win;
 
@@ -874,9 +875,9 @@ test('bar assistant dialog opens, answers questions, appends turns without repla
 test('feature analytics beacons only coarse allowlisted action counts', async () => {
   const sent = [];
   const page = bootTryPage({
-    beacon(url, body) {
-      sent.push({ url, body });
-      return true;
+    fetchMock(url, options) {
+      sent.push({ url, body: options.body, credentials: options.credentials });
+      return Promise.resolve({ ok: true });
     },
   });
 
@@ -886,9 +887,9 @@ test('feature analytics beacons only coarse allowlisted action counts', async ()
   assert.equal(sent.length, 3);
 
   const payloads = [];
-  for (const { body } of sent) payloads.push(JSON.parse(await body.text()));
+  for (const { body } of sent) payloads.push(JSON.parse(body));
   assert.deepEqual(payloads.map(payload => payload.events[0].name), ['app_open', 'unit_toggle', 'serving_scale']);
-  assert.ok(sent.every(entry => entry.url === '/api/analytics'));
+  assert.ok(sent.every(entry => entry.url === '/api/analytics' && entry.credentials === 'omit'));
   const serialized = payloads.map(payload => JSON.stringify(payload)).join('\n');
   assert.deepEqual(Object.keys(payloads[0].events[0]).sort(), ['name', 'path']);
   assert.doesNotMatch(serialized, /negroni|lime|gin|question|inventory/i);

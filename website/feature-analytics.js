@@ -33,9 +33,6 @@
     if (!allowedEvents.has(name)) return false;
     const body = JSON.stringify({ events: [{ name, path: eventPath() }] });
     try {
-      if (window.navigator && typeof window.navigator.sendBeacon === 'function') {
-        return window.navigator.sendBeacon('/api/analytics', new Blob([body], { type: 'application/json' }));
-      }
       if (typeof window.fetch === 'function') {
         window.fetch('/api/analytics', {
           method: 'POST',
