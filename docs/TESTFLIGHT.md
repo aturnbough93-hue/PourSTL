@@ -11,8 +11,8 @@ The first launch target is **internal TestFlight** from `main` after all release
 1. verifies the `bar.pourstl.app` app record exists;
 2. materializes the App Store Connect `.p8` key in a private temporary directory;
 3. uses the latest App Store Connect build number + 1, or checks that a supplied number is higher;
-4. archives the Release app with `CURRENT_PROJECT_VERSION` overridden for that archive only, using an ad-hoc intermediate signature so no registered device is needed;
-5. re-signs for App Store distribution with cloud-managed automatic signing and uploads a TestFlight Internal Only build using the API key;
+4. archives the Release app with `CURRENT_PROJECT_VERSION` overridden for that archive only, leaving the intermediate archive unsigned so no registered device or archive-time signing asset is needed;
+5. re-signs during export for App Store distribution with cloud-managed automatic signing and uploads a TestFlight Internal Only build using the API key;
 6. polls until the uploaded build is `VALID`;
 7. finds the internal beta group (default `App Store Connect Users`), creates a missing custom group when necessary, and assigns the build unless the group already receives all builds.
 

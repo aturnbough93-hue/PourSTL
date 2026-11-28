@@ -97,9 +97,11 @@ archive_path="$workdir/PourSTL.xcarchive"
 export_path="$workdir/export"
 mkdir -p "$export_path"
 
-# Archives must be signed, but archive-time development profiles require a
-# registered device. Use an ad-hoc intermediate signature; export re-signs for
-# App Store distribution with cloud-managed signing assets.
+# Export re-signs the archive with cloud-managed signing assets. Keep the
+# intermediate archive unsigned: ad-hoc signing is rejected because Xcode's
+# injected iOS entitlements require a development certificate, while archive-time
+# automatic development signing can need registered devices or create extra
+# signing assets.
 xcodebuild archive \
   -project PourSTL.xcodeproj \
   -scheme PourSTL \
@@ -108,12 +110,7 @@ xcodebuild archive \
   -archivePath "$archive_path" \
   CURRENT_PROJECT_VERSION="$build_number" \
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-  CODE_SIGN_IDENTITY=- \
-  AD_HOC_CODE_SIGNING_ALLOWED=YES \
-  -allowProvisioningUpdates \
-  -authenticationKeyID "$ASC_KEY_ID" \
-  -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-  -authenticationKeyPath "$key_path"
+  CODE_SIGNING_ALLOWED=NO
 
 xcodebuild -exportArchive \
   -archivePath "$archive_path" \
