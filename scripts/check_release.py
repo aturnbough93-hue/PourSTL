@@ -225,7 +225,7 @@ class ReleaseChecks(unittest.TestCase):
                 self.assertIn(f"secrets.{secret}", workflow)
         self.assertLess(script.index("xcodebuild archive"), script.index("xcodebuild -exportArchive"))
         archive_block = script.split("xcodebuild archive", 1)[1].split("xcodebuild -exportArchive", 1)[0]
-        export_block = script.split("xcodebuild -exportArchive", 1)[1]
+        export_block = script.split("xcodebuild -exportArchive", 1)[1].split("\n\n", 1)[0]
         self.assertIn("CODE_SIGNING_ALLOWED=NO", archive_block)
         self.assertNotIn("AD_HOC_CODE_SIGNING_ALLOWED", archive_block)
         self.assertNotIn("CODE_SIGN_IDENTITY=-", archive_block)
