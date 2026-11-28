@@ -230,7 +230,14 @@ class ReleaseChecks(unittest.TestCase):
         self.assertNotIn("AD_HOC_CODE_SIGNING_ALLOWED", archive_block)
         self.assertNotIn("CODE_SIGN_IDENTITY=-", archive_block)
         self.assertNotIn("-authenticationKey", archive_block)
-        self.assertIn("-authenticationKeyPath", export_block)
+        for argument in (
+            "-allowProvisioningUpdates",
+            '-authenticationKeyID "$ASC_KEY_ID"',
+            '-authenticationKeyIssuerID "$ASC_ISSUER_ID"',
+            '-authenticationKeyPath "$key_path"',
+        ):
+            with self.subTest(export_argument=argument):
+                self.assertIn(argument, export_block)
         self.assertIn('"method": "app-store-connect"', script)
         self.assertIn('"destination": "upload"', script)
         self.assertIn("wait-and-assign", script)
